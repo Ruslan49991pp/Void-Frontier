@@ -1,0 +1,303 @@
+using UnityEngine;
+
+[System.Serializable]
+public class CharacterData
+{
+    public string firstName;
+    public string lastName;
+    public int level;
+    public float health;
+    public float maxHealth;
+    public string profession;
+    public string bio;
+}
+
+public class Character : MonoBehaviour
+{
+    [Header("Character Info")]
+    public CharacterData characterData;
+    
+    [Header("Visual")]
+    public Renderer characterRenderer;
+    public Color defaultColor = Color.green;
+    public Color selectedColor = Color.red;
+    
+    [Header("Stats")]
+    public float moveSpeed = 3f;
+    
+    // Статическая система генерации имен с отслеживанием использованных комбинаций
+    private static readonly string[] FirstNames = {
+        "James", "John", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas", "Christopher",
+        "Charles", "Daniel", "Matthew", "Anthony", "Mark", "Donald", "Steven", "Paul", "Andrew", "Joshua",
+        "Kenneth", "Kevin", "Brian", "George", "Timothy", "Ronald", "Jason", "Edward", "Jeffrey", "Ryan",
+        "Jacob", "Gary", "Nicholas", "Eric", "Jonathan", "Stephen", "Larry", "Justin", "Scott", "Brandon",
+        "Benjamin", "Samuel", "Gregory", "Frank", "Raymond", "Alexander", "Patrick", "Jack", "Dennis", "Jerry",
+        "Tyler", "Nathan", "Harold", "Jordan", "Douglas", "Arthur", "Noah", "Henry", "Zachary", "Carl",
+        "Mary", "Patricia", "Jennifer", "Linda", "Elizabeth", "Barbara", "Susan", "Jessica", "Sarah", "Karen",
+        "Nancy", "Lisa", "Betty", "Helen", "Sandra", "Donna", "Carol", "Ruth", "Sharon", "Michelle",
+        "Laura", "Kimberly", "Deborah", "Dorothy", "Amy", "Angela", "Ashley", "Brenda", "Emma", "Olivia",
+        "Cynthia", "Marie", "Janet", "Catherine", "Frances", "Christine", "Samantha", "Debra", "Rachel", "Carolyn"
+    };
+    
+    private static readonly string[] LastNames = {
+        "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez",
+        "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin",
+        "Lee", "Perez", "Thompson", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson",
+        "Walker", "Young", "Allen", "King", "Wright", "Scott", "Torres", "Nguyen", "Hill", "Flores",
+        "Green", "Adams", "Nelson", "Baker", "Hall", "Rivera", "Campbell", "Mitchell", "Carter", "Roberts",
+        "Gomez", "Phillips", "Evans", "Turner", "Diaz", "Parker", "Cruz", "Edwards", "Collins", "Reyes",
+        "Stewart", "Morris", "Morales", "Murphy", "Cook", "Rogers", "Gutierrez", "Ortiz", "Morgan", "Cooper",
+        "Peterson", "Bailey", "Reed", "Kelly", "Howard", "Ramos", "Kim", "Cox", "Ward", "Richardson",
+        "Watson", "Brooks", "Chavez", "Wood", "James", "Bennett", "Gray", "Mendoza", "Ruiz", "Hughes"
+    };
+    
+    private static readonly string[] Professions = {
+        "Engineer", "Pilot", "Medic", "Scientist", "Security", "Mechanic", "Navigator", "Communications",
+        "Geologist", "Biologist", "Technician", "Specialist", "Officer", "Researcher", "Analyst"
+    };
+    
+    // Статическая система для отслеживания использованных имен
+    private static System.Collections.Generic.HashSet<string> usedNames = new System.Collections.Generic.HashSet<string>();
+    private static System.Random staticRandom = new System.Random(System.DateTime.Now.Millisecond);
+    
+    // Внутренние переменные
+    private bool isSelected = false;
+    private Material characterMaterial;
+    
+    void Awake()
+    {
+        // Находим renderer если не назначен
+        if (characterRenderer == null)
+            characterRenderer = GetComponent<Renderer>();
+            
+        // Создаем собственный материал для изменения цвета
+        if (characterRenderer != null)
+        {
+            characterMaterial = new Material(characterRenderer.material);
+            characterRenderer.material = characterMaterial;
+            SetColor(defaultColor);
+        }
+        
+        // Добавляем LocationObjectInfo для интеграции с системой выделения
+        var objectInfo = GetComponent<LocationObjectInfo>();
+        if (objectInfo == null)
+        {
+            objectInfo = gameObject.AddComponent<LocationObjectInfo>();
+        }
+        
+        // ВСЕГДА генерируем новые данные персонажа для каждого экземпляра
+        // Это предотвращает дублирование данных из префаба
+        GenerateRandomCharacter();
+        
+        // Настраиваем LocationObjectInfo
+        objectInfo.objectType = "Character";
+        objectInfo.objectName = GetFullName();
+        objectInfo.health = characterData.health;
+    }
+    
+    /// <summary>
+    /// Генерация случайного персонажа с уникальным именем
+    /// </summary>
+    public void GenerateRandomCharacter()
+    {
+        characterData = new CharacterData();
+        
+        // Генерируем уникальное имя
+        GenerateUniqueName();
+        
+        characterData.level = staticRandom.Next(1, 6);
+        characterData.maxHealth = 100f;
+        characterData.health = characterData.maxHealth;
+        characterData.profession = Professions[staticRandom.Next(0, Professions.Length)];
+        
+        // Генерируем краткую биографию
+        characterData.bio = $"Level {characterData.level} {characterData.profession} with extensive experience in space operations.";
+        
+        Debug.Log($"[{Time.time:F2}s] ✓ Создан персонаж: {GetFullName()}, {characterData.profession}, Level {characterData.level}");
+    }
+    
+    /// <summary>
+    /// Генерация уникального имени для персонажа
+    /// </summary>
+    void GenerateUniqueName()
+    {
+        int maxAttempts = 1000; // Предотвращение бесконечного цикла
+        int attempts = 0;
+        
+        do
+        {
+            string firstName = FirstNames[staticRandom.Next(0, FirstNames.Length)];
+            string lastName = LastNames[staticRandom.Next(0, LastNames.Length)];
+            string fullName = $"{firstName} {lastName}";
+            
+            // Проверяем уникальность имени
+            if (!usedNames.Contains(fullName))
+            {
+                characterData.firstName = firstName;
+                characterData.lastName = lastName;
+                usedNames.Add(fullName);
+                Debug.Log($"[{Time.time:F2}s] Уникальное имя сгенерировано: {fullName} (попыток: {attempts + 1})");
+                return;
+            }
+            
+            attempts++;
+        }
+        while (attempts < maxAttempts);
+        
+        // Если не удалось сгенерировать уникальное имя, добавляем номер
+        string baseName = $"{FirstNames[staticRandom.Next(0, FirstNames.Length)]} {LastNames[staticRandom.Next(0, LastNames.Length)]}";
+        int counter = 1;
+        string uniqueName;
+        
+        do
+        {
+            uniqueName = $"{baseName} {counter}";
+            counter++;
+        }
+        while (usedNames.Contains(uniqueName));
+        
+        string[] nameParts = uniqueName.Split(' ');
+        characterData.firstName = nameParts[0];
+        characterData.lastName = string.Join(" ", nameParts, 1, nameParts.Length - 1);
+        usedNames.Add(uniqueName);
+        
+        Debug.LogWarning($"Принудительно создано уникальное имя: {uniqueName}");
+    }
+    
+    /// <summary>
+    /// Очистить список использованных имен (для отладки)
+    /// </summary>
+    public static void ClearUsedNames()
+    {
+        usedNames.Clear();
+        // Пересоздаем Random с новым seed для лучшей случайности
+        staticRandom = new System.Random(System.DateTime.Now.Millisecond + UnityEngine.Random.Range(0, 1000));
+        Debug.Log($"[{Time.time:F2}s] Список использованных имен очищен, новый Random seed");
+    }
+    
+    /// <summary>
+    /// Получить статистику использованных имен
+    /// </summary>
+    public static void LogNameStatistics()
+    {
+        Debug.Log($"=== СТАТИСТИКА ИМЕН ===");
+        Debug.Log($"Использовано уникальных имен: {usedNames.Count}");
+        Debug.Log($"Доступно имен: {FirstNames.Length}");
+        Debug.Log($"Доступно фамилий: {LastNames.Length}");
+        Debug.Log($"Возможных комбинаций: {FirstNames.Length * LastNames.Length}");
+        
+        if (usedNames.Count > 0)
+        {
+            Debug.Log("Использованные имена:");
+            foreach (string name in usedNames)
+            {
+                Debug.Log($"  - {name}");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Получить полное имя персонажа
+    /// </summary>
+    public string GetFullName()
+    {
+        if (characterData == null) return "Unknown Character";
+        return $"{characterData.firstName} {characterData.lastName}";
+    }
+    
+    /// <summary>
+    /// Получить информацию о персонаже для UI
+    /// </summary>
+    public string GetCharacterInfo()
+    {
+        if (characterData == null) return "No data available";
+        
+        return $"{GetFullName()}\n" +
+               $"Profession: {characterData.profession}\n" +
+               $"Level: {characterData.level}\n" +
+               $"Health: {characterData.health:F0}/{characterData.maxHealth:F0}";
+    }
+    
+    /// <summary>
+    /// Установить состояние выделения
+    /// </summary>
+    public void SetSelected(bool selected)
+    {
+        if (isSelected == selected) return;
+        
+        isSelected = selected;
+        SetColor(selected ? selectedColor : defaultColor);
+        
+        Debug.Log($"Персонаж {GetFullName()} {(selected ? "выделен" : "снят с выделения")}");
+    }
+    
+    /// <summary>
+    /// Изменить цвет персонажа
+    /// </summary>
+    void SetColor(Color color)
+    {
+        if (characterMaterial != null)
+        {
+            characterMaterial.color = color;
+        }
+    }
+    
+    /// <summary>
+    /// Проверить, выделен ли персонаж
+    /// </summary>
+    public bool IsSelected()
+    {
+        return isSelected;
+    }
+    
+    /// <summary>
+    /// Нанести урон персонажу
+    /// </summary>
+    public void TakeDamage(float damage)
+    {
+        characterData.health = Mathf.Max(0, characterData.health - damage);
+        
+        // Обновляем health в LocationObjectInfo
+        var objectInfo = GetComponent<LocationObjectInfo>();
+        if (objectInfo != null)
+        {
+            objectInfo.health = characterData.health;
+        }
+        
+        if (characterData.health <= 0)
+        {
+            Debug.Log($"Персонаж {GetFullName()} потерял сознание!");
+        }
+    }
+    
+    /// <summary>
+    /// Восстановить здоровье
+    /// </summary>
+    public void Heal(float amount)
+    {
+        characterData.health = Mathf.Min(characterData.maxHealth, characterData.health + amount);
+        
+        // Обновляем health в LocationObjectInfo
+        var objectInfo = GetComponent<LocationObjectInfo>();
+        if (objectInfo != null)
+        {
+            objectInfo.health = characterData.health;
+        }
+    }
+    
+    void OnDestroy()
+    {
+        // Освобождаем материал
+        if (characterMaterial != null)
+        {
+            DestroyImmediate(characterMaterial);
+        }
+    }
+    
+    void OnDrawGizmosSelected()
+    {
+        // Показываем информацию о персонаже в Scene view
+        Gizmos.color = isSelected ? selectedColor : defaultColor;
+        Gizmos.DrawWireSphere(transform.position + Vector3.up * 2.5f, 0.5f);
+    }
+}

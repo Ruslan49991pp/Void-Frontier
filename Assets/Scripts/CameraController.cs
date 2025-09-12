@@ -4,14 +4,14 @@ using UnityEngine;
 public class CameraController : MonoBehaviour
 {
     [Header("References")]
-    public Camera cam;                     // если ничего не назначено, будет Camera.main
-    public Transform focusTarget;          // перетащи сюда Ship (или вызови SetFocusTarget)
-    public BoxCollider boundsCollider;     // опционально: объект с BoxCollider, задающий границы локации
+    public Camera cam;                     // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ Camera.main
+    public Transform focusTarget;          // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ Ship (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ SetFocusTarget)
+    public BoxCollider boundsCollider;     // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ BoxCollider, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
     [Header("Movement")]
-    public float panSpeed = 20f;           // скорость WASD
-    public float dragSpeed = 0.6f;         // скорость при перетягивании средней кнопкой
-    public float smoothTime = 0.08f;       // сглаживание движения
+    public float panSpeed = 20f;           // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ WASD
+    public float dragSpeed = 0.6f;         // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    public float smoothTime = 0.08f;       // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
     [Header("Zoom (Orthographic)")]
     public float zoomSpeed = 10f;
@@ -19,9 +19,17 @@ public class CameraController : MonoBehaviour
     public float maxOrthoSize = 30f;
 
     [Header("Focus / Controls")]
-    public KeyCode focusKey = KeyCode.F;   // клавиша для возврата к фокусу
+    public KeyCode focusKey = KeyCode.F;   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    
+    [Header("Mouse Edge Scrolling")]
+    public bool enableEdgeScrolling = true; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    public float edgeScrollSpeed = 15f;     // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    public float edgeBorderSize = 50f;      // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    
+    [Header("Selection Integration")]
+    public SelectionManager selectionManager;
 
-    // внутреннее
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     private Vector3 targetPosition;
     private Vector3 velocity = Vector3.zero;
     private Vector3 offsetFromFocus = Vector3.zero;
@@ -38,6 +46,10 @@ public class CameraController : MonoBehaviour
 
         if (boundsCollider != null)
             SetBoundsFromCollider(boundsCollider);
+            
+        // РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РЅР°С…РѕРґРёРј SelectionManager РµСЃР»Рё РЅРµ РЅР°Р·РЅР°С‡РµРЅ
+        if (selectionManager == null)
+            selectionManager = FindObjectOfType<SelectionManager>();
     }
 
     void Update()
@@ -51,25 +63,48 @@ public class CameraController : MonoBehaviour
 
     void LateUpdate()
     {
-        // плавно перемещаем камеру к целевой позиции
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime);
     }
 
     void HandleInput()
     {
-        // 1) WASD / Arrow keys
+        // РџСЂРѕРІРµСЂСЏРµРј, Р°РєС‚РёРІРЅРѕ Р»Рё box selection - РµСЃР»Рё РґР°, РЅРµ РґРІРёРіР°РµРј РєР°РјРµСЂСѓ
+        bool isSelectionActive = selectionManager != null && selectionManager.IsBoxSelecting;
+        
+        if (isSelectionActive)
+        {
+            // Р’Рѕ РІСЂРµРјСЏ box selection РєР°РјРµСЂР° РЅРµ РґРІРёРіР°РµС‚СЃСЏ
+            return;
+        }
+        
+        // 1) WASD / Arrow keys (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         float h = Input.GetAxisRaw("Horizontal"); // A/D, Left/Right
         float v = Input.GetAxisRaw("Vertical");   // W/S, Up/Down
 
-        // хотим перемещаться по плоскости XZ, в направлении "вперёд/право" камеры, но без вертикальной составляющей
+        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ XZ, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅ" пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Vector3 right = transform.right; right.y = 0; right.Normalize();
         Vector3 forward = transform.forward; forward.y = 0; forward.Normalize();
 
         Vector3 move = (right * h + forward * v);
-        if (move.sqrMagnitude > 0.0001f)
+        bool hasWASDInput = move.sqrMagnitude > 0.0001f;
+        
+        if (hasWASDInput)
+        {
             targetPosition += move.normalized * panSpeed * Time.deltaTime;
+        }
+        else
+        {
+            // 1.5) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ WASD пїЅпїЅпїЅпїЅпїЅ)
+            Vector3 edgeInput = GetEdgeScrollInput();
+            if (edgeInput.sqrMagnitude > 0.0001f)
+            {
+                Vector3 edgeMove = (right * edgeInput.x + forward * edgeInput.z);
+                targetPosition += edgeMove.normalized * edgeScrollSpeed * Time.deltaTime;
+            }
+        }
 
-        // 2) Перетягивание средней кнопкой мыши (нажать колесико)
+        // 2) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         if (Input.GetMouseButton(2))
         {
             float mx = -Input.GetAxis("Mouse X") * dragSpeed;
@@ -93,7 +128,7 @@ public class CameraController : MonoBehaviour
             }
             else
             {
-                // для перспективы можно сдвигать камеру вдоль её forward
+                // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ forward
                 targetPosition += transform.forward * scroll * zoomSpeed;
             }
             ClampToBounds();
@@ -103,7 +138,7 @@ public class CameraController : MonoBehaviour
     public void CenterOnTarget()
     {
         if (focusTarget == null) return;
-        // сохраняем текущее смещение и ставим цель так, чтобы сохранить относительное положение камеры
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         targetPosition = focusTarget.position + offsetFromFocus;
         ClampToBounds();
     }
@@ -115,7 +150,7 @@ public class CameraController : MonoBehaviour
         targetPosition = new Vector3(x, targetPosition.y, z);
     }
 
-    // утилита для быстрого выставления границ из BoxCollider'а локации
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ BoxCollider'пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     public void SetBoundsFromCollider(BoxCollider bc)
     {
         if (bc == null) return;
@@ -129,7 +164,29 @@ public class CameraController : MonoBehaviour
         boundsZ.y = centerWorld.z + halfZ;
     }
 
-    // можно вызывать из UI: назначить Ship через код
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    private Vector3 GetEdgeScrollInput()
+    {
+        if (!enableEdgeScrolling) return Vector3.zero;
+        
+        Vector3 mousePos = Input.mousePosition;
+        Vector3 edgeInput = Vector3.zero;
+        
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        if (mousePos.x <= edgeBorderSize)
+            edgeInput.x = -1f; // пїЅпїЅпїЅпїЅпїЅ
+        else if (mousePos.x >= Screen.width - edgeBorderSize)
+            edgeInput.x = 1f;  // пїЅпїЅпїЅпїЅпїЅпїЅ
+            
+        if (mousePos.y <= edgeBorderSize)
+            edgeInput.z = -1f; // пїЅпїЅпїЅпїЅ
+        else if (mousePos.y >= Screen.height - edgeBorderSize)
+            edgeInput.z = 1f;  // пїЅпїЅпїЅпїЅпїЅ
+            
+        return edgeInput;
+    }
+    
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ UI: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Ship пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
     public void SetFocusTarget(Transform t)
     {
         focusTarget = t;

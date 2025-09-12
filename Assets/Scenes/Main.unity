@@ -350,6 +350,10 @@ MonoBehaviour:
   minOrthoSize: 6
   maxOrthoSize: 30
   focusKey: 102
+  enableEdgeScrolling: 1
+  edgeScrollSpeed: 15
+  edgeBorderSize: 50
+  selectionManager: {fileID: 0}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -517,6 +521,62 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 100, y: 10, z: 100}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &795962991
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 795962993}
+  - component: {fileID: 795962992}
+  m_Layer: 0
+  m_Name: SelectionManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &795962992
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 795962991}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4efccd7598a59d64a9720319d004bf54, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerCamera: {fileID: 0}
+  selectableLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  selectionBoxColor: {r: 0.8, g: 0.8, b: 1, a: 0.25}
+  selectionBoxBorderColor: {r: 0.8, g: 0.8, b: 1, a: 1}
+  selectionIndicatorHeight: 2
+  selectionIndicatorPrefab: {fileID: 0}
+  selectionIndicatorColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  selectionInfoPanel: {fileID: 0}
+  selectionInfoText: {fileID: 0}
+  uiCanvas: {fileID: 0}
+--- !u!4 &795962993
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 795962991}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -704,6 +764,78 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1049599427}
   m_CullTransparentMesh: 1
+--- !u!1 &1235991566
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1235991568}
+  - component: {fileID: 1235991567}
+  m_Layer: 0
+  m_Name: LocationManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1235991567
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1235991566}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0ce709eb4feffa4d9431ed986c1c2ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentLocation:
+    locationName: 
+    gridSize: {x: 0, y: 0}
+    playerSpawnPoint: {x: 0, y: 0, z: 0}
+    pointsOfInterest: []
+    isGenerated: 0
+  defaultGridSize: {x: 100, y: 100}
+  gridCellSize: 1
+  spawnSettings:
+    stationPrefabs:
+    - {fileID: 726936938767406097, guid: 0dc084e065aca51479f9ac6e73462bad, type: 3}
+    minStations: 0
+    maxStations: 2
+    asteroidPrefabs:
+    - {fileID: 4561611002334196258, guid: 3343f1ced143ecd4ca32e25772c95ce1, type: 3}
+    minAsteroids: 3
+    maxAsteroids: 10
+    debrisPrefabs:
+    - {fileID: 1945571394753642354, guid: 588fd068f68c31340b745ec3d6ef57d2, type: 3}
+    minDebris: 5
+    maxDebris: 15
+  contentParent: {fileID: 0}
+  autoGenerateOnStart: 1
+  minDistanceBetweenObjects: 20
+  maxPlacementAttempts: 100
+  playerShip: {fileID: 0}
+  spawnSafeDistance: 50
+  gridManager: {fileID: 0}
+--- !u!4 &1235991568
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1235991566}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1280386821
 GameObject:
   m_ObjectHideFlags: 0
@@ -1162,3 +1294,5 @@ SceneRoots:
   - {fileID: 775874461}
   - {fileID: 2025710261}
   - {fileID: 223375539}
+  - {fileID: 1235991568}
+  - {fileID: 795962993}

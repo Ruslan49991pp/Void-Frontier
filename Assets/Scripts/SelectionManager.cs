@@ -1,0 +1,667 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class SelectionManager : MonoBehaviour
+{
+    [Header("Selection Settings")]
+    public Camera playerCamera;
+    public LayerMask selectableLayerMask = -1;
+    public Color selectionBoxColor = new Color(0.8f, 0.8f, 1f, 0.25f);
+    public Color selectionBoxBorderColor = new Color(0.8f, 0.8f, 1f, 1f);
+    public float selectionIndicatorHeight = 2f;
+    
+    [Header("Visual Indicators")]
+    public GameObject selectionIndicatorPrefab;
+    public Color selectionIndicatorColor = Color.yellow;
+    
+    [Header("UI")]
+    public RectTransform selectionInfoPanel;
+    public Text selectionInfoText;
+    public Canvas uiCanvas;
+    
+    // Внутренние переменные
+    private List<GameObject> selectedObjects = new List<GameObject>();
+    private Dictionary<GameObject, GameObject> selectionIndicators = new Dictionary<GameObject, GameObject>();
+    
+    // Для box selection
+    private bool isBoxSelecting = false;
+    private bool isMousePressed = false;
+    private Vector3 boxStartPosition;
+    private Vector3 boxEndPosition;
+    private Vector3 mouseDownPosition;
+    private float clickThreshold = 5f; // Пикселей для определения клика vs рамки
+    
+    // UI для рамки выделения
+    private GameObject selectionBoxUI;
+    private Image selectionBoxImage;
+    
+    // События
+    public System.Action<List<GameObject>> OnSelectionChanged;
+    
+    // Публичные свойства
+    public bool IsBoxSelecting => isBoxSelecting;
+    
+    void Start()
+    {
+        if (playerCamera == null)
+            playerCamera = Camera.main;
+            
+        InitializeUI();
+        CreateSelectionIndicatorPrefab();
+        
+        // Отложенная диагностика (даем время объектам создаться)
+        Invoke("DiagnoseSelectableObjects", 1f);
+    }
+    
+    void Update()
+    {
+        HandleMouseInput();
+        UpdateSelectionBox();
+    }
+    
+    /// <summary>
+    /// Инициализация UI элементов
+    /// </summary>
+    void InitializeUI()
+    {
+        if (uiCanvas == null)
+            uiCanvas = FindObjectOfType<Canvas>();
+            
+        if (uiCanvas == null)
+        {
+            GameObject canvasGO = new GameObject("SelectionCanvas");
+            uiCanvas = canvasGO.AddComponent<Canvas>();
+            uiCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvasGO.AddComponent<CanvasScaler>();
+            canvasGO.AddComponent<GraphicRaycaster>();
+        }
+        
+        // Создаем панель для отображения информации о выделении
+        if (selectionInfoPanel == null)
+        {
+            GameObject infoPanelGO = new GameObject("SelectionInfoPanel");
+            infoPanelGO.transform.SetParent(uiCanvas.transform, false);
+            
+            selectionInfoPanel = infoPanelGO.AddComponent<RectTransform>();
+            selectionInfoPanel.anchorMin = new Vector2(0, 1);
+            selectionInfoPanel.anchorMax = new Vector2(0, 1);
+            selectionInfoPanel.pivot = new Vector2(0, 1);
+            selectionInfoPanel.anchoredPosition = new Vector2(10, -10);
+            selectionInfoPanel.sizeDelta = new Vector2(300, 100);
+            
+            // Добавляем фон
+            Image background = infoPanelGO.AddComponent<Image>();
+            background.color = new Color(0, 0, 0, 0.7f);
+            
+            // Создаем текст
+            GameObject textGO = new GameObject("InfoText");
+            textGO.transform.SetParent(infoPanelGO.transform, false);
+            
+            selectionInfoText = textGO.AddComponent<Text>();
+            selectionInfoText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            selectionInfoText.fontSize = 14;
+            selectionInfoText.color = Color.white;
+            selectionInfoText.text = "";
+            
+            RectTransform textRect = textGO.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = new Vector2(10, 10);
+            textRect.offsetMax = new Vector2(-10, -10);
+        }
+        
+        // Создаем UI элемент для рамки выделения
+        GameObject boxGO = new GameObject("SelectionBox");
+        boxGO.transform.SetParent(uiCanvas.transform, false);
+        
+        selectionBoxUI = boxGO;
+        selectionBoxImage = boxGO.AddComponent<Image>();
+        selectionBoxImage.color = selectionBoxColor;
+        
+        RectTransform boxRect = boxGO.GetComponent<RectTransform>();
+        boxRect.anchorMin = Vector2.zero;
+        boxRect.anchorMax = Vector2.zero;
+        boxRect.pivot = Vector2.zero;
+        
+        selectionBoxUI.SetActive(false);
+    }
+    
+    /// <summary>
+    /// Создание префаба индикатора выделения если его нет
+    /// </summary>
+    void CreateSelectionIndicatorPrefab()
+    {
+        if (selectionIndicatorPrefab == null)
+        {
+            GameObject prefab = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            prefab.name = "SelectionIndicator";
+            prefab.transform.localScale = Vector3.one * 0.3f;
+            
+            // Убираем коллайдер
+            DestroyImmediate(prefab.GetComponent<Collider>());
+            
+            // Настраиваем материал
+            Renderer renderer = prefab.GetComponent<Renderer>();
+            Material material = new Material(Shader.Find("Standard"));
+            material.color = selectionIndicatorColor;
+            material.SetFloat("_Mode", 3); // Transparent mode
+            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_ZWrite", 0);
+            material.DisableKeyword("_ALPHATEST_ON");
+            material.EnableKeyword("_ALPHABLEND_ON");
+            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            material.renderQueue = 3000;
+            renderer.material = material;
+            
+            prefab.SetActive(false);
+            selectionIndicatorPrefab = prefab;
+        }
+    }
+    
+    /// <summary>
+    /// Обработка ввода мыши
+    /// </summary>
+    void HandleMouseInput()
+    {
+        // Нажатие ЛКМ - запоминаем позицию
+        if (Input.GetMouseButtonDown(0))
+        {
+            isMousePressed = true;
+            mouseDownPosition = Input.mousePosition;
+            boxStartPosition = Input.mousePosition;
+            
+            Debug.Log($"Мышь нажата в позиции: {mouseDownPosition}");
+        }
+        
+        // Мышь зажата - проверяем движение
+        if (Input.GetMouseButton(0) && isMousePressed)
+        {
+            Vector3 currentMousePos = Input.mousePosition;
+            float distance = Vector3.Distance(mouseDownPosition, currentMousePos);
+            
+            // Если движение больше порога и рамка еще не активна, начинаем box selection
+            if (distance > clickThreshold && !isBoxSelecting)
+            {
+                Debug.Log($"Начинаем box selection, дистанция: {distance}");
+                isBoxSelecting = true;
+                selectionBoxUI.SetActive(true);
+                
+                // НЕ очищаем выделение здесь! Будем очищать в конце, если ничего не найдем
+            }
+            
+            // Обновляем конечную позицию для рамки
+            if (isBoxSelecting)
+            {
+                boxEndPosition = currentMousePos;
+            }
+        }
+        
+        // Отпускание ЛКМ - решаем что это было: клик или рамка
+        if (Input.GetMouseButtonUp(0) && isMousePressed)
+        {
+            Vector3 currentMousePos = Input.mousePosition;
+            float distance = Vector3.Distance(mouseDownPosition, currentMousePos);
+            
+            if (isBoxSelecting)
+            {
+                // Это была рамка
+                Debug.Log("Завершаем box selection");
+                isBoxSelecting = false;
+                selectionBoxUI.SetActive(false);
+                PerformBoxSelection();
+            }
+            else if (distance <= clickThreshold)
+            {
+                // Это был клик
+                Debug.Log("Выполняем клик");
+                PerformClickSelection(mouseDownPosition);
+            }
+            
+            isMousePressed = false;
+        }
+    }
+    
+    /// <summary>
+    /// Выполнение выделения по клику
+    /// </summary>
+    void PerformClickSelection(Vector3 mousePosition)
+    {
+        Ray ray = playerCamera.ScreenPointToRay(mousePosition);
+        
+        // Используем RaycastAll чтобы получить все объекты на луче
+        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask);
+        
+        if (hits.Length > 0)
+        {
+            Debug.Log($"Клик: Raycast попал в {hits.Length} объектов");
+            
+            // Ищем первый подходящий объект
+            foreach (RaycastHit rayHit in hits)
+            {
+                GameObject hitObject = rayHit.collider.gameObject;
+                Debug.Log($"  - {hitObject.name}, коллайдер: {rayHit.collider.GetType().Name}");
+                
+                // Исключаем системные объекты из выделения
+                if (hitObject.name.Contains("Bounds") || hitObject.name.Contains("Grid") || 
+                    hitObject.name.Contains("Location") && !hitObject.name.Contains("Test"))
+                {
+                    Debug.Log($"    Игнорируем системный объект: {hitObject.name}");
+                    continue;
+                }
+                
+                LocationObjectInfo objectInfo = hitObject.GetComponent<LocationObjectInfo>();
+                
+                if (objectInfo != null)
+                {
+                    // Одиночное выделение
+                    if (!Input.GetKey(KeyCode.LeftControl))
+                    {
+                        ClearSelection();
+                    }
+                    
+                    ToggleSelection(hitObject);
+                    Debug.Log($"    ✓ Выделен объект: {objectInfo.objectName} ({objectInfo.objectType})");
+                    return;
+                }
+                else
+                {
+                    Debug.LogWarning($"    Объект {hitObject.name} не имеет компонента LocationObjectInfo!");
+                }
+            }
+        }
+        else
+        {
+            Debug.Log("Клик в пустое место - очищаем выделение");
+            
+            // Клик в пустое место - очищаем выделение если не зажат Ctrl
+            if (!Input.GetKey(KeyCode.LeftControl))
+            {
+                ClearSelection();
+            }
+            else
+            {
+                Debug.Log("Ctrl зажат - выделение сохранено");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Обновление визуальной рамки выделения
+    /// </summary>
+    void UpdateSelectionBox()
+    {
+        if (!isBoxSelecting || selectionBoxUI == null) return;
+        
+        Vector2 start = boxStartPosition;
+        Vector2 end = boxEndPosition;
+        
+        Vector2 min = Vector2.Min(start, end);
+        Vector2 max = Vector2.Max(start, end);
+        
+        RectTransform boxRect = selectionBoxUI.GetComponent<RectTransform>();
+        boxRect.anchoredPosition = min;
+        boxRect.sizeDelta = max - min;
+    }
+    
+    /// <summary>
+    /// Выполнение выделения области
+    /// </summary>
+    void PerformBoxSelection()
+    {
+        Vector2 start = playerCamera.ScreenToWorldPoint(boxStartPosition);
+        Vector2 end = playerCamera.ScreenToWorldPoint(boxEndPosition);
+        
+        Vector2 min = Vector2.Min(start, end);
+        Vector2 max = Vector2.Max(start, end);
+        
+        List<GameObject> newSelections = new List<GameObject>();
+        
+        // Находим все объекты в области
+        LocationObjectInfo[] allObjects = FindObjectsOfType<LocationObjectInfo>();
+        
+        foreach (LocationObjectInfo objectInfo in allObjects)
+        {
+            Vector3 worldPos = objectInfo.transform.position;
+            Vector2 screenPos = playerCamera.WorldToScreenPoint(worldPos);
+            
+            Vector2 boxMin = Vector2.Min(boxStartPosition, boxEndPosition);
+            Vector2 boxMax = Vector2.Max(boxStartPosition, boxEndPosition);
+            
+            if (screenPos.x >= boxMin.x && screenPos.x <= boxMax.x &&
+                screenPos.y >= boxMin.y && screenPos.y <= boxMax.y)
+            {
+                newSelections.Add(objectInfo.gameObject);
+            }
+        }
+        
+        // Логика выделения в зависимости от результата
+        if (newSelections.Count > 0)
+        {
+            // Есть объекты в рамке
+            if (!Input.GetKey(KeyCode.LeftControl))
+            {
+                // Если Ctrl не зажат, заменяем выделение
+                ClearSelection();
+            }
+            
+            // Добавляем новые выделения
+            foreach (GameObject obj in newSelections)
+            {
+                if (!selectedObjects.Contains(obj))
+                {
+                    AddToSelection(obj);
+                }
+            }
+            
+            Debug.Log($"Выделено в области: {newSelections.Count} объектов");
+        }
+        else
+        {
+            // В рамку ничего не попало
+            Debug.Log("Рамка пуста - очищаем выделение");
+            
+            // Очищаем выделение если не зажат Ctrl
+            if (!Input.GetKey(KeyCode.LeftControl))
+            {
+                ClearSelection();
+            }
+            else
+            {
+                Debug.Log("Ctrl зажат - выделение сохранено");
+            }
+        }
+        
+        UpdateSelectionInfo();
+    }
+    
+    /// <summary>
+    /// Переключение выделения объекта
+    /// </summary>
+    public void ToggleSelection(GameObject obj)
+    {
+        if (selectedObjects.Contains(obj))
+        {
+            RemoveFromSelection(obj);
+        }
+        else
+        {
+            AddToSelection(obj);
+        }
+    }
+    
+    /// <summary>
+    /// Добавление объекта к выделению
+    /// </summary>
+    public void AddToSelection(GameObject obj)
+    {
+        if (!selectedObjects.Contains(obj))
+        {
+            selectedObjects.Add(obj);
+            CreateSelectionIndicator(obj);
+            SetObjectSelectionState(obj, true);
+            UpdateSelectionInfo();
+            OnSelectionChanged?.Invoke(selectedObjects);
+        }
+    }
+    
+    /// <summary>
+    /// Удаление объекта из выделения
+    /// </summary>
+    public void RemoveFromSelection(GameObject obj)
+    {
+        if (selectedObjects.Remove(obj))
+        {
+            RemoveSelectionIndicator(obj);
+            if (obj != null) // Проверяем перед обращением к объекту
+            {
+                SetObjectSelectionState(obj, false);
+            }
+            UpdateSelectionInfo();
+            OnSelectionChanged?.Invoke(selectedObjects);
+        }
+    }
+    
+    /// <summary>
+    /// Очистка всего выделения
+    /// </summary>
+    public void ClearSelection()
+    {
+        // Создаем копию списка для безопасной итерации
+        var objectsToProcess = new List<GameObject>(selectedObjects);
+        
+        foreach (GameObject obj in objectsToProcess)
+        {
+            if (obj != null) // Проверяем, что объект не был уничтожен
+            {
+                RemoveSelectionIndicator(obj);
+                SetObjectSelectionState(obj, false);
+            }
+            else
+            {
+                // Удаляем null-ссылки из словаря индикаторов
+                if (selectionIndicators.ContainsKey(obj))
+                {
+                    selectionIndicators.Remove(obj);
+                }
+            }
+        }
+        
+        selectedObjects.Clear();
+        UpdateSelectionInfo();
+        OnSelectionChanged?.Invoke(selectedObjects);
+    }
+    
+    /// <summary>
+    /// Создание визуального индикатора выделения
+    /// </summary>
+    void CreateSelectionIndicator(GameObject targetObject)
+    {
+        if (selectionIndicators.ContainsKey(targetObject))
+            return;
+            
+        GameObject indicator = Instantiate(selectionIndicatorPrefab);
+        indicator.SetActive(true);
+        
+        // Позиционируем над объектом
+        Bounds bounds = GetObjectBounds(targetObject);
+        Vector3 position = bounds.center + Vector3.up * (bounds.size.y * 0.5f + selectionIndicatorHeight);
+        indicator.transform.position = position;
+        
+        selectionIndicators[targetObject] = indicator;
+    }
+    
+    /// <summary>
+    /// Удаление визуального индикатора выделения
+    /// </summary>
+    void RemoveSelectionIndicator(GameObject targetObject)
+    {
+        if (selectionIndicators.TryGetValue(targetObject, out GameObject indicator))
+        {
+            if (indicator != null)
+            {
+                try
+                {
+                    DestroyImmediate(indicator);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"Ошибка при удалении индикатора выделения: {e.Message}");
+                }
+            }
+            selectionIndicators.Remove(targetObject);
+        }
+    }
+    
+    /// <summary>
+    /// Получение границ объекта
+    /// </summary>
+    Bounds GetObjectBounds(GameObject obj)
+    {
+        Renderer renderer = obj.GetComponent<Renderer>();
+        if (renderer != null)
+            return renderer.bounds;
+            
+        Collider collider = obj.GetComponent<Collider>();
+        if (collider != null)
+            return collider.bounds;
+            
+        return new Bounds(obj.transform.position, Vector3.one);
+    }
+    
+    /// <summary>
+    /// Установка состояния выделения для объекта
+    /// </summary>
+    void SetObjectSelectionState(GameObject obj, bool selected)
+    {
+        // Проверяем, что объект не был уничтожен
+        if (obj == null)
+        {
+            Debug.LogWarning("SetObjectSelectionState: попытка доступа к уничтоженному объекту");
+            return;
+        }
+        
+        // Обновляем состояние персонажа если это персонаж
+        Character character = obj.GetComponent<Character>();
+        if (character != null)
+        {
+            character.SetSelected(selected);
+            Debug.Log($"Персонаж {character.GetFullName()} {(selected ? "выделен" : "снят с выделения")}");
+            return;
+        }
+        
+        // Логирование для остальных объектов
+        LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
+        if (objectInfo != null)
+        {
+            Debug.Log($"Объект {objectInfo.objectName} ({objectInfo.objectType}) {(selected ? "выделен" : "снят с выделения")}");
+        }
+    }
+    
+    /// <summary>
+    /// Обновление информации о выделении в UI
+    /// </summary>
+    void UpdateSelectionInfo()
+    {
+        if (selectionInfoText == null) return;
+        
+        // Очищаем список от уничтоженных объектов
+        selectedObjects.RemoveAll(obj => obj == null);
+        
+        if (selectedObjects.Count == 0)
+        {
+            selectionInfoText.text = "";
+            selectionInfoPanel.gameObject.SetActive(false);
+            return;
+        }
+        
+        selectionInfoPanel.gameObject.SetActive(true);
+        
+        string info = $"Выделено объектов: {selectedObjects.Count}\n\n";
+        
+        foreach (GameObject obj in selectedObjects)
+        {
+            if (obj == null) continue; // Пропускаем уничтоженные объекты
+            
+            // Приоритет для персонажей - показываем их подробную информацию
+            Character character = obj.GetComponent<Character>();
+            if (character != null)
+            {
+                info += character.GetCharacterInfo() + "\n\n";
+                continue;
+            }
+            
+            // Для остальных объектов стандартная информация
+            LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
+            if (objectInfo != null)
+            {
+                info += $"• {objectInfo.objectName} ({objectInfo.objectType})\n";
+            }
+            else
+            {
+                info += $"• {obj.name}\n";
+            }
+        }
+        
+        selectionInfoText.text = info;
+    }
+    
+    /// <summary>
+    /// Получение списка выделенных объектов
+    /// </summary>
+    public List<GameObject> GetSelectedObjects()
+    {
+        return new List<GameObject>(selectedObjects);
+    }
+    
+    /// <summary>
+    /// Проверка, выделен ли объект
+    /// </summary>
+    public bool IsSelected(GameObject obj)
+    {
+        return selectedObjects.Contains(obj);
+    }
+    
+    /// <summary>
+    /// Диагностика всех объектов с коллайдерами в сцене
+    /// </summary>
+    void DiagnoseSelectableObjects()
+    {
+        Debug.Log("=== ДИАГНОСТИКА ВЫДЕЛЯЕМЫХ ОБЪЕКТОВ ===");
+        
+        LocationObjectInfo[] allObjects = FindObjectsOfType<LocationObjectInfo>();
+        Debug.Log($"Найдено объектов с LocationObjectInfo: {allObjects.Length}");
+        
+        foreach (LocationObjectInfo objectInfo in allObjects)
+        {
+            GameObject obj = objectInfo.gameObject;
+            Debug.Log($"\n--- {obj.name} ---");
+            Debug.Log($"Тип: {objectInfo.objectType}, Имя: {objectInfo.objectName}");
+            Debug.Log($"Позиция: {obj.transform.position}");
+            Debug.Log($"Активен: {obj.activeInHierarchy}");
+            
+            Collider collider = obj.GetComponent<Collider>();
+            if (collider != null)
+            {
+                Debug.Log($"Коллайдер: {collider.GetType().Name}, включен: {collider.enabled}");
+                Debug.Log($"Bounds: center={collider.bounds.center}, size={collider.bounds.size}");
+                
+                // Проверяем, попадает ли в LayerMask
+                bool inMask = (selectableLayerMask & (1 << obj.layer)) != 0;
+                Debug.Log($"Слой {obj.layer} входит в selectableLayerMask: {inMask}");
+            }
+            else
+            {
+                Debug.LogError($"НЕТ КОЛЛАЙДЕРА у {obj.name}!");
+            }
+        }
+        
+        Debug.Log("=== КОНЕЦ ДИАГНОСТИКИ ВЫДЕЛЯЕМЫХ ОБЪЕКТОВ ===");
+    }
+    
+    void OnDestroy()
+    {
+        try
+        {
+            // Безопасная очистка выделения при уничтожении
+            ClearSelection();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"Ошибка при очистке выделения в OnDestroy: {e.Message}");
+        }
+        
+        // Принудительная очистка словаря индикаторов
+        if (selectionIndicators != null)
+        {
+            selectionIndicators.Clear();
+        }
+        
+        // Очистка списка выделенных объектов
+        if (selectedObjects != null)
+        {
+            selectedObjects.Clear();
+        }
+    }
+}
