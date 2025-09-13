@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -44,6 +45,7 @@ public class GridManager : MonoBehaviour
     [Header("Visual")]
     public bool showGrid = true;
     public bool showOccupiedCells = true;
+    public bool showGridInGame = true; // Показывать грид в игре
     public Color gridColor = Color.white;
     public Color occupiedCellColor = Color.red;
     
@@ -51,9 +53,15 @@ public class GridManager : MonoBehaviour
     public int numberOfCharacters = 3;
     public GameObject characterPrefab;
     
+    
     // Сетка центрирована в (0,0,0)
     private GridCell[,] grid;
     private Dictionary<Vector2Int, GridCell> gridLookup;
+    
+    // Визуализация грида в игре
+    private GameObject gridLinesParent;
+    private GameObject occupiedCellsParent;
+    private Dictionary<Vector2Int, GameObject> occupiedCellVisuals = new Dictionary<Vector2Int, GameObject>();
     
     // События
     public System.Action<GridCell, GameObject> OnCellOccupied;
@@ -66,8 +74,17 @@ public class GridManager : MonoBehaviour
     
     void Start()
     {
+        // Задержка для того чтобы LocationManager успел создать объекты
+        StartCoroutine(DelayedStart());
+    }
+    
+    System.Collections.IEnumerator DelayedStart()
+    {
+        yield return new WaitForEndOfFrame(); // Ждем конца кадра
+        
         SpawnCharacters();
         EnsureMovementController();
+        CreateGridVisualization();
     }
     
     /// <summary>
@@ -185,6 +202,13 @@ public class GridManager : MonoBehaviour
         {
             cell.SetOccupied(obj, objectType);
             OnCellOccupied?.Invoke(cell, obj);
+            
+            // Обновляем визуализацию только для объектов-препятствий (не персонажей)
+            if (showGridInGame && showOccupiedCells && objectType != "Character")
+            {
+                CreateOccupiedCellVisual(gridPosition);
+            }
+            
             Debug.Log($"Ячейка {gridPosition} занята объектом {obj.name} ({objectType})");
             return true;
         }
@@ -202,6 +226,13 @@ public class GridManager : MonoBehaviour
             Debug.Log($"Ячейка {gridPosition} освобождена от {cell.objectType}");
             cell.ClearOccupied();
             OnCellFreed?.Invoke(cell);
+            
+            // Обновляем визуализацию - убираем кубик при освобождении любой клетки
+            if (showGridInGame && showOccupiedCells)
+            {
+                RemoveOccupiedCellVisual(gridPosition);
+            }
+            
             return true;
         }
         return false;
@@ -449,12 +480,6 @@ public class GridManager : MonoBehaviour
                 GameObject character = Instantiate(characterPrefab, cell.worldPosition, Quaternion.identity);
                 character.name = $"Character_{i + 1}";
                 
-                // Добавляем компонент движения
-                CharacterMovement movement = character.GetComponent<CharacterMovement>();
-                if (movement == null)
-                {
-                    movement = character.AddComponent<CharacterMovement>();
-                }
                 
                 // Занимаем ячейку
                 OccupyCell(spawnPosition, character, "Character");
@@ -540,6 +565,7 @@ public class GridManager : MonoBehaviour
         Debug.Log("Префаб персонажа создан программно");
     }
     
+    
     /// <summary>
     /// Обеспечение наличия MovementController в сцене
     /// </summary>
@@ -551,6 +577,192 @@ public class GridManager : MonoBehaviour
             GameObject controllerGO = new GameObject("MovementController");
             movementController = controllerGO.AddComponent<MovementController>();
             Debug.Log("MovementController создан автоматически");
+        }
+    }
+    
+    /// <summary>
+    /// Создать видимую визуализацию грида в игре
+    /// </summary>
+    void CreateGridVisualization()
+    {
+        if (!showGridInGame) return;
+        
+        // Удаляем старую визуализацию если есть
+        if (gridLinesParent != null)
+        {
+            DestroyImmediate(gridLinesParent);
+        }
+        
+        gridLinesParent = new GameObject("GridLines");
+        gridLinesParent.transform.SetParent(transform);
+        
+        int halfWidth = gridWidth / 2;
+        int halfHeight = gridHeight / 2;
+        
+        // Создаем вертикальные линии
+        for (int x = -halfWidth; x <= halfWidth; x++)
+        {
+            CreateGridLine(
+                new Vector3(x * cellSize, 0.01f, -halfHeight * cellSize),
+                new Vector3(x * cellSize, 0.01f, halfHeight * cellSize),
+                $"VerticalLine_{x}"
+            );
+        }
+        
+        // Создаем горизонтальные линии
+        for (int z = -halfHeight; z <= halfHeight; z++)
+        {
+            CreateGridLine(
+                new Vector3(-halfWidth * cellSize, 0.01f, z * cellSize),
+                new Vector3(halfWidth * cellSize, 0.01f, z * cellSize),
+                $"HorizontalLine_{z}"
+            );
+        }
+        
+        Debug.Log("Визуализация грида создана в игре");
+        
+        // Создаем визуализацию занятых клеток
+        CreateOccupiedCellsVisualization();
+    }
+    
+    /// <summary>
+    /// Создать одну линию грида
+    /// </summary>
+    void CreateGridLine(Vector3 start, Vector3 end, string lineName)
+    {
+        GameObject lineObj = new GameObject(lineName);
+        lineObj.transform.SetParent(gridLinesParent.transform);
+        
+        LineRenderer lineRenderer = lineObj.AddComponent<LineRenderer>();
+        lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+        lineRenderer.material.color = gridColor;
+        lineRenderer.startWidth = 0.1f;
+        lineRenderer.endWidth = 0.1f;
+        lineRenderer.positionCount = 2;
+        lineRenderer.useWorldSpace = true;
+        lineRenderer.sortingOrder = -1; // Позади других объектов
+        
+        lineRenderer.SetPosition(0, start);
+        lineRenderer.SetPosition(1, end);
+    }
+    
+    /// <summary>
+    /// Создать визуализацию занятых клеток в игре
+    /// </summary>
+    void CreateOccupiedCellsVisualization()
+    {
+        if (!showOccupiedCells || !showGridInGame) return;
+        
+        // Создаем родительский объект для занятых клеток
+        if (occupiedCellsParent != null)
+        {
+            DestroyImmediate(occupiedCellsParent);
+        }
+        
+        occupiedCellsParent = new GameObject("OccupiedCells");
+        occupiedCellsParent.transform.SetParent(transform);
+        
+        // Очищаем словарь визуалов
+        occupiedCellVisuals.Clear();
+        
+        // Создаем кубики для всех занятых клеток (кроме персонажей)
+        foreach (var cell in gridLookup.Values)
+        {
+            if (cell.isOccupied && cell.objectType != "Character")
+            {
+                CreateOccupiedCellVisual(cell.gridPosition);
+            }
+        }
+        
+        Debug.Log($"Создано {occupiedCellVisuals.Count} визуалов занятых клеток");
+    }
+    
+    /// <summary>
+    /// Создать визуализацию для одной занятой клетки
+    /// </summary>
+    void CreateOccupiedCellVisual(Vector2Int gridPos)
+    {
+        if (occupiedCellsParent == null || occupiedCellVisuals.ContainsKey(gridPos))
+            return;
+            
+        var cell = GetCell(gridPos);
+        if (cell == null || !cell.isOccupied) return;
+        
+        // Создаем куб
+        GameObject cellVisual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cellVisual.name = $"OccupiedCell_{gridPos.x}_{gridPos.y}";
+        cellVisual.transform.SetParent(occupiedCellsParent.transform);
+        
+        // Позиционируем и масштабируем
+        cellVisual.transform.position = new Vector3(cell.worldPosition.x, 0.25f, cell.worldPosition.z);
+        cellVisual.transform.localScale = new Vector3(cellSize * 0.8f, 0.5f, cellSize * 0.8f);
+        
+        // Убираем коллайдер чтобы не мешал
+        Collider collider = cellVisual.GetComponent<Collider>();
+        if (collider != null)
+        {
+            DestroyImmediate(collider);
+        }
+        
+        // Настраиваем материал - красный полупрозрачный
+        Renderer renderer = cellVisual.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            Material material = new Material(Shader.Find("Standard"));
+            material.color = new Color(occupiedCellColor.r, occupiedCellColor.g, occupiedCellColor.b, 0.7f);
+            
+            // Настройки для прозрачности
+            material.SetFloat("_Mode", 3); // Transparent mode
+            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_ZWrite", 0);
+            material.DisableKeyword("_ALPHATEST_ON");
+            material.EnableKeyword("_ALPHABLEND_ON");
+            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            material.renderQueue = 3000;
+            
+            renderer.material = material;
+        }
+        
+        occupiedCellVisuals[gridPos] = cellVisual;
+    }
+    
+    /// <summary>
+    /// Убрать визуализацию занятой клетки
+    /// </summary>
+    void RemoveOccupiedCellVisual(Vector2Int gridPos)
+    {
+        if (occupiedCellVisuals.ContainsKey(gridPos))
+        {
+            GameObject visual = occupiedCellVisuals[gridPos];
+            if (visual != null)
+            {
+                DestroyImmediate(visual);
+            }
+            occupiedCellVisuals.Remove(gridPos);
+        }
+    }
+    
+    /// <summary>
+    /// Скрыть/показать визуализацию грида в игре
+    /// </summary>
+    public void ToggleGridVisualization(bool show)
+    {
+        showGridInGame = show;
+        
+        if (gridLinesParent != null)
+        {
+            gridLinesParent.SetActive(show);
+        }
+        
+        if (occupiedCellsParent != null)
+        {
+            occupiedCellsParent.SetActive(show && showOccupiedCells);
+        }
+        
+        if (show && gridLinesParent == null)
+        {
+            CreateGridVisualization();
         }
     }
     

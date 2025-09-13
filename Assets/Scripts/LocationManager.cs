@@ -647,17 +647,45 @@ public class LocationManager : MonoBehaviour
     /// </summary>
     public void ClearLocation()
     {
-        // Удаляем все созданные объекты
+        // Удаляем все созданные объекты, кроме персонажей
+        List<GameObject> charactersToPreserve = new List<GameObject>();
+        
         foreach (GameObject obj in spawnedObjects)
         {
             if (obj != null)
             {
-                DestroyImmediate(obj);
+                // Проверяем, является ли объект персонажем
+                Character character = obj.GetComponent<Character>();
+                if (character != null)
+                {
+                    // Сохраняем персонажа
+                    charactersToPreserve.Add(obj);
+                }
+                else
+                {
+                    // Удаляем все остальные объекты
+                    DestroyImmediate(obj);
+                }
             }
         }
         
+        // Очищаем списки и восстанавливаем персонажей
         spawnedObjects.Clear();
         gridObjects.Clear();
+        
+        // Добавляем персонажей обратно в список
+        foreach (GameObject character in charactersToPreserve)
+        {
+            spawnedObjects.Add(character);
+            
+            // Регистрируем персонажа в сетке заново
+            Character charComponent = character.GetComponent<Character>();
+            if (charComponent != null && gridManager != null)
+            {
+                Vector2Int gridPos = gridManager.WorldToGrid(character.transform.position);
+                gridObjects[gridPos] = character;
+            }
+        }
         
         // Очищаем сетку
         if (gridManager != null)

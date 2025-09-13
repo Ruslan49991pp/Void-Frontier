@@ -3,44 +3,32 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Контроллер для управления движением группы персонажей
+/// Контроллер движения персонажей по ПКМ
 /// </summary>
 public class MovementController : MonoBehaviour
 {
-    [Header("Movement Settings")]
-    public float formationRadius = 2f;
-    public bool showTargetIndicators = true;
-    public GameObject targetIndicatorPrefab;
-    
-    [Header("Debug")]
-    public bool showDebugInfo = true;
-    
-    // Компоненты
     private GridManager gridManager;
     private SelectionManager selectionManager;
     
-    // Управление индикаторами
-    private List<GameObject> targetIndicators = new List<GameObject>();
+    // Группы персонажей, движущихся к одной цели
+    private Dictionary<Vector2Int, MovementGroup> movingGroups = new Dictionary<Vector2Int, MovementGroup>();
     
-    // События
-    public System.Action<List<Character>, Vector2Int> OnMovementCommand;
+    // Защита от спама кликов
+    private float lastClickTime = 0f;
+    private const float CLICK_COOLDOWN = 0.1f;
+    
+    // Класс для отслеживания группы персонажей
+    private class MovementGroup
+    {
+        public List<CharacterMovement> allCharacters = new List<CharacterMovement>();
+        public List<CharacterMovement> arrivedCharacters = new List<CharacterMovement>();
+        public bool targetOccupied = false;
+    }
     
     void Awake()
     {
         gridManager = FindObjectOfType<GridManager>();
         selectionManager = FindObjectOfType<SelectionManager>();
-        
-        CreateTargetIndicatorPrefab();
-    }
-    
-    void Start()
-    {
-        // Подписываемся на события SelectionManager если он есть
-        if (selectionManager != null)
-        {
-            // Подписка на изменения выделения для очистки индикаторов
-            selectionManager.OnSelectionChanged += OnSelectionChanged;
-        }
     }
     
     void Update()
@@ -53,58 +41,70 @@ public class MovementController : MonoBehaviour
     /// </summary>
     void HandleMovementInput()
     {
-        // Проверяем нажатие ПКМ
-        if (Input.GetMouseButtonDown(1))
+        if (Input.GetMouseButtonDown(1)) // ПКМ
         {
+            // Защита от спама кликов
+            if (Time.time - lastClickTime < CLICK_COOLDOWN)
+            {
+                Debug.Log("MovementController: клик проигнорирован - слишком быстро");
+                return;
+            }
+            lastClickTime = Time.time;
             // Получаем выделенных персонажей
             List<Character> selectedCharacters = GetSelectedCharacters();
             
             if (selectedCharacters.Count > 0)
             {
-                // Получаем позицию клика точно на плоскости Y=0 (уровень сетки)
+                // Получаем позицию клика на сетке
                 Vector3 clickWorldPos = GetMouseWorldPosition();
                 if (clickWorldPos != Vector3.zero)
                 {
                     Vector2Int targetGridPos = gridManager.WorldToGrid(clickWorldPos);
                     
-                    Debug.Log($"MovementController: ПКМ клик в мировую позицию {clickWorldPos}, клетка сетки {targetGridPos}");
+                    // Проверяем, свободна ли целевая клетка
+                    Vector2Int finalTargetPos = GetNearestFreeCell(targetGridPos, selectedCharacters);
+                    Vector3 targetWorldPos = gridManager.GridToWorld(finalTargetPos);
                     
-                    // Выполняем команду движения
-                    ExecuteMovementCommand(selectedCharacters, targetGridPos);
+                    Debug.Log($"ПКМ клик в клетку {targetGridPos}, финальная цель {finalTargetPos}");
+                    
+                    // ПОЛНАЯ ОЧИСТКА перед новой командой
+                    ClearAllMovingGroups();
+                    
+                    // Дополнительно останавливаем движение у всех выделенных персонажей
+                    foreach (var character in selectedCharacters)
+                    {
+                        CharacterMovement movement = character.GetComponent<CharacterMovement>();
+                        if (movement != null)
+                        {
+                            movement.StopMovement();
+                        }
+                    }
+                    
+                    // Запускаем движение персонажей к цели
+                    MoveCharactersToTarget(selectedCharacters, finalTargetPos);
                 }
             }
         }
     }
     
     /// <summary>
-    /// Получение мировой позиции мыши на плоскости сетки (Y=0)
+    /// Получение мировой позиции мыши на плоскости сетки
     /// </summary>
     Vector3 GetMouseWorldPosition()
     {
         Vector3 mouseScreenPos = Input.mousePosition;
         Camera camera = Camera.main;
         
-        if (camera == null)
-        {
-            Debug.LogError("MovementController: основная камера не найдена!");
-            return Vector3.zero;
-        }
+        if (camera == null) return Vector3.zero;
         
-        // Создаем луч от камеры через позицию мыши
         Ray ray = camera.ScreenPointToRay(mouseScreenPos);
-        
-        // Создаем плоскость на уровне Y=0 (уровень сетки)
         Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
         
-        // Находим пересечение луча с плоскостью
         if (groundPlane.Raycast(ray, out float distance))
         {
-            Vector3 worldPosition = ray.GetPoint(distance);
-            Debug.Log($"GetMouseWorldPosition: мышь {mouseScreenPos} -> мир {worldPosition}");
-            return worldPosition;
+            return ray.GetPoint(distance);
         }
         
-        Debug.LogWarning("MovementController: не удалось определить позицию мыши на плоскости сетки");
         return Vector3.zero;
     }
     
@@ -132,292 +132,323 @@ public class MovementController : MonoBehaviour
     }
     
     /// <summary>
-    /// Выполнение команды движения группы персонажей
+    /// Запустить движение персонажей к цели
     /// </summary>
-    public void ExecuteMovementCommand(List<Character> characters, Vector2Int targetGridPosition)
+    void MoveCharactersToTarget(List<Character> characters, Vector2Int targetGridPos)
     {
-        if (characters == null || characters.Count == 0)
-        {
-            Debug.LogWarning("MovementController: нет персонажей для перемещения");
-            return;
-        }
-        
-        Debug.Log($"MovementController: команда движения для {characters.Count} персонажей к клетке {targetGridPosition}");
-        
-        // Очищаем предыдущие индикаторы
-        ClearTargetIndicators();
-        
-        // Находим оптимальные позиции для всех персонажей
-        var assignments = AssignCharactersToPositions(characters, targetGridPosition);
-        
-        // Перемещаем персонажей к назначенным позициям
-        foreach (var assignment in assignments)
-        {
-            MoveCharacterToPosition(assignment.Key, assignment.Value);
-        }
-        
-        // Создаем визуальные индикаторы
-        if (showTargetIndicators)
-        {
-            CreateTargetIndicators(assignments.Values.ToList());
-        }
-        
-        // Вызываем событие
-        OnMovementCommand?.Invoke(characters, targetGridPosition);
-    }
-    
-    /// <summary>
-    /// Назначение персонажей к оптимальным позициям
-    /// </summary>
-    Dictionary<Character, Vector2Int> AssignCharactersToPositions(List<Character> characters, Vector2Int targetGridPosition)
-    {
-        var assignments = new Dictionary<Character, Vector2Int>();
-        var occupiedPositions = new HashSet<Vector2Int>();
-        
-        // 1. Находим ближайшего персонажа к целевой позиции
-        Character closestCharacter = FindClosestCharacter(characters, targetGridPosition);
-        
-        // 2. Назначаем ближайшего персонажа в целевую клетку (если она свободна)
-        if (gridManager.IsCellFree(targetGridPosition))
-        {
-            assignments[closestCharacter] = targetGridPosition;
-            occupiedPositions.Add(targetGridPosition);
-            Debug.Log($"  Ближайший персонаж {closestCharacter.GetFullName()} назначен в целевую клетку {targetGridPosition}");
-        }
-        else
-        {
-            Debug.LogWarning($"  Целевая клетка {targetGridPosition} занята, ищем альтернативу для {closestCharacter.GetFullName()}");
-        }
-        
-        // 3. Назначаем остальных персонажей в соседние свободные клетки
-        var remainingCharacters = characters.Where(c => !assignments.ContainsKey(c)).ToList();
-        var availablePositions = GetAvailablePositionsAroundTarget(targetGridPosition, occupiedPositions, remainingCharacters.Count + (assignments.Count == 0 ? 1 : 0));
-        
-        // Если целевая клетка была занята, добавляем ближайшего персонажа в очередь
-        if (!assignments.ContainsKey(closestCharacter))
-        {
-            remainingCharacters.Insert(0, closestCharacter);
-        }
-        
-        // Сортируем оставшихся персонажей по расстоянию до центра
-        remainingCharacters = remainingCharacters
-            .OrderBy(c => Vector2Int.Distance(gridManager.WorldToGrid(c.transform.position), targetGridPosition))
-            .ToList();
-        
-        // Назначаем оставшихся персонажей
-        for (int i = 0; i < remainingCharacters.Count && i < availablePositions.Count; i++)
-        {
-            assignments[remainingCharacters[i]] = availablePositions[i];
-            Debug.Log($"  Персонаж {remainingCharacters[i].GetFullName()} назначен в соседнюю клетку {availablePositions[i]}");
-        }
-        
-        return assignments;
-    }
-    
-    /// <summary>
-    /// Поиск ближайшего персонажа к целевой позиции
-    /// </summary>
-    Character FindClosestCharacter(List<Character> characters, Vector2Int targetGridPosition)
-    {
-        Character closest = null;
-        float minDistance = float.MaxValue;
-        var charactersAtSameDistance = new List<Character>();
+        // Добавляем компонент движения персонажам если его нет
+        List<CharacterMovement> movements = new List<CharacterMovement>();
         
         foreach (var character in characters)
         {
-            Vector2Int characterGridPos = gridManager.WorldToGrid(character.transform.position);
-            float distance = Vector2Int.Distance(characterGridPos, targetGridPosition);
-            
-            if (distance < minDistance)
+            CharacterMovement movement = character.GetComponent<CharacterMovement>();
+            if (movement == null)
             {
-                minDistance = distance;
-                closest = character;
-                charactersAtSameDistance.Clear();
-                charactersAtSameDistance.Add(character);
+                movement = character.gameObject.AddComponent<CharacterMovement>();
             }
-            else if (Mathf.Approximately(distance, minDistance))
-            {
-                charactersAtSameDistance.Add(character);
-            }
+            movements.Add(movement);
         }
         
-        // Если несколько персонажей на одинаковом расстоянии, выбираем случайного
-        if (charactersAtSameDistance.Count > 1)
+        // Создаем новую группу движения (предыдущие уже очищены в ClearAllMovingGroups)
+        MovementGroup group = new MovementGroup();
+        group.allCharacters = movements;
+        movingGroups[targetGridPos] = group;
+        
+        // Назначаем каждому персонажу свою финальную позицию
+        for (int i = 0; i < movements.Count; i++)
         {
-            closest = charactersAtSameDistance[Random.Range(0, charactersAtSameDistance.Count)];
-            Debug.Log($"  Несколько персонажей на расстоянии {minDistance}, выбран случайно: {closest.GetFullName()}");
+            Vector2Int finalPos;
+            Vector3 finalWorldPos;
+            
+            if (i == 0)
+            {
+                // Первый персонаж идет к основной цели
+                finalPos = targetGridPos;
+                finalWorldPos = gridManager.GridToWorld(targetGridPos);
+                group.targetOccupied = true;
+                Debug.Log($"Персонаж {movements[i].name} назначен к основной цели {targetGridPos}");
+            }
+            else
+            {
+                // Остальные идут к соседним позициям
+                finalPos = GetNextNearbyPosition(targetGridPos, i - 1);
+                finalWorldPos = gridManager.GridToWorld(finalPos);
+                Debug.Log($"Персонаж {movements[i].name} назначен к соседней позиции {finalPos}");
+            }
+            
+            // Подписываемся на событие завершения движения с учетом финальной позиции
+            var movement = movements[i];
+            var targetPos = finalPos;
+            movement.OnMovementComplete += (completedMovement) => OnCharacterArrivedAtFinalPosition(completedMovement, targetPos, targetGridPos);
+            
+            // Отправляем к финальной позиции
+            movement.MoveTo(finalWorldPos);
         }
         
-        return closest;
+        Debug.Log($"Запущено движение {movements.Count} персонажей: 1 к основной цели {targetGridPos}, {movements.Count - 1} к соседним позициям");
     }
     
     /// <summary>
-    /// Получение доступных позиций вокруг цели
+    /// Обработчик прибытия персонажа к финальной позиции
     /// </summary>
-    List<Vector2Int> GetAvailablePositionsAroundTarget(Vector2Int centerPosition, HashSet<Vector2Int> occupiedPositions, int maxPositions)
+    void OnCharacterArrivedAtFinalPosition(CharacterMovement arrivedCharacter, Vector2Int arrivedPosition, Vector2Int originalTargetGridPos)
     {
-        var availablePositions = new List<Vector2Int>();
-        var checkedPositions = new HashSet<Vector2Int>(occupiedPositions);
-        
-        // Поиск в расширяющихся кругах
-        for (int radius = 1; radius <= 10 && availablePositions.Count < maxPositions; radius++)
-        {
-            var positionsAtRadius = GetPositionsAtRadius(centerPosition, radius);
+        if (!movingGroups.ContainsKey(originalTargetGridPos))
+            return;
             
-            foreach (var pos in positionsAtRadius)
+        MovementGroup group = movingGroups[originalTargetGridPos];
+        
+        // Добавляем персонажа в список прибывших
+        if (!group.arrivedCharacters.Contains(arrivedCharacter))
+        {
+            group.arrivedCharacters.Add(arrivedCharacter);
+            Debug.Log($"Персонаж {arrivedCharacter.name} прибыл к финальной позиции {arrivedPosition}");
+        }
+        
+        // Если все прибыли, очищаем группу
+        if (group.arrivedCharacters.Count >= group.allCharacters.Count)
+        {
+            // Отписываемся от событий
+            foreach (var movement in group.allCharacters)
             {
-                if (checkedPositions.Contains(pos)) continue;
-                checkedPositions.Add(pos);
-                
-                if (gridManager.IsValidGridPosition(pos) && gridManager.IsCellFree(pos))
+                if (movement != null)
                 {
-                    availablePositions.Add(pos);
-                    if (availablePositions.Count >= maxPositions) break;
+                    movement.OnMovementComplete = null; // Полная очистка событий
                 }
             }
+            movingGroups.Remove(originalTargetGridPos);
+            Debug.Log($"Группа движения к {originalTargetGridPos} завершена, все {group.arrivedCharacters.Count} персонажей прибыли");
         }
-        
-        // Сортируем по расстоянию до центра для лучшего формирования
-        availablePositions = availablePositions
-            .OrderBy(pos => Vector2Int.Distance(pos, centerPosition))
-            .ToList();
-        
-        return availablePositions;
     }
     
     /// <summary>
-    /// Получение позиций на определенном радиусе от центра
+    /// Получить следующую соседнюю позицию по индексу
+    /// </summary>
+    Vector2Int GetNextNearbyPosition(Vector2Int center, int index)
+    {
+        // Порядок размещения: право, низ, лево, верх, затем по диагоналям
+        Vector2Int[] offsets = {
+            new Vector2Int(1, 0),   // право
+            new Vector2Int(0, -1),  // низ
+            new Vector2Int(-1, 0),  // лево
+            new Vector2Int(0, 1),   // верх
+            new Vector2Int(1, -1),  // право-низ
+            new Vector2Int(-1, -1), // лево-низ
+            new Vector2Int(-1, 1),  // лево-верх
+            new Vector2Int(1, 1),   // право-верх
+        };
+        
+        // Если нужно больше позиций, расширяем радиус
+        if (index < offsets.Length)
+        {
+            Vector2Int pos = center + offsets[index];
+            if (gridManager.IsValidGridPosition(pos))
+            {
+                return pos;
+            }
+        }
+        
+        // Для большего количества персонажей - расширяем поиск
+        int radius = 2;
+        int currentIndex = index - offsets.Length;
+        
+        while (radius <= 5)
+        {
+            var expandedPositions = GetPositionsAtRadius(center, radius);
+            if (currentIndex < expandedPositions.Count)
+            {
+                return expandedPositions[currentIndex];
+            }
+            currentIndex -= expandedPositions.Count;
+            radius++;
+        }
+        
+        // Если ничего не найдено, возвращаем позицию справа
+        return center + Vector2Int.right;
+    }
+    
+    /// <summary>
+    /// Получить позиции на определенном радиусе от центра
     /// </summary>
     List<Vector2Int> GetPositionsAtRadius(Vector2Int center, int radius)
     {
-        var positions = new List<Vector2Int>();
+        List<Vector2Int> positions = new List<Vector2Int>();
         
         for (int x = -radius; x <= radius; x++)
         {
             for (int y = -radius; y <= radius; y++)
             {
-                // Проверяем, что позиция находится примерно на нужном радиусе
-                float distance = Mathf.Sqrt(x * x + y * y);
-                if (distance >= radius - 0.5f && distance <= radius + 0.5f)
+                // Проверяем, что это граница текущего радиуса
+                if (Mathf.Abs(x) != radius && Mathf.Abs(y) != radius) continue;
+                
+                Vector2Int pos = new Vector2Int(center.x + x, center.y + y);
+                
+                if (gridManager.IsValidGridPosition(pos))
                 {
-                    positions.Add(new Vector2Int(center.x + x, center.y + y));
+                    positions.Add(pos);
                 }
             }
         }
         
-        return positions;
+        // Сортируем по расстоянию до центра
+        return positions.OrderBy(pos => Vector2Int.Distance(pos, center)).ToList();
     }
     
     /// <summary>
-    /// Перемещение персонажа к позиции
+    /// Найти ближайшую свободную клетку к целевой позиции
     /// </summary>
-    void MoveCharacterToPosition(Character character, Vector2Int gridPosition)
+    Vector2Int GetNearestFreeCell(Vector2Int targetPos, List<Character> characters)
     {
-        // Добавляем или получаем компонент движения
-        CharacterMovement movement = character.GetComponent<CharacterMovement>();
-        if (movement == null)
+        // Если целевая клетка свободна или содержит только персонажей, используем её
+        if (IsCellPassableForTarget(targetPos))
         {
-            movement = character.gameObject.AddComponent<CharacterMovement>();
+            return targetPos;
         }
         
-        // Запускаем движение
-        movement.MoveToGridCell(gridPosition);
-    }
-    
-    /// <summary>
-    /// Создание префаба индикатора цели
-    /// </summary>
-    void CreateTargetIndicatorPrefab()
-    {
-        if (targetIndicatorPrefab == null)
-        {
-            targetIndicatorPrefab = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            targetIndicatorPrefab.name = "TargetIndicator";
-            targetIndicatorPrefab.transform.localScale = new Vector3(0.8f, 0.1f, 0.8f);
-            
-            // Убираем коллайдер
-            DestroyImmediate(targetIndicatorPrefab.GetComponent<Collider>());
-            
-            // Настраиваем материал
-            var renderer = targetIndicatorPrefab.GetComponent<Renderer>();
-            var material = new Material(Shader.Find("Standard"));
-            material.color = new Color(0f, 1f, 0f, 0.7f); // Зеленый полупрозрачный
-            material.SetFloat("_Mode", 3); // Transparent
-            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            material.SetInt("_ZWrite", 0);
-            material.DisableKeyword("_ALPHATEST_ON");
-            material.EnableKeyword("_ALPHABLEND_ON");
-            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-            material.renderQueue = 3000;
-            renderer.material = material;
-            
-            targetIndicatorPrefab.SetActive(false);
-        }
-    }
-    
-    /// <summary>
-    /// Создание визуальных индикаторов цели
-    /// </summary>
-    void CreateTargetIndicators(List<Vector2Int> positions)
-    {
-        foreach (var gridPos in positions)
-        {
-            // Получаем точный центр клетки через GridManager
-            Vector3 worldPos = gridManager.GridToWorld(gridPos);
-            worldPos.y += 0.1f; // Немного приподнимаем над землей
-            
-            GameObject indicator = Instantiate(targetIndicatorPrefab, worldPos, Quaternion.identity);
-            indicator.SetActive(true);
-            targetIndicators.Add(indicator);
-            
-            Debug.Log($"Создан индикатор цели в клетке {gridPos}, мировая позиция {worldPos}");
-        }
+        Debug.Log($"Клетка {targetPos} занята, ищем ближайшую свободную...");
         
-        // Автоматически удаляем индикаторы через некоторое время
-        StartCoroutine(ClearIndicatorsAfterDelay(3f));
-    }
-    
-    /// <summary>
-    /// Очистка индикаторов цели
-    /// </summary>
-    void ClearTargetIndicators()
-    {
-        foreach (var indicator in targetIndicators)
+        // Определяем среднюю позицию персонажей для выбора направления
+        Vector2 avgCharacterPos = Vector2.zero;
+        foreach (var character in characters)
         {
-            if (indicator != null)
+            Vector2Int charGridPos = gridManager.WorldToGrid(character.transform.position);
+            avgCharacterPos += new Vector2(charGridPos.x, charGridPos.y);
+        }
+        avgCharacterPos /= characters.Count;
+        
+        // Ищем ближайшую свободную клетку, предпочитая сторону от персонажей
+        for (int radius = 1; radius <= 10; radius++)
+        {
+            var positionsAtRadius = GetPositionsAtRadius(targetPos, radius);
+            
+            // Сортируем позиции по близости к персонажам (ближе к персонажам = выше приоритет)
+            var sortedPositions = positionsAtRadius.OrderBy(pos => 
             {
-                DestroyImmediate(indicator);
+                Vector2 posVector = new Vector2(pos.x, pos.y);
+                return Vector2.Distance(posVector, avgCharacterPos);
+            }).ToList();
+            
+            foreach (var pos in sortedPositions)
+            {
+                // Проверяем что клетка свободна или содержит только персонажей
+                if (IsCellPassableForTarget(pos))
+                {
+                    Debug.Log($"Найдена свободная клетка {pos} на расстоянии {radius} от {targetPos}");
+                    return pos;
+                }
             }
         }
-        targetIndicators.Clear();
-    }
-    
-    /// <summary>
-    /// Очистка индикаторов через задержку
-    /// </summary>
-    System.Collections.IEnumerator ClearIndicatorsAfterDelay(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        ClearTargetIndicators();
-    }
-    
-    /// <summary>
-    /// Обработчик изменения выделения
-    /// </summary>
-    void OnSelectionChanged(List<GameObject> selectedObjects)
-    {
-        // При смене выделения очищаем индикаторы
-        ClearTargetIndicators();
-    }
-    
-    void OnDestroy()
-    {
-        ClearTargetIndicators();
         
-        if (selectionManager != null)
+        Debug.LogWarning($"Не удалось найти свободную клетку рядом с {targetPos}, используем исходную позицию");
+        return targetPos;
+    }
+    
+    /// <summary>
+    /// Проверить, подходит ли клетка для размещения цели (свободна или содержит персонажей)
+    /// </summary>
+    bool IsCellPassableForTarget(Vector2Int pos)
+    {
+        if (!gridManager.IsValidGridPosition(pos))
+            return false;
+            
+        var cell = gridManager.GetCell(pos);
+        if (cell == null || !cell.isOccupied)
+            return true;
+            
+        // Для целевых позиций персонажи не являются препятствиями
+        return cell.objectType == "Character";
+    }
+    
+    /// <summary>
+    /// Очистить предыдущие движения для указанных персонажей
+    /// </summary>
+    void CleanupMovingCharacters(List<CharacterMovement> characters)
+    {
+        // Находим и удаляем эти персонажи из всех активных групп движения
+        List<Vector2Int> groupsToRemove = new List<Vector2Int>();
+        
+        foreach (var kvp in movingGroups)
         {
-            selectionManager.OnSelectionChanged -= OnSelectionChanged;
+            Vector2Int targetPos = kvp.Key;
+            MovementGroup group = kvp.Value;
+            
+            // Отписываем события и останавливаем движение для персонажей из нового списка
+            foreach (var character in characters)
+            {
+                if (character != null && group.allCharacters.Contains(character))
+                {
+                    try
+                    {
+                        // Отписываемся от событий
+                        character.OnMovementComplete = null;
+                        
+                        // Останавливаем движение
+                        character.StopMovement();
+                        
+                        // Убираем из группы
+                        group.allCharacters.Remove(character);
+                        group.arrivedCharacters.Remove(character);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning($"Ошибка при очистке движения {character.name}: {e.Message}");
+                    }
+                }
+            }
+            
+            // Если группа стала пустой, помечаем для удаления
+            if (group.allCharacters.Count == 0)
+            {
+                groupsToRemove.Add(targetPos);
+            }
         }
+        
+        // Удаляем пустые группы
+        foreach (var targetPos in groupsToRemove)
+        {
+            movingGroups.Remove(targetPos);
+            Debug.Log($"Удалена пустая группа движения к {targetPos}");
+        }
+        
+        Debug.Log($"Очищены предыдущие движения для {characters.Count} персонажей");
+    }
+    
+    /// <summary>
+    /// Полная очистка всех активных групп движения
+    /// </summary>
+    void ClearAllMovingGroups()
+    {
+        Debug.Log("Полная очистка всех групп движения...");
+        
+        // Останавливаем все движения и отписываемся от событий
+        foreach (var kvp in movingGroups)
+        {
+            Vector2Int targetPos = kvp.Key;
+            MovementGroup group = kvp.Value;
+            
+            foreach (var character in group.allCharacters)
+            {
+                if (character != null && character.gameObject != null)
+                {
+                    // Отписываемся от ВСЕХ возможных событий
+                    character.OnMovementComplete = null;
+                    
+                    // Останавливаем движение только если объект еще существует
+                    try
+                    {
+                        character.StopMovement();
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning($"Ошибка при остановке движения {character.name}: {e.Message}");
+                    }
+                }
+            }
+        }
+        
+        // Полностью очищаем словарь групп
+        movingGroups.Clear();
+        
+        Debug.Log("Все группы движения очищены");
     }
 }

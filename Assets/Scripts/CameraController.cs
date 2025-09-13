@@ -24,7 +24,7 @@ public class CameraController : MonoBehaviour
     [Header("Mouse Edge Scrolling")]
     public bool enableEdgeScrolling = true; // �������� ��������� ����� ������
     public float edgeScrollSpeed = 15f;     // �������� ��������� ����� ������
-    public float edgeBorderSize = 50f;      // ������ ������� � �������� ��� ���������
+    public float edgeBorderSize = 10f;      // ������ ������� � �������� ��� ��������� (���������� � 50f)
     
     [Header("Selection Integration")]
     public SelectionManager selectionManager;

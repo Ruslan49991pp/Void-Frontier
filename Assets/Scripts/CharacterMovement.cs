@@ -1,34 +1,59 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Компонент для плавного перемещения персонажа к целевой позиции
+/// Простое движение персонажа к цели с постоянной скоростью
 /// </summary>
 public class CharacterMovement : MonoBehaviour
 {
-    [Header("Movement Settings")]
-    public float moveSpeed = 5f;
-    public float rotationSpeed = 360f;
-    public float arrivalThreshold = 0.1f;
+    public static readonly float MOVE_SPEED = 5f; // Единая скорость для всех персонажей
     
-    [Header("Animation")]
-    public AnimationCurve movementCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
-    
-    // Внутренние переменные
     private Vector3 targetPosition;
     private bool isMoving = false;
     private Coroutine movementCoroutine;
+    private LineRenderer pathLine;
+    
+    // Система навигации
+    private SimplePathfinder pathfinder;
     private GridManager gridManager;
-    private Character characterScript;
+    private List<Vector2Int> currentPath;
+    private int currentPathIndex;
     
     // События
     public System.Action<CharacterMovement> OnMovementComplete;
-    public System.Action<CharacterMovement> OnMovementStarted;
     
     void Awake()
     {
-        characterScript = GetComponent<Character>();
+        CreatePathLine();
         gridManager = FindObjectOfType<GridManager>();
+        pathfinder = FindObjectOfType<SimplePathfinder>();
+        
+        if (pathfinder == null)
+        {
+            // Создаем pathfinder если его нет
+            GameObject pathfinderGO = new GameObject("SimplePathfinder");
+            pathfinder = pathfinderGO.AddComponent<SimplePathfinder>();
+        }
+    }
+    
+    /// <summary>
+    /// Создать LineRenderer для визуализации пути
+    /// </summary>
+    void CreatePathLine()
+    {
+        GameObject lineObj = new GameObject("PathLine");
+        lineObj.transform.SetParent(transform);
+        pathLine = lineObj.AddComponent<LineRenderer>();
+        
+        pathLine.material = new Material(Shader.Find("Sprites/Default"));
+        pathLine.material.color = Color.blue;
+        pathLine.startWidth = 0.2f;
+        pathLine.endWidth = 0.2f;
+        pathLine.positionCount = 0;
+        pathLine.useWorldSpace = true;
+        pathLine.sortingOrder = 1;
+        pathLine.enabled = false;
     }
     
     /// <summary>
@@ -36,134 +61,171 @@ public class CharacterMovement : MonoBehaviour
     /// </summary>
     public void MoveTo(Vector3 worldPosition)
     {
+        Debug.Log($"CharacterMovement [{name}]: НОВАЯ КОМАНДА движения к {worldPosition}");
+        
         targetPosition = worldPosition;
         
-        // Останавливаем предыдущее движение если оно было
-        if (movementCoroutine != null)
-        {
-            StopCoroutine(movementCoroutine);
-        }
+        // ПОЛНОЕ обнуление предыдущего состояния
+        StopMovement();
         
-        // Начинаем новое движение
-        movementCoroutine = StartCoroutine(MoveToTarget());
+        // Небольшая задержка чтобы корутины точно остановились
+        StartCoroutine(StartMovementAfterDelay(worldPosition));
     }
     
-    /// <summary>
-    /// Переместить персонажа к целевой клетке сетки
-    /// </summary>
-    public void MoveToGridCell(Vector2Int gridPosition)
+    IEnumerator StartMovementAfterDelay(Vector3 worldPosition)
     {
-        if (gridManager == null)
-        {
-            Debug.LogError("CharacterMovement: GridManager не найден!");
-            return;
-        }
+        yield return null; // Ждем один кадр
         
-        Vector3 worldPos = gridManager.GridToWorld(gridPosition);
-        MoveTo(worldPos);
+        targetPosition = worldPosition;
+        
+        // Показываем новый путь
+        ShowPathLine();
+        
+        // Немедленно начинаем новое движение
+        movementCoroutine = StartCoroutine(MoveToTarget());
+        
+        Debug.Log($"CharacterMovement [{name}]: запущено новое движение к {worldPosition}");
     }
     
     /// <summary>
-    /// Корутина плавного движения к цели
+    /// Корутина движения к цели с постоянной скоростью
     /// </summary>
     IEnumerator MoveToTarget()
     {
         Vector3 startPosition = transform.position;
-        float distance = Vector3.Distance(startPosition, targetPosition);
         
         // Если уже на месте, выходим
-        if (distance < arrivalThreshold)
+        if (Vector3.Distance(startPosition, targetPosition) < 0.1f)
         {
-            OnMovementComplete?.Invoke(this);
             yield break;
         }
         
         isMoving = true;
-        OnMovementStarted?.Invoke(this);
         
-        // Обновляем занимаемые клетки в сетке
-        UpdateGridOccupancy(startPosition, false); // Освобождаем старую позицию
+        // Находим путь с обходом препятствий
+        Vector2Int startGrid = gridManager.WorldToGrid(startPosition);
+        Vector2Int targetGrid = gridManager.WorldToGrid(targetPosition);
         
-        float journeyTime = distance / moveSpeed;
-        float elapsedTime = 0;
+        Debug.Log($"CharacterMovement [{name}]: ищу путь от клетки {startGrid} к клетке {targetGrid}");
+        Debug.Log($"CharacterMovement [{name}]: мировые координаты от {startPosition} к {targetPosition}");
         
-        Debug.Log($"CharacterMovement [{characterScript?.GetFullName()}]: начинаем движение от {startPosition} к {targetPosition}, время: {journeyTime:F2}s");
+        currentPath = pathfinder.FindPath(startGrid, targetGrid);
+        currentPathIndex = 0;
         
-        while (elapsedTime < journeyTime)
+        if (currentPath != null && currentPath.Count > 0)
         {
-            elapsedTime += Time.deltaTime;
-            float progress = elapsedTime / journeyTime;
-            progress = Mathf.Clamp01(progress);
-            
-            // Применяем кривую анимации
-            float curveValue = movementCurve.Evaluate(progress);
-            
-            // Интерполируем позицию
-            Vector3 currentPos = Vector3.Lerp(startPosition, targetPosition, curveValue);
-            transform.position = currentPos;
-            
-            // Поворачиваем персонажа в сторону движения
-            if (distance > 0.1f)
-            {
-                Vector3 direction = (targetPosition - startPosition).normalized;
-                if (direction != Vector3.zero)
-                {
-                    Quaternion targetRotation = Quaternion.LookRotation(direction);
-                    transform.rotation = Quaternion.RotateTowards(
-                        transform.rotation, 
-                        targetRotation, 
-                        rotationSpeed * Time.deltaTime
-                    );
-                }
-            }
-            
-            yield return null;
+            Debug.Log($"Найден путь длиной {currentPath.Count} клеток");
+            // Движение по найденному пути
+            yield return StartCoroutine(MoveAlongPath());
+        }
+        else
+        {
+            // Прямое движение если путь не найден
+            Debug.Log("Путь не найден, движение напрямую");
+            yield return StartCoroutine(MoveDirectly());
         }
         
-        // Устанавливаем финальную позицию
-        transform.position = targetPosition;
-        
-        // Занимаем новую клетку в сетке
-        UpdateGridOccupancy(targetPosition, true);
-        
+        // Завершение движения
         isMoving = false;
         movementCoroutine = null;
+        currentPath = null;
         
-        Debug.Log($"CharacterMovement [{characterScript?.GetFullName()}]: движение завершено в позиции {targetPosition}");
+        // Скрываем путь
+        HidePathLine();
+        
+        Debug.Log($"CharacterMovement [{name}]: ПОЛНОЕ ЗАВЕРШЕНИЕ движения, вызываем событие");
+        
+        // Вызываем событие завершения движения
         OnMovementComplete?.Invoke(this);
     }
     
     /// <summary>
-    /// Обновление занятости клеток в сетке
+    /// Движение по найденному пути
     /// </summary>
-    void UpdateGridOccupancy(Vector3 worldPosition, bool occupy)
+    IEnumerator MoveAlongPath()
     {
-        if (gridManager == null) return;
-        
-        Vector2Int gridPos = gridManager.WorldToGrid(worldPosition);
-        
-        if (occupy)
+        for (currentPathIndex = 0; currentPathIndex < currentPath.Count; currentPathIndex++)
         {
-            gridManager.OccupyCell(gridPos, gameObject, "Character");
+            Vector3 nextTarget = gridManager.GridToWorld(currentPath[currentPathIndex]);
+            
+            // Проверяем, не слишком ли близко мы уже к этой точке
+            float distanceToTarget = Vector3.Distance(transform.position, nextTarget);
+            Debug.Log($"CharacterMovement [{name}]: движение к точке {currentPathIndex}: {currentPath[currentPathIndex]}, расстояние: {distanceToTarget:F2}");
+            
+            // Если уже близко к точке (меньше 0.5 единиц), пропускаем ее
+            if (distanceToTarget < 0.5f)
+            {
+                Debug.Log($"CharacterMovement [{name}]: точка {currentPathIndex} слишком близко, пропускаем");
+                transform.position = nextTarget; // Корректируем позицию
+                continue;
+            }
+            
+            // Движение к следующей точке пути
+            int frameCount = 0;
+            while (Vector3.Distance(transform.position, nextTarget) > 0.1f)
+            {
+                Vector3 currentPos = transform.position;
+                Vector3 direction = (nextTarget - currentPos).normalized;
+                float moveThisFrame = MOVE_SPEED * Time.deltaTime;
+                
+                // Логирование каждые 30 кадров (примерно каждые полсекунды)
+                if (frameCount % 30 == 0)
+                {
+                    float dist = Vector3.Distance(currentPos, nextTarget);
+                    Debug.Log($"CharacterMovement [{name}]: движение к точке {currentPathIndex}, расстояние: {dist:F3}, скорость: {moveThisFrame:F3}");
+                }
+                
+                if (Vector3.Distance(currentPos, nextTarget) <= moveThisFrame)
+                {
+                    transform.position = nextTarget;
+                    Debug.Log($"CharacterMovement [{name}]: достиг точки {currentPathIndex} за один кадр");
+                    break;
+                }
+                
+                transform.position = currentPos + direction * moveThisFrame;
+                UpdatePathLine();
+                frameCount++;
+                yield return null;
+                
+                // Защита от бесконечного цикла
+                if (frameCount > 1000)
+                {
+                    Debug.LogError($"CharacterMovement [{name}]: застрял в движении к точке {currentPathIndex}, принудительно завершаем");
+                    transform.position = nextTarget;
+                    break;
+                }
+            }
+            
+            transform.position = nextTarget;
+            Debug.Log($"CharacterMovement [{name}]: достиг точки {currentPathIndex}: {currentPath[currentPathIndex]}");
         }
-        else
-        {
-            gridManager.FreeCell(gridPos);
-        }
+        
+        Debug.Log($"CharacterMovement [{name}]: путь завершен, все {currentPath.Count} точек пройдены");
     }
     
     /// <summary>
-    /// Остановить текущее движение
+    /// Прямое движение к цели (fallback)
     /// </summary>
-    public void StopMovement()
+    IEnumerator MoveDirectly()
     {
-        if (movementCoroutine != null)
+        while (Vector3.Distance(transform.position, targetPosition) > 0.1f)
         {
-            StopCoroutine(movementCoroutine);
-            movementCoroutine = null;
+            Vector3 currentPos = transform.position;
+            Vector3 direction = (targetPosition - currentPos).normalized;
+            float moveThisFrame = MOVE_SPEED * Time.deltaTime;
+            
+            if (Vector3.Distance(currentPos, targetPosition) <= moveThisFrame)
+            {
+                transform.position = targetPosition;
+                break;
+            }
+            
+            transform.position = currentPos + direction * moveThisFrame;
+            UpdatePathLine();
+            yield return null;
         }
         
-        isMoving = false;
+        transform.position = targetPosition;
     }
     
     /// <summary>
@@ -175,25 +237,73 @@ public class CharacterMovement : MonoBehaviour
     }
     
     /// <summary>
-    /// Получить текущую целевую позицию
+    /// Остановить текущее движение
     /// </summary>
-    public Vector3 GetTargetPosition()
+    public void StopMovement()
     {
-        return targetPosition;
+        Debug.Log($"CharacterMovement [{name}]: ОСТАНАВЛИВАЕМ движение - была корутина: {movementCoroutine != null}, было движение: {isMoving}");
+        
+        // Останавливаем корутину
+        if (movementCoroutine != null)
+        {
+            StopCoroutine(movementCoroutine);
+            movementCoroutine = null;
+            Debug.Log($"CharacterMovement [{name}]: корутина остановлена");
+        }
+        
+        // Останавливаем ВСЕ корутины для надежности
+        StopAllCoroutines();
+        
+        // Полная очистка состояния
+        isMoving = false;
+        currentPath = null;
+        currentPathIndex = 0;
+        
+        // Очищаем событие
+        OnMovementComplete = null;
+        
+        HidePathLine();
+        
+        Debug.Log($"CharacterMovement [{name}]: движение ПОЛНОСТЬЮ остановлено и очищено");
     }
     
     /// <summary>
-    /// Получить прогресс движения (0-1)
+    /// Показать линию пути
     /// </summary>
-    public float GetMovementProgress()
+    void ShowPathLine()
     {
-        if (!isMoving) return 1f;
-        
-        float totalDistance = Vector3.Distance(transform.position, targetPosition);
-        if (totalDistance < 0.01f) return 1f;
-        
-        // Примерная оценка прогресса
-        return 1f - (totalDistance / Vector3.Distance(transform.position, targetPosition));
+        if (pathLine != null)
+        {
+            UpdatePathLine();
+            pathLine.enabled = true;
+        }
+    }
+    
+    /// <summary>
+    /// Обновить позиции линии пути
+    /// </summary>
+    void UpdatePathLine()
+    {
+        if (pathLine != null && pathLine.enabled)
+        {
+            Vector3[] positions = { transform.position, targetPosition };
+            positions[0].y += 0.5f; // Приподнимаем над землей
+            positions[1].y += 0.5f;
+            
+            pathLine.positionCount = 2;
+            pathLine.SetPositions(positions);
+        }
+    }
+    
+    /// <summary>
+    /// Скрыть линию пути
+    /// </summary>
+    void HidePathLine()
+    {
+        if (pathLine != null)
+        {
+            pathLine.enabled = false;
+        }
     }
     
     void OnDestroy()
