@@ -73,7 +73,7 @@ public class SimplePathfinder : MonoBehaviour
     }
     
     /// <summary>
-    /// Получить точки линии между двумя позициями (алгоритм Брезенхема)
+    /// Получить точки линии между двумя позициями (улучшенный алгоритм с поддержкой диагоналей)
     /// </summary>
     List<Vector2Int> GetLinePoints(Vector2Int start, Vector2Int end)
     {
@@ -88,26 +88,54 @@ public class SimplePathfinder : MonoBehaviour
         int xInc = (end.x > start.x) ? 1 : -1;
         int yInc = (end.y > start.y) ? 1 : -1;
         
-        int error = dx - dy;
+        points.Add(new Vector2Int(x, y));
         
-        for (int i = 0; i <= dx + dy; i++)
+        if (dx == 0) // Вертикальная линия
         {
-            points.Add(new Vector2Int(x, y));
-            
-            if (x == end.x && y == end.y) break;
-            
-            int error2 = error * 2;
-            
-            if (error2 > -dy)
+            while (y != end.y)
             {
-                error -= dy;
-                x += xInc;
-            }
-            
-            if (error2 < dx)
-            {
-                error += dx;
                 y += yInc;
+                points.Add(new Vector2Int(x, y));
+            }
+        }
+        else if (dy == 0) // Горизонтальная линия
+        {
+            while (x != end.x)
+            {
+                x += xInc;
+                points.Add(new Vector2Int(x, y));
+            }
+        }
+        else if (dx == dy) // Идеальная диагональ
+        {
+            while (x != end.x && y != end.y)
+            {
+                x += xInc;
+                y += yInc;
+                points.Add(new Vector2Int(x, y));
+            }
+        }
+        else // Обычная линия Брезенхема
+        {
+            int error = dx - dy;
+            
+            while (x != end.x || y != end.y)
+            {
+                int error2 = error * 2;
+                
+                if (error2 > -dy && x != end.x)
+                {
+                    error -= dy;
+                    x += xInc;
+                }
+                
+                if (error2 < dx && y != end.y)
+                {
+                    error += dx;
+                    y += yInc;
+                }
+                
+                points.Add(new Vector2Int(x, y));
             }
         }
         
@@ -143,10 +171,14 @@ public class SimplePathfinder : MonoBehaviour
             
             foreach (var neighborPos in neighbors)
             {
-                if (closedSet.Contains(neighborPos) || !IsCellPassable(neighborPos))
+                if (closedSet.Contains(neighborPos))
                     continue;
                 
-                float gCost = currentNode.G + 1;
+                // Вычисляем стоимость движения (диагональ стоит √2 ≈ 1.414)
+                bool isDiagonal = (neighborPos.x != currentNode.Position.x) && (neighborPos.y != currentNode.Position.y);
+                float moveCost = isDiagonal ? 1.414f : 1.0f;
+                float gCost = currentNode.G + moveCost;
+                
                 var existingNode = openSet.FirstOrDefault(n => n.Position == neighborPos);
                 
                 if (existingNode == null)
@@ -168,25 +200,44 @@ public class SimplePathfinder : MonoBehaviour
     }
     
     /// <summary>
-    /// Получить соседние клетки (4 направления)
+    /// Получить соседние клетки (8 направлений: 4 основных + 4 диагональных)
     /// </summary>
     List<Vector2Int> GetNeighbors(Vector2Int pos)
     {
-        return new List<Vector2Int>
+        var neighbors = new List<Vector2Int>
         {
-            pos + Vector2Int.up,
-            pos + Vector2Int.down,
-            pos + Vector2Int.left,
-            pos + Vector2Int.right
-        }.Where(p => gridManager.IsValidGridPosition(p)).ToList();
+            // Основные направления
+            pos + Vector2Int.up,           // север
+            pos + Vector2Int.down,         // юг
+            pos + Vector2Int.left,         // запад
+            pos + Vector2Int.right,        // восток
+            
+            // Диагональные направления
+            pos + new Vector2Int(-1, 1),   // северо-запад
+            pos + new Vector2Int(1, 1),    // северо-восток
+            pos + new Vector2Int(-1, -1),  // юго-запад
+            pos + new Vector2Int(1, -1)    // юго-восток
+        };
+        
+        return neighbors.Where(p => gridManager.IsValidGridPosition(p) && IsCellPassable(p)).ToList();
     }
     
     /// <summary>
-    /// Вычислить эвристическую функцию (манхэттенское расстояние)
+    /// Вычислить эвристическую функцию (диагональное расстояние)
     /// </summary>
     float GetHeuristic(Vector2Int from, Vector2Int to)
     {
-        return Mathf.Abs(from.x - to.x) + Mathf.Abs(from.y - to.y);
+        // Диагональная эвристика: более точная для движения по 8 направлениям
+        int dx = Mathf.Abs(from.x - to.x);
+        int dy = Mathf.Abs(from.y - to.y);
+        
+        // Количество диагональных шагов (минимум из dx и dy)
+        int diagonalSteps = Mathf.Min(dx, dy);
+        // Количество прямых шагов (оставшиеся)
+        int straightSteps = Mathf.Max(dx, dy) - diagonalSteps;
+        
+        // Диагональные шаги стоят √2, прямые шаги стоят 1
+        return diagonalSteps * 1.414f + straightSteps * 1.0f;
     }
     
     /// <summary>
