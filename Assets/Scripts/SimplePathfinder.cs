@@ -25,31 +25,26 @@ public class SimplePathfinder : MonoBehaviour
             return new List<Vector2Int> { end };
         }
         
-        Debug.Log($"SimplePathfinder: поиск пути от {start} к {end}");
         
         // Если начальная и конечная точки одинаковы
         if (start == end)
         {
-            Debug.Log($"SimplePathfinder: старт и финиш одинаковы, путь не нужен");
             return new List<Vector2Int>();
         }
         
         // Вычисляем реальное расстояние
         int distance = Mathf.Abs(end.x - start.x) + Mathf.Abs(end.y - start.y);
-        Debug.Log($"SimplePathfinder: манхэттенское расстояние = {distance}");
         
         // Если путь прямой и свободен, строим прямую линию
         if (IsDirectPathClear(start, end))
         {
             var directPath = GetLinePoints(start, end);
             directPath.RemoveAt(0); // Убираем стартовую точку
-            Debug.Log($"SimplePathfinder: прямой путь свободен, построена линия из {directPath.Count} точек");
             return directPath;
         }
         
         // Используем простой A* алгоритм
         var path = FindPathAStar(start, end);
-        Debug.Log($"SimplePathfinder: A* нашел путь длиной {path?.Count ?? 0}");
         return path;
     }
     

@@ -96,7 +96,6 @@ public class GridManager : MonoBehaviour
         gridHeight = height;
         cellSize = cellSizeNew;
         
-        Debug.Log($"Обновление настроек сетки: {width}x{height}, размер ячейки: {cellSizeNew}");
         
         // Пересоздаем сетку
         InitializeGrid();
@@ -114,8 +113,6 @@ public class GridManager : MonoBehaviour
         int halfWidth = gridWidth / 2;
         int halfHeight = gridHeight / 2;
         
-        Debug.Log($"Инициализация сетки {gridWidth}x{gridHeight}, размер ячейки: {cellSize}");
-        Debug.Log($"Диапазон X: {-halfWidth} до {halfWidth-1}, диапазон Z: {-halfHeight} до {halfHeight-1}");
         
         for (int x = 0; x < gridWidth; x++)
         {
@@ -133,7 +130,6 @@ public class GridManager : MonoBehaviour
             }
         }
         
-        Debug.Log($"Сетка инициализирована: {gridLookup.Count} ячеек");
     }
     
     /// <summary>
@@ -209,7 +205,6 @@ public class GridManager : MonoBehaviour
                 CreateOccupiedCellVisual(gridPosition);
             }
             
-            Debug.Log($"Ячейка {gridPosition} занята объектом {obj.name} ({objectType})");
             return true;
         }
         return false;
@@ -223,7 +218,6 @@ public class GridManager : MonoBehaviour
         GridCell cell = GetCell(gridPosition);
         if (cell != null && cell.isOccupied)
         {
-            Debug.Log($"Ячейка {gridPosition} освобождена от {cell.objectType}");
             cell.ClearOccupied();
             OnCellFreed?.Invoke(cell);
             
@@ -335,7 +329,6 @@ public class GridManager : MonoBehaviour
             }
         }
         
-        Debug.Log($"Область {width}x{height} занята объектом {obj.name} начиная с ячейки {startPosition}");
         return true;
     }
     
@@ -414,7 +407,6 @@ public class GridManager : MonoBehaviour
                 cell.ClearOccupied();
             }
         }
-        Debug.Log("Сетка очищена");
     }
     
     /// <summary>
@@ -438,14 +430,9 @@ public class GridManager : MonoBehaviour
             }
         }
         
-        Debug.Log($"=== Статистика сетки ===");
-        Debug.Log($"Всего ячеек: {gridLookup.Count}");
-        Debug.Log($"Занято ячеек: {occupiedCount}");
-        Debug.Log($"Свободно ячеек: {gridLookup.Count - occupiedCount}");
         
         foreach (var kvp in typeCount)
         {
-            Debug.Log($"  {kvp.Key}: {kvp.Value} ячеек");
         }
     }
     
@@ -463,7 +450,6 @@ public class GridManager : MonoBehaviour
         // Очищаем список использованных имен для нового спавна
         Character.ClearUsedNames();
         
-        Debug.Log($"Генерация {numberOfCharacters} персонажей с уникальными именами...");
         
         // Найдем область для размещения персонажей рядом друг с другом
         Vector2Int startPosition = FindSpawnAreaForCharacters();
@@ -484,7 +470,6 @@ public class GridManager : MonoBehaviour
                 // Занимаем ячейку
                 OccupyCell(spawnPosition, character, "Character");
                 
-                Debug.Log($"Персонаж {i + 1} создан в позиции {spawnPosition} (мир: {cell.worldPosition})");
             }
             else
             {
@@ -538,20 +523,20 @@ public class GridManager : MonoBehaviour
     {
         // Создаем временный объект для создания префаба
         GameObject tempCharacter = new GameObject("Character_Template");
-        
+
         // Добавляем компоненты
         var capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         capsule.transform.SetParent(tempCharacter.transform);
         capsule.transform.localPosition = Vector3.zero;
         capsule.name = "CharacterMesh";
-        
+
         // Настраиваем размер капсулы
         capsule.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
-        
+
         // Добавляем скрипт Character
         var characterScript = tempCharacter.AddComponent<Character>();
         characterScript.characterRenderer = capsule.GetComponent<Renderer>();
-        
+
         // Добавляем Collider если его нет
         if (tempCharacter.GetComponent<Collider>() == null)
         {
@@ -559,10 +544,12 @@ public class GridManager : MonoBehaviour
             collider.height = 2f;
             collider.radius = 0.4f;
         }
-        
+
         characterPrefab = tempCharacter;
-        
-        Debug.Log("Префаб персонажа создан программно");
+
+        // Скрываем префаб-шаблон, переместив его далеко от игровой области
+        tempCharacter.transform.position = new Vector3(10000, 10000, 10000);
+
     }
     
     
@@ -576,7 +563,6 @@ public class GridManager : MonoBehaviour
         {
             GameObject controllerGO = new GameObject("MovementController");
             movementController = controllerGO.AddComponent<MovementController>();
-            Debug.Log("MovementController создан автоматически");
         }
     }
     
@@ -619,7 +605,6 @@ public class GridManager : MonoBehaviour
             );
         }
         
-        Debug.Log("Визуализация грида создана в игре");
         
         // Создаем визуализацию занятых клеток
         CreateOccupiedCellsVisualization();
@@ -674,7 +659,6 @@ public class GridManager : MonoBehaviour
             }
         }
         
-        Debug.Log($"Создано {occupiedCellVisuals.Count} визуалов занятых клеток");
     }
     
     /// <summary>

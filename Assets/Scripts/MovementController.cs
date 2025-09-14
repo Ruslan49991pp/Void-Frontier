@@ -46,7 +46,6 @@ public class MovementController : MonoBehaviour
             // Защита от спама кликов
             if (Time.time - lastClickTime < CLICK_COOLDOWN)
             {
-                Debug.Log("MovementController: клик проигнорирован - слишком быстро");
                 return;
             }
             lastClickTime = Time.time;
@@ -65,20 +64,9 @@ public class MovementController : MonoBehaviour
                     Vector2Int finalTargetPos = GetNearestFreeCell(targetGridPos, selectedCharacters);
                     Vector3 targetWorldPos = gridManager.GridToWorld(finalTargetPos);
                     
-                    Debug.Log($"ПКМ клик в клетку {targetGridPos}, финальная цель {finalTargetPos}");
                     
-                    // ПОЛНАЯ ОЧИСТКА перед новой командой
-                    ClearAllMovingGroups();
-                    
-                    // Дополнительно останавливаем движение у всех выделенных персонажей
-                    foreach (var character in selectedCharacters)
-                    {
-                        CharacterMovement movement = character.GetComponent<CharacterMovement>();
-                        if (movement != null)
-                        {
-                            movement.StopMovement();
-                        }
-                    }
+                    // Очистка движений только для выделенных персонажей
+                    ClearMovingGroupsForSelectedCharacters(selectedCharacters);
                     
                     // Запускаем движение персонажей к цели
                     MoveCharactersToTarget(selectedCharacters, finalTargetPos);
@@ -149,7 +137,7 @@ public class MovementController : MonoBehaviour
             movements.Add(movement);
         }
         
-        // Создаем новую группу движения (предыдущие уже очищены в ClearAllMovingGroups)
+        // Создаем новую группу движения (предыдущие движения выделенных персонажей уже очищены)
         MovementGroup group = new MovementGroup();
         group.allCharacters = movements;
         movingGroups[targetGridPos] = group;
@@ -162,18 +150,25 @@ public class MovementController : MonoBehaviour
             
             if (i == 0)
             {
-                // Первый персонаж идет к основной цели
-                finalPos = targetGridPos;
-                finalWorldPos = gridManager.GridToWorld(targetGridPos);
-                group.targetOccupied = true;
-                Debug.Log($"Персонаж {movements[i].name} назначен к основной цели {targetGridPos}");
+                // Первый персонаж идет к основной цели, но только если она свободна
+                if (IsCellPassableForTarget(targetGridPos) || IsOccupiedBySelectedCharacter(targetGridPos, characters))
+                {
+                    finalPos = targetGridPos;
+                    finalWorldPos = gridManager.GridToWorld(targetGridPos);
+                    group.targetOccupied = true;
+                }
+                else
+                {
+                    // Цель занята, находим ближайшую свободную клетку
+                    finalPos = GetNextNearbyPosition(targetGridPos, 0);
+                    finalWorldPos = gridManager.GridToWorld(finalPos);
+                }
             }
             else
             {
                 // Остальные идут к соседним позициям
                 finalPos = GetNextNearbyPosition(targetGridPos, i - 1);
                 finalWorldPos = gridManager.GridToWorld(finalPos);
-                Debug.Log($"Персонаж {movements[i].name} назначен к соседней позиции {finalPos}");
             }
             
             // Подписываемся на событие завершения движения с учетом финальной позиции
@@ -185,7 +180,6 @@ public class MovementController : MonoBehaviour
             movement.MoveTo(finalWorldPos);
         }
         
-        Debug.Log($"Запущено движение {movements.Count} персонажей: 1 к основной цели {targetGridPos}, {movements.Count - 1} к соседним позициям");
     }
     
     /// <summary>
@@ -202,7 +196,6 @@ public class MovementController : MonoBehaviour
         if (!group.arrivedCharacters.Contains(arrivedCharacter))
         {
             group.arrivedCharacters.Add(arrivedCharacter);
-            Debug.Log($"Персонаж {arrivedCharacter.name} прибыл к финальной позиции {arrivedPosition}");
         }
         
         // Если все прибыли, очищаем группу
@@ -217,7 +210,6 @@ public class MovementController : MonoBehaviour
                 }
             }
             movingGroups.Remove(originalTargetGridPos);
-            Debug.Log($"Группа движения к {originalTargetGridPos} завершена, все {group.arrivedCharacters.Count} персонажей прибыли");
         }
     }
     
@@ -299,13 +291,20 @@ public class MovementController : MonoBehaviour
     /// </summary>
     Vector2Int GetNearestFreeCell(Vector2Int targetPos, List<Character> characters)
     {
-        // Если целевая клетка свободна или содержит только персонажей, используем её
+        // Проверяем, свободна ли целевая клетка ИЛИ занята выделенным персонажем
         if (IsCellPassableForTarget(targetPos))
         {
             return targetPos;
         }
+
+        // Если клетка занята выделенным персонажем, он освободит её
+        if (IsOccupiedBySelectedCharacter(targetPos, characters))
+        {
+            return targetPos;
+        }
+
+        // Клетка занята другим персонажем или препятствием, ищем альтернативу
         
-        Debug.Log($"Клетка {targetPos} занята, ищем ближайшую свободную...");
         
         // Определяем среднюю позицию персонажей для выбора направления
         Vector2 avgCharacterPos = Vector2.zero;
@@ -330,10 +329,9 @@ public class MovementController : MonoBehaviour
             
             foreach (var pos in sortedPositions)
             {
-                // Проверяем что клетка свободна или содержит только персонажей
-                if (IsCellPassableForTarget(pos))
+                // Проверяем что клетка свободна
+                if (IsCellPassableForTarget(pos) || IsOccupiedBySelectedCharacter(pos, characters))
                 {
-                    Debug.Log($"Найдена свободная клетка {pos} на расстоянии {radius} от {targetPos}");
                     return pos;
                 }
             }
@@ -344,19 +342,39 @@ public class MovementController : MonoBehaviour
     }
     
     /// <summary>
-    /// Проверить, подходит ли клетка для размещения цели (свободна или содержит персонажей)
+    /// Проверить, подходит ли клетка для размещения цели (полностью свободна)
     /// </summary>
     bool IsCellPassableForTarget(Vector2Int pos)
     {
         if (!gridManager.IsValidGridPosition(pos))
             return false;
-            
+
         var cell = gridManager.GetCell(pos);
-        if (cell == null || !cell.isOccupied)
-            return true;
-            
-        // Для целевых позиций персонажи не являются препятствиями
-        return cell.objectType == "Character";
+
+        // Клетка должна быть полностью свободна для размещения персонажей
+        return cell == null || !cell.isOccupied;
+    }
+
+    /// <summary>
+    /// Проверить, занята ли клетка одним из выделенных персонажей
+    /// </summary>
+    bool IsOccupiedBySelectedCharacter(Vector2Int pos, List<Character> selectedCharacters)
+    {
+        var cell = gridManager.GetCell(pos);
+        if (cell == null || !cell.isOccupied || cell.objectType != "Character")
+            return false;
+
+        // Проверяем, является ли занимающий клетку персонаж одним из выделенных
+        foreach (var character in selectedCharacters)
+        {
+            Vector2Int charCurrentPos = gridManager.WorldToGrid(character.transform.position);
+            if (charCurrentPos == pos)
+            {
+                return true; // Этот персонаж освободит клетку при движении
+            }
+        }
+
+        return false;
     }
     
     /// <summary>
@@ -407,10 +425,8 @@ public class MovementController : MonoBehaviour
         foreach (var targetPos in groupsToRemove)
         {
             movingGroups.Remove(targetPos);
-            Debug.Log($"Удалена пустая группа движения к {targetPos}");
         }
         
-        Debug.Log($"Очищены предыдущие движения для {characters.Count} персонажей");
     }
     
     /// <summary>
@@ -418,7 +434,6 @@ public class MovementController : MonoBehaviour
     /// </summary>
     void ClearAllMovingGroups()
     {
-        Debug.Log("Полная очистка всех групп движения...");
         
         // Останавливаем все движения и отписываемся от событий
         foreach (var kvp in movingGroups)
@@ -449,6 +464,63 @@ public class MovementController : MonoBehaviour
         // Полностью очищаем словарь групп
         movingGroups.Clear();
         
-        Debug.Log("Все группы движения очищены");
+    }
+
+    /// <summary>
+    /// Очистка групп движения только для выделенных персонажей
+    /// </summary>
+    void ClearMovingGroupsForSelectedCharacters(List<Character> selectedCharacters)
+    {
+        List<Vector2Int> groupsToRemove = new List<Vector2Int>();
+
+        foreach (var kvp in movingGroups)
+        {
+            Vector2Int targetPos = kvp.Key;
+            MovementGroup group = kvp.Value;
+            List<CharacterMovement> charactersToRemove = new List<CharacterMovement>();
+
+            // Находим выделенных персонажей в этой группе
+            foreach (var character in group.allCharacters)
+            {
+                if (character != null && character.gameObject != null)
+                {
+                    Character charComponent = character.GetComponent<Character>();
+                    if (charComponent != null && selectedCharacters.Contains(charComponent))
+                    {
+                        // Этот персонаж выделен, останавливаем его движение
+                        charactersToRemove.Add(character);
+                        character.OnMovementComplete = null;
+
+                        try
+                        {
+                            character.StopMovement();
+                        }
+                        catch (System.Exception e)
+                        {
+                            Debug.LogWarning($"Ошибка при остановке движения {character.name}: {e.Message}");
+                        }
+                    }
+                }
+            }
+
+            // Удаляем выделенных персонажей из группы
+            foreach (var charToRemove in charactersToRemove)
+            {
+                group.allCharacters.Remove(charToRemove);
+                group.arrivedCharacters.Remove(charToRemove);
+            }
+
+            // Если в группе не осталось персонажей, помечаем её для удаления
+            if (group.allCharacters.Count == 0)
+            {
+                groupsToRemove.Add(targetPos);
+            }
+        }
+
+        // Удаляем пустые группы
+        foreach (var targetPos in groupsToRemove)
+        {
+            movingGroups.Remove(targetPos);
+        }
     }
 }

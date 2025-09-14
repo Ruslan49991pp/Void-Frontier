@@ -70,8 +70,6 @@ public class GridBounds : MonoBehaviour
         
         isInitialized = true;
         
-        Debug.Log($"GridBounds [{gameObject.name}]: инициализированы границы " +
-                 $"область {gridWidth}x{gridHeight}, центр {boundsCenter}, размер {boundsSize}");
     }
     
     /// <summary>
@@ -174,7 +172,6 @@ public class GridBounds : MonoBehaviour
         if (Vector3.Distance(currentPos, clampedPos) > 0.01f)
         {
             cachedTransform.position = clampedPos;
-            Debug.Log($"GridBounds [{gameObject.name}]: позиция скорректирована с {currentPos} на {clampedPos}");
         }
     }
     

@@ -58,6 +58,7 @@ public class SelectionManager : MonoBehaviour
     {
         HandleMouseInput();
         UpdateSelectionBox();
+        UpdateSelectionIndicatorPositions();
     }
     
     /// <summary>
@@ -136,7 +137,7 @@ public class SelectionManager : MonoBehaviour
         {
             GameObject prefab = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             prefab.name = "SelectionIndicator";
-            prefab.transform.localScale = Vector3.one * 0.3f;
+            prefab.transform.localScale = Vector3.one * 0.6f;
             
             // Убираем коллайдер
             DestroyImmediate(prefab.GetComponent<Collider>());
@@ -172,7 +173,6 @@ public class SelectionManager : MonoBehaviour
             mouseDownPosition = Input.mousePosition;
             boxStartPosition = Input.mousePosition;
             
-            Debug.Log($"Мышь нажата в позиции: {mouseDownPosition}");
         }
         
         // Мышь зажата - проверяем движение
@@ -184,7 +184,6 @@ public class SelectionManager : MonoBehaviour
             // Если движение больше порога и рамка еще не активна, начинаем box selection
             if (distance > clickThreshold && !isBoxSelecting)
             {
-                Debug.Log($"Начинаем box selection, дистанция: {distance}");
                 isBoxSelecting = true;
                 selectionBoxUI.SetActive(true);
                 
@@ -207,7 +206,6 @@ public class SelectionManager : MonoBehaviour
             if (isBoxSelecting)
             {
                 // Это была рамка
-                Debug.Log("Завершаем box selection");
                 isBoxSelecting = false;
                 selectionBoxUI.SetActive(false);
                 PerformBoxSelection();
@@ -215,7 +213,6 @@ public class SelectionManager : MonoBehaviour
             else if (distance <= clickThreshold)
             {
                 // Это был клик
-                Debug.Log("Выполняем клик");
                 PerformClickSelection(mouseDownPosition);
             }
             
@@ -235,55 +232,40 @@ public class SelectionManager : MonoBehaviour
         
         if (hits.Length > 0)
         {
-            Debug.Log($"Клик: Raycast попал в {hits.Length} объектов");
-            
-            // Ищем первый подходящий объект
+            // Ищем первый подходящий объект для выделения
             foreach (RaycastHit rayHit in hits)
             {
                 GameObject hitObject = rayHit.collider.gameObject;
-                Debug.Log($"  - {hitObject.name}, коллайдер: {rayHit.collider.GetType().Name}");
-                
+
                 // Исключаем системные объекты из выделения
-                if (hitObject.name.Contains("Bounds") || hitObject.name.Contains("Grid") || 
-                    hitObject.name.Contains("Location") && !hitObject.name.Contains("Test"))
+                if (hitObject.name.Contains("Bounds") || hitObject.name.Contains("Grid") ||
+                    hitObject.name.Contains("Location") && !hitObject.name.Contains("Test") ||
+                    hitObject.name.Contains("Plane"))
                 {
-                    Debug.Log($"    Игнорируем системный объект: {hitObject.name}");
                     continue;
                 }
-                
+
                 LocationObjectInfo objectInfo = hitObject.GetComponent<LocationObjectInfo>();
-                
+
                 if (objectInfo != null)
                 {
-                    // Одиночное выделение
+                    // Найден подходящий объект для выделения
                     if (!Input.GetKey(KeyCode.LeftControl))
                     {
                         ClearSelection();
                     }
-                    
+
                     ToggleSelection(hitObject);
-                    Debug.Log($"    ✓ Выделен объект: {objectInfo.objectName} ({objectInfo.objectType})");
                     return;
-                }
-                else
-                {
-                    Debug.LogWarning($"    Объект {hitObject.name} не имеет компонента LocationObjectInfo!");
                 }
             }
         }
-        else
+
+        // Если мы дошли до этого места, значит не найдено подходящих объектов
+        // Это считается кликом в пустое место - очищаем выделение если не зажат Ctrl
+        if (!Input.GetKey(KeyCode.LeftControl))
         {
-            Debug.Log("Клик в пустое место - очищаем выделение");
-            
-            // Клик в пустое место - очищаем выделение если не зажат Ctrl
-            if (!Input.GetKey(KeyCode.LeftControl))
-            {
-                ClearSelection();
-            }
-            else
-            {
-                Debug.Log("Ctrl зажат - выделение сохранено");
-            }
+            ClearSelection();
         }
     }
     
@@ -355,12 +337,10 @@ public class SelectionManager : MonoBehaviour
                 }
             }
             
-            Debug.Log($"Выделено в области: {newSelections.Count} объектов");
         }
         else
         {
             // В рамку ничего не попало
-            Debug.Log("Рамка пуста - очищаем выделение");
             
             // Очищаем выделение если не зажат Ctrl
             if (!Input.GetKey(KeyCode.LeftControl))
@@ -369,7 +349,6 @@ public class SelectionManager : MonoBehaviour
             }
             else
             {
-                Debug.Log("Ctrl зажат - выделение сохранено");
             }
         }
         
@@ -493,7 +472,27 @@ public class SelectionManager : MonoBehaviour
             selectionIndicators.Remove(targetObject);
         }
     }
-    
+
+    /// <summary>
+    /// Обновление позиций индикаторов выделения
+    /// </summary>
+    void UpdateSelectionIndicatorPositions()
+    {
+        foreach (var kvp in selectionIndicators)
+        {
+            GameObject targetObject = kvp.Key;
+            GameObject indicator = kvp.Value;
+
+            if (targetObject != null && indicator != null)
+            {
+                // Обновляем позицию индикатора над движущимся объектом
+                Bounds bounds = GetObjectBounds(targetObject);
+                Vector3 newPosition = bounds.center + Vector3.up * (bounds.size.y * 0.5f + selectionIndicatorHeight);
+                indicator.transform.position = newPosition;
+            }
+        }
+    }
+
     /// <summary>
     /// Получение границ объекта
     /// </summary>
@@ -527,7 +526,6 @@ public class SelectionManager : MonoBehaviour
         if (character != null)
         {
             character.SetSelected(selected);
-            Debug.Log($"Персонаж {character.GetFullName()} {(selected ? "выделен" : "снят с выделения")}");
             return;
         }
         
@@ -535,7 +533,6 @@ public class SelectionManager : MonoBehaviour
         LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
         if (objectInfo != null)
         {
-            Debug.Log($"Объект {objectInfo.objectName} ({objectInfo.objectType}) {(selected ? "выделен" : "снят с выделения")}");
         }
     }
     
@@ -608,28 +605,19 @@ public class SelectionManager : MonoBehaviour
     /// </summary>
     void DiagnoseSelectableObjects()
     {
-        Debug.Log("=== ДИАГНОСТИКА ВЫДЕЛЯЕМЫХ ОБЪЕКТОВ ===");
         
         LocationObjectInfo[] allObjects = FindObjectsOfType<LocationObjectInfo>();
-        Debug.Log($"Найдено объектов с LocationObjectInfo: {allObjects.Length}");
         
         foreach (LocationObjectInfo objectInfo in allObjects)
         {
             GameObject obj = objectInfo.gameObject;
-            Debug.Log($"\n--- {obj.name} ---");
-            Debug.Log($"Тип: {objectInfo.objectType}, Имя: {objectInfo.objectName}");
-            Debug.Log($"Позиция: {obj.transform.position}");
-            Debug.Log($"Активен: {obj.activeInHierarchy}");
             
             Collider collider = obj.GetComponent<Collider>();
             if (collider != null)
             {
-                Debug.Log($"Коллайдер: {collider.GetType().Name}, включен: {collider.enabled}");
-                Debug.Log($"Bounds: center={collider.bounds.center}, size={collider.bounds.size}");
                 
                 // Проверяем, попадает ли в LayerMask
                 bool inMask = (selectableLayerMask & (1 << obj.layer)) != 0;
-                Debug.Log($"Слой {obj.layer} входит в selectableLayerMask: {inMask}");
             }
             else
             {
@@ -637,7 +625,6 @@ public class SelectionManager : MonoBehaviour
             }
         }
         
-        Debug.Log("=== КОНЕЦ ДИАГНОСТИКИ ВЫДЕЛЯЕМЫХ ОБЪЕКТОВ ===");
     }
     
     void OnDestroy()

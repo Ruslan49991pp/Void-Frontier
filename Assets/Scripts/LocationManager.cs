@@ -87,7 +87,6 @@ public class LocationManager : MonoBehaviour
         if (currentLocation.gridSize.x == 0 || currentLocation.gridSize.y == 0)
         {
             currentLocation.gridSize = defaultGridSize;
-            Debug.Log($"Размер сетки был сброшен на {defaultGridSize}");
         }
         
         // Создаем родительский объект для содержимого если его нет
@@ -107,7 +106,6 @@ public class LocationManager : MonoBehaviour
                 GameObject gridGO = new GameObject("GridManager");
                 gridGO.transform.SetParent(transform);
                 gridManager = gridGO.AddComponent<GridManager>();
-                Debug.Log("GridManager создан автоматически");
             }
         }
         
@@ -115,7 +113,6 @@ public class LocationManager : MonoBehaviour
         if (gridManager != null)
         {
             gridManager.UpdateGridSettings(currentLocation.gridSize.x, currentLocation.gridSize.y, gridCellSize);
-            Debug.Log($"GridManager синхронизирован: {gridManager.gridWidth}x{gridManager.gridHeight}, размер ячейки: {gridManager.cellSize}");
         }
     }
     
@@ -129,21 +126,18 @@ public class LocationManager : MonoBehaviour
         {
             GameObject stationPrefab = CreateTestPrefab("TestStation", Color.blue, new Vector3(8, 4, 8));
             spawnSettings.stationPrefabs = new GameObject[] { stationPrefab };
-            Debug.Log("Создан тестовый префаб станции");
         }
         
         if (spawnSettings.asteroidPrefabs == null || spawnSettings.asteroidPrefabs.Length == 0)
         {
             GameObject asteroidPrefab = CreateTestPrefab("TestAsteroid", Color.gray, new Vector3(6, 3, 6));
             spawnSettings.asteroidPrefabs = new GameObject[] { asteroidPrefab };
-            Debug.Log("Создан тестовый префаб астероида");
         }
         
         if (spawnSettings.debrisPrefabs == null || spawnSettings.debrisPrefabs.Length == 0)
         {
             GameObject debrisPrefab = CreateTestPrefab("TestDebris", Color.yellow, new Vector3(0.8f, 0.8f, 0.8f));
             spawnSettings.debrisPrefabs = new GameObject[] { debrisPrefab };
-            Debug.Log("Создан тестовый префаб обломка");
         }
     }
     
@@ -205,7 +199,6 @@ public class LocationManager : MonoBehaviour
         // Скрываем префаб
         prefab.SetActive(false);
         
-        Debug.Log($"Создан тестовый префаб {name} с коллайдером: {collider != null}");
         
         return prefab;
     }
@@ -220,8 +213,6 @@ public class LocationManager : MonoBehaviour
         
         currentLocation.isGenerated = true;
         
-        Debug.Log($"=== Генерация локации '{currentLocation.locationName}' ===");
-        Debug.Log($"Размер локации: {currentLocation.gridSize.x}x{currentLocation.gridSize.y}, размер ячейки: {gridCellSize}");
         
         // Диагностика префабов
         if (spawnSettings == null)
@@ -230,9 +221,6 @@ public class LocationManager : MonoBehaviour
             return;
         }
         
-        Debug.Log($"Префабы станций: {(spawnSettings.stationPrefabs?.Length ?? 0)}");
-        Debug.Log($"Префабы астероидов: {(spawnSettings.asteroidPrefabs?.Length ?? 0)}");
-        Debug.Log($"Префабы обломков: {(spawnSettings.debrisPrefabs?.Length ?? 0)}");
         
         // Проверяем и создаем тестовые префабы если они не установлены
         EnsureTestPrefabs();
@@ -248,7 +236,6 @@ public class LocationManager : MonoBehaviour
         // Создаем точки интереса
         GeneratePointsOfInterest();
         
-        Debug.Log($"=== Генерация завершена. Всего объектов: {spawnedObjects.Count} ===");
         
         // Выводим статистику сетки
         if (gridManager != null)
@@ -267,7 +254,6 @@ public class LocationManager : MonoBehaviour
     /// </summary>
     void GenerateStations()
     {
-        Debug.Log("=== Начало генерации станций ===");
         
         if (spawnSettings.stationPrefabs == null || spawnSettings.stationPrefabs.Length == 0) 
         {
@@ -276,12 +262,10 @@ public class LocationManager : MonoBehaviour
         }
         
         int stationCount = Random.Range(spawnSettings.minStations, spawnSettings.maxStations + 1);
-        Debug.Log($"Планируется создать {stationCount} станций (диапазон: {spawnSettings.minStations}-{spawnSettings.maxStations})");
         
         int createdCount = 0;
         for (int i = 0; i < stationCount; i++)
         {
-            Debug.Log($"Попытка создать станцию {i+1}...");
             
             // Станции занимают 20x20 клеток (20x20 метров)
             GridCell cell = gridManager.GetRandomFreeCellArea(20, 20);
@@ -314,7 +298,6 @@ public class LocationManager : MonoBehaviour
                 
                 currentLocation.pointsOfInterest.Add(stationPosition);
                 createdCount++;
-                Debug.Log($"  ✓ Станция {i+1}: {station.name} создана в ЦЕНТРЕ области 20x20 (ячейки {cell.gridPosition} - {new Vector2Int(cell.gridPosition.x + 19, cell.gridPosition.y + 19)}), позиция {stationPosition}");
             }
             else
             {
@@ -322,7 +305,6 @@ public class LocationManager : MonoBehaviour
             }
         }
         
-        Debug.Log($"=== Станции созданы: {createdCount} из {stationCount} ===");
     }
     
     /// <summary>
@@ -330,7 +312,6 @@ public class LocationManager : MonoBehaviour
     /// </summary>
     void GenerateAsteroids()
     {
-        Debug.Log("=== Начало генерации астероидов ===");
         
         if (spawnSettings.asteroidPrefabs == null || spawnSettings.asteroidPrefabs.Length == 0) 
         {
@@ -339,12 +320,10 @@ public class LocationManager : MonoBehaviour
         }
         
         int asteroidCount = Random.Range(spawnSettings.minAsteroids, spawnSettings.maxAsteroids + 1);
-        Debug.Log($"Планируется создать {asteroidCount} астероидов (диапазон: {spawnSettings.minAsteroids}-{spawnSettings.maxAsteroids})");
         
         int createdCount = 0;
         for (int i = 0; i < asteroidCount; i++)
         {
-            Debug.Log($"Попытка создать астероид {i+1}...");
             
             // Астероиды занимают 8x8 клеток (8x8 метров)
             GridCell cell = gridManager.GetRandomFreeCellArea(8, 8);
@@ -376,7 +355,6 @@ public class LocationManager : MonoBehaviour
                 RegisterObject(asteroid, "Asteroid");
                 
                 createdCount++;
-                Debug.Log($"  ✓ Астероид {i+1}: {asteroid.name} создан в ЦЕНТРЕ области 8x8 (ячейки {cell.gridPosition} - {new Vector2Int(cell.gridPosition.x + 7, cell.gridPosition.y + 7)}), позиция {asteroidPosition}");
             }
             else
             {
@@ -384,7 +362,6 @@ public class LocationManager : MonoBehaviour
             }
         }
         
-        Debug.Log($"=== Астероиды созданы: {createdCount} из {asteroidCount} ===");
     }
     
     /// <summary>
@@ -394,17 +371,14 @@ public class LocationManager : MonoBehaviour
     {
         if (spawnSettings.debrisPrefabs == null || spawnSettings.debrisPrefabs.Length == 0) 
         {
-            Debug.Log("Нет префабов обломков для генерации");
             return;
         }
         
         int debrisCount = Random.Range(spawnSettings.minDebris, spawnSettings.maxDebris + 1);
-        Debug.Log($"Генерация {debrisCount} обломков...");
         
         int createdCount = 0;
         for (int i = 0; i < debrisCount; i++)
         {
-            Debug.Log($"Попытка создать обломок {i+1}...");
             
             // Обломки занимают 1 клетку и размещаются в центре
             GridCell cell = GetRandomGridCell("Debris");
@@ -433,7 +407,6 @@ public class LocationManager : MonoBehaviour
                 RegisterObject(debris, "Debris");
                 
                 createdCount++;
-                Debug.Log($"  ✓ Обломок {i+1}: {debris.name} создан в ЦЕНТРЕ ячейки {cell.gridPosition}, позиция {cell.worldPosition}");
             }
             else
             {
@@ -441,7 +414,6 @@ public class LocationManager : MonoBehaviour
             }
         }
         
-        Debug.Log($"=== Обломки созданы: {createdCount} из {debrisCount} ===");
     }
     
     /// <summary>
@@ -453,7 +425,6 @@ public class LocationManager : MonoBehaviour
         int attempts = 0;
         int maxAttempts = 50;
         
-        Debug.Log("Поиск безопасной позиции для игрока...");
         
         do
         {
@@ -474,17 +445,14 @@ public class LocationManager : MonoBehaviour
         
         currentLocation.playerSpawnPoint = spawnPoint;
         
-        Debug.Log($"Точка спавна игрока установлена: {spawnPoint} (попыток: {attempts})");
         
         // Размещаем игрока если он есть
         if (playerShip != null)
         {
             playerShip.position = spawnPoint;
-            Debug.Log($"Игрок размещен в позиции: {playerShip.position}");
         }
         else
         {
-            Debug.Log("Ссылка на корабль игрока не установлена");
         }
     }
     
@@ -508,7 +476,6 @@ public class LocationManager : MonoBehaviour
             GridCell cell = gridManager.GetRandomFreeCell();
             if (cell != null)
             {
-                Debug.Log($"    Генерация позиции через сетку: ячейка {cell.gridPosition}, мировая позиция: {cell.worldPosition}");
                 return cell.worldPosition;
             }
         }
@@ -521,7 +488,6 @@ public class LocationManager : MonoBehaviour
         float z = Random.Range(-halfHeight, halfHeight);
         
         Vector3 position = new Vector3(x, 0, z);
-        Debug.Log($"    Генерация позиции (fallback): область [{-halfWidth:F1}, {halfWidth:F1}] x [{-halfHeight:F1}, {halfHeight:F1}], позиция: {position}");
         
         return position;
     }
@@ -540,7 +506,6 @@ public class LocationManager : MonoBehaviour
         GridCell cell = gridManager.GetRandomFreeCell();
         if (cell != null)
         {
-            Debug.Log($"    Выбрана ячейка {cell.gridPosition} для {objectType}");
         }
         else
         {
@@ -638,7 +603,6 @@ public class LocationManager : MonoBehaviour
         }
         else
         {
-            Debug.Log($"Объект {obj.name} зарегистрирован с коллайдером {collider.GetType().Name}");
         }
     }
     
@@ -779,25 +743,18 @@ public class LocationManager : MonoBehaviour
     /// </summary>
     void DiagnoseCreatedObjects()
     {
-        Debug.Log("=== ДИАГНОСТИКА СОЗДАННЫХ ОБЪЕКТОВ ===");
         
         foreach (GameObject obj in spawnedObjects)
         {
             if (obj == null) continue;
             
-            Debug.Log($"\n--- Объект: {obj.name} ---");
-            Debug.Log($"Позиция: {obj.transform.position}");
-            Debug.Log($"Активен: {obj.activeInHierarchy}");
             
             // Проверяем коллайдеры
             Collider[] colliders = obj.GetComponents<Collider>();
-            Debug.Log($"Коллайдеров: {colliders.Length}");
             foreach (var collider in colliders)
             {
-                Debug.Log($"  - {collider.GetType().Name}, включен: {collider.enabled}, isTrigger: {collider.isTrigger}");
                 if (collider is BoxCollider box)
                 {
-                    Debug.Log($"    Размер BoxCollider: {box.size}, центр: {box.center}");
                 }
             }
             
@@ -805,7 +762,6 @@ public class LocationManager : MonoBehaviour
             LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
             if (objectInfo != null)
             {
-                Debug.Log($"LocationObjectInfo: Тип='{objectInfo.objectType}', Имя='{objectInfo.objectName}'");
             }
             else
             {
@@ -813,10 +769,8 @@ public class LocationManager : MonoBehaviour
             }
             
             // Проверяем слой
-            Debug.Log($"Слой: {obj.layer} ({LayerMask.LayerToName(obj.layer)})");
         }
         
-        Debug.Log("=== КОНЕЦ ДИАГНОСТИКИ ===");
     }
     
     void OnDrawGizmos()

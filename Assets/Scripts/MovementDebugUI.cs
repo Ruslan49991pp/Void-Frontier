@@ -22,7 +22,6 @@ public class MovementDebugUI : MonoBehaviour
         {
             instance = this;
             DontDestroyOnLoad(gameObject);
-            Debug.Log("MovementDebugUI: Debug window initialized. Press F1 to toggle.");
         }
         else
         {
@@ -48,11 +47,9 @@ public class MovementDebugUI : MonoBehaviour
             movementController = FindObjectOfType<MovementController>();
             if (movementController != null)
             {
-                Debug.Log("MovementDebugUI: MovementController найден!");
                 yield break;
             }
             
-            Debug.Log($"MovementDebugUI: попытка найти MovementController #{attempts + 1}");
             yield return new WaitForSeconds(0.5f);
         }
         
@@ -67,7 +64,6 @@ public class MovementDebugUI : MonoBehaviour
         {
             GameObject debugGO = new GameObject("MovementDebugUI");
             debugGO.AddComponent<MovementDebugUI>();
-            Debug.Log("MovementDebugUI: Auto-created debug window. Press F1 to toggle.");
         }
     }
     
@@ -77,14 +73,12 @@ public class MovementDebugUI : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F1))
         {
             showWindow = !showWindow;
-            Debug.Log($"MovementDebugUI: Debug window {(showWindow ? "SHOWN" : "HIDDEN")}");
         }
         
         // Дополнительная проверка на случай если F1 не работает
         if (Input.GetKeyDown(KeyCode.F2))
         {
             showWindow = true;
-            Debug.Log("MovementDebugUI: Force showing debug window with F2");
         }
     }
     
@@ -345,7 +339,6 @@ public class MovementDebugUI : MonoBehaviour
     {
         debugLog = GenerateDebugReport();
         GUIUtility.systemCopyBuffer = debugLog;
-        Debug.Log("Debug info copied to clipboard!");
     }
     
     string GenerateDebugReport()

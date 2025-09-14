@@ -113,7 +113,6 @@ public class Character : MonoBehaviour
         // Генерируем краткую биографию
         characterData.bio = $"Level {characterData.level} {characterData.profession} with extensive experience in space operations.";
         
-        Debug.Log($"[{Time.time:F2}s] ✓ Создан персонаж: {GetFullName()}, {characterData.profession}, Level {characterData.level}");
     }
     
     /// <summary>
@@ -136,7 +135,6 @@ public class Character : MonoBehaviour
                 characterData.firstName = firstName;
                 characterData.lastName = lastName;
                 usedNames.Add(fullName);
-                Debug.Log($"[{Time.time:F2}s] Уникальное имя сгенерировано: {fullName} (попыток: {attempts + 1})");
                 return;
             }
             
@@ -172,7 +170,6 @@ public class Character : MonoBehaviour
         usedNames.Clear();
         // Пересоздаем Random с новым seed для лучшей случайности
         staticRandom = new System.Random(System.DateTime.Now.Millisecond + UnityEngine.Random.Range(0, 1000));
-        Debug.Log($"[{Time.time:F2}s] Список использованных имен очищен, новый Random seed");
     }
     
     /// <summary>
@@ -180,18 +177,11 @@ public class Character : MonoBehaviour
     /// </summary>
     public static void LogNameStatistics()
     {
-        Debug.Log($"=== СТАТИСТИКА ИМЕН ===");
-        Debug.Log($"Использовано уникальных имен: {usedNames.Count}");
-        Debug.Log($"Доступно имен: {FirstNames.Length}");
-        Debug.Log($"Доступно фамилий: {LastNames.Length}");
-        Debug.Log($"Возможных комбинаций: {FirstNames.Length * LastNames.Length}");
         
         if (usedNames.Count > 0)
         {
-            Debug.Log("Использованные имена:");
             foreach (string name in usedNames)
             {
-                Debug.Log($"  - {name}");
             }
         }
     }
@@ -228,7 +218,6 @@ public class Character : MonoBehaviour
         isSelected = selected;
         SetColor(selected ? selectedColor : defaultColor);
         
-        Debug.Log($"Персонаж {GetFullName()} {(selected ? "выделен" : "снят с выделения")}");
     }
     
     /// <summary>
@@ -266,7 +255,6 @@ public class Character : MonoBehaviour
         
         if (characterData.health <= 0)
         {
-            Debug.Log($"Персонаж {GetFullName()} потерял сознание!");
         }
     }
     

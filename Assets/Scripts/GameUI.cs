@@ -61,7 +61,6 @@ public class GameUI : MonoBehaviour
         CreateBottomPanel();
         CreatePortraitTemplate();
         
-        Debug.Log("GameUI инициализирован");
     }
     
     /// <summary>
@@ -308,7 +307,6 @@ public class GameUI : MonoBehaviour
             CreateCharacterPortrait(selectedCharacters[i]);
         }
         
-        Debug.Log($"Обновлены портреты: {portraitCount} персонажей");
     }
     
     /// <summary>
