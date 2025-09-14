@@ -8,10 +8,14 @@ using UnityEngine;
 public class SimplePathfinder : MonoBehaviour
 {
     private GridManager gridManager;
-    
-    void Awake()
+
+    private GridManager GetGridManager()
     {
-        gridManager = FindObjectOfType<GridManager>();
+        if (gridManager == null)
+        {
+            gridManager = FindObjectOfType<GridManager>();
+        }
+        return gridManager;
     }
     
     /// <summary>
@@ -19,11 +23,13 @@ public class SimplePathfinder : MonoBehaviour
     /// </summary>
     public List<Vector2Int> FindPath(Vector2Int start, Vector2Int end)
     {
+        var gridManager = GetGridManager();
         if (gridManager == null)
         {
             Debug.LogError("GridManager не найден!");
             return new List<Vector2Int> { end };
         }
+
         
         
         // Если начальная и конечная точки одинаковы
@@ -55,15 +61,17 @@ public class SimplePathfinder : MonoBehaviour
     {
         // Простая проверка по линии Брезенхема
         List<Vector2Int> linePoints = GetLinePoints(start, end);
-        
+
         foreach (var point in linePoints)
         {
-            if (!IsCellPassable(point))
+            bool passable = IsCellPassable(point);
+
+            if (!passable)
             {
                 return false;
             }
         }
-        
+
         return true;
     }
     
@@ -190,7 +198,6 @@ public class SimplePathfinder : MonoBehaviour
         }
         
         // Путь не найден, возвращаем прямой путь к цели
-        Debug.LogWarning($"Путь от {start} к {end} не найден, используем прямой путь");
         return new List<Vector2Int> { end };
     }
     
@@ -214,6 +221,7 @@ public class SimplePathfinder : MonoBehaviour
             pos + new Vector2Int(1, -1)    // юго-восток
         };
         
+        var gridManager = GetGridManager();
         return neighbors.Where(p => gridManager.IsValidGridPosition(p) && IsCellPassable(p)).ToList();
     }
     
@@ -260,15 +268,23 @@ public class SimplePathfinder : MonoBehaviour
     /// </summary>
     bool IsCellPassable(Vector2Int pos)
     {
-        if (!gridManager.IsValidGridPosition(pos))
+        var gridManager = GetGridManager();
+        if (gridManager == null || !gridManager.IsValidGridPosition(pos))
             return false;
-        
+
         var cell = gridManager.GetCell(pos);
         if (cell == null || !cell.isOccupied)
             return true;
-        
+
         // Персонажи не блокируют путь (другие персонажи могут проходить через них)
-        return cell.objectType == "Character";
+        bool passable = cell.objectType == "Character";
+
+        // Логируем блокировки кокпита для отладки
+        if (!passable && cell.objectType == "Cockpit")
+        {
+        }
+
+        return passable;
     }
     
     /// <summary>

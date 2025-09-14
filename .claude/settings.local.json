@@ -4,7 +4,8 @@
       "Bash(rm:*)",
       "Bash(find:*)",
       "Bash(dir:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(if exist \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\WallObstacle.cs.meta\" del \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\WallObstacle.cs.meta\")"
     ],
     "deny": [],
     "ask": []

@@ -386,7 +386,7 @@ public class GridManager : MonoBehaviour
     public List<GridCell> GetCellsByObjectType(string objectType)
     {
         List<GridCell> cells = new List<GridCell>();
-        
+
         foreach (var cell in gridLookup.Values)
         {
             if (cell.isOccupied && cell.objectType == objectType)
@@ -394,8 +394,16 @@ public class GridManager : MonoBehaviour
                 cells.Add(cell);
             }
         }
-        
+
         return cells;
+    }
+
+    /// <summary>
+    /// Получить все клетки сетки
+    /// </summary>
+    public Dictionary<Vector2Int, GridCell> GetAllCells()
+    {
+        return gridLookup;
     }
     
     /// <summary>
@@ -407,7 +415,11 @@ public class GridManager : MonoBehaviour
         {
             if (cell.isOccupied)
             {
-                cell.ClearOccupied();
+                // НЕ очищаем клетки кокпита и персонажей - они должны сохраняться
+                if (cell.objectType != "Cockpit" && cell.objectType != "Character")
+                {
+                    cell.ClearOccupied();
+                }
             }
         }
     }
@@ -523,7 +535,7 @@ public class GridManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Создать кокпит рядом с персонажами (размер 6x5 клеток)
+    /// Создать кокпит рядом с персонажами (размер 5x3 клетки)
     /// </summary>
     void SpawnCockpit(Vector2Int charactersStartPosition)
     {
@@ -537,10 +549,11 @@ public class GridManager : MonoBehaviour
                 Debug.LogWarning("Префаб кокпита не установлен и не найден в Resources/Prefabs/SM_Cockpit");
                 return;
             }
+
         }
 
-        // Размер кокпита: 6 в длину x 5 в ширину
-        Vector2Int cockpitSize = new Vector2Int(6, 5);
+        // Размер кокпита: 5 в длину x 3 в ширину
+        Vector2Int cockpitSize = new Vector2Int(5, 3);
 
         // Пытаемся разместить кокпит подальше от персонажей
         Vector2Int[] possiblePositions = new Vector2Int[]
@@ -564,13 +577,12 @@ public class GridManager : MonoBehaviour
                     // Занимаем все клетки под кокпитом
                     OccupyCells(position, cockpitSize, cockpit, "Cockpit");
 
-                    Debug.Log($"Кокпит создан в позиции {position} размером {cockpitSize}");
                     return;
                 }
             }
         }
 
-        Debug.LogWarning("Не удалось найти подходящее место для размещения кокпита (6x5 клеток) рядом с персонажами");
+        Debug.LogWarning("Не удалось найти подходящее место для размещения кокпита (5x3 клетки) рядом с персонажами");
     }
 
     /// <summary>
@@ -594,10 +606,11 @@ public class GridManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Занять несколько клеток под объектом с учетом прохода для кокпита
+    /// Занять несколько клеток под объектом (все клетки кокпита теперь непроходимы)
     /// </summary>
     void OccupyCells(Vector2Int startPosition, Vector2Int size, GameObject obj, string objectType)
     {
+        int occupiedCount = 0;
         for (int x = startPosition.x; x < startPosition.x + size.x; x++)
         {
             for (int y = startPosition.y; y < startPosition.y + size.y; y++)
@@ -605,31 +618,24 @@ public class GridManager : MonoBehaviour
                 Vector2Int cellPos = new Vector2Int(x, y);
                 if (IsValidGridPosition(cellPos))
                 {
-                    // Для кокпита создаем проход шириной в 2 клетки по центру переднего края
-                    if (objectType == "Cockpit" && IsCockpitEntrance(cellPos, startPosition, size))
+                    bool success = OccupyCell(cellPos, obj, objectType);
+                    if (success)
                     {
-                        continue; // Не занимаем клетки входа
+                        occupiedCount++;
                     }
-
-                    OccupyCell(cellPos, obj, objectType);
+                    else
+                    {
+                        Debug.LogWarning($"Не удалось занять клетку {cellPos} для {objectType}");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"Клетка {cellPos} недействительна для {objectType}");
                 }
             }
         }
     }
 
-    /// <summary>
-    /// Проверить, является ли клетка входом в кокпит (2 клетки по центру переднего края)
-    /// </summary>
-    bool IsCockpitEntrance(Vector2Int cellPos, Vector2Int cockpitStart, Vector2Int cockpitSize)
-    {
-        // Вход находится по центру переднего края (нижний край кокпита)
-        int entranceY = cockpitStart.y; // Передний край
-        int entranceStartX = cockpitStart.x + (cockpitSize.x / 2) - 1; // Центр минус 1
-        int entranceEndX = entranceStartX + 1; // 2 клетки
-
-        return cellPos.y == entranceY && cellPos.x >= entranceStartX && cellPos.x <= entranceEndX;
-    }
-    
     /// <summary>
     /// Создать префаб персонажа программно
     /// </summary>
@@ -909,4 +915,5 @@ public class GridManager : MonoBehaviour
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(Vector3.zero, 2f);
     }
+
 }

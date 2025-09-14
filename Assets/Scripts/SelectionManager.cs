@@ -10,6 +10,9 @@ public class SelectionManager : MonoBehaviour
     public Color selectionBoxColor = new Color(0.8f, 0.8f, 1f, 0.25f);
     public Color selectionBoxBorderColor = new Color(0.8f, 0.8f, 1f, 1f);
     public float selectionIndicatorHeight = 2f;
+
+    [Header("Hover Highlight")]
+    public Color hoverColor = Color.cyan;
     
     [Header("Visual Indicators")]
     public GameObject selectionIndicatorPrefab;
@@ -38,7 +41,13 @@ public class SelectionManager : MonoBehaviour
     
     // События
     public System.Action<List<GameObject>> OnSelectionChanged;
-    
+
+    // Hover система
+    private GameObject currentHoveredObject = null;
+    private Dictionary<MeshRenderer, Material> originalMaterials = new Dictionary<MeshRenderer, Material>();
+    private Dictionary<MeshRenderer, Material> hoverMaterials = new Dictionary<MeshRenderer, Material>();
+    private List<MeshRenderer> currentHighlightedRenderers = new List<MeshRenderer>();
+
     // Публичные свойства
     public bool IsBoxSelecting => isBoxSelecting;
     
@@ -59,6 +68,7 @@ public class SelectionManager : MonoBehaviour
         HandleMouseInput();
         UpdateSelectionBox();
         UpdateSelectionIndicatorPositions();
+        HandleHover();
     }
     
     /// <summary>
@@ -377,6 +387,15 @@ public class SelectionManager : MonoBehaviour
     {
         if (!selectedObjects.Contains(obj))
         {
+            // Убираем hover подсветку если объект был подсвечен
+            if (currentHoveredObject == obj)
+            {
+                EndHover(obj);
+            }
+
+            // Очищаем любые сохраненные hover материалы для этого объекта
+            ClearHoverMaterialsForObject(obj);
+
             selectedObjects.Add(obj);
             CreateSelectionIndicator(obj);
             SetObjectSelectionState(obj, true);
@@ -396,6 +415,12 @@ public class SelectionManager : MonoBehaviour
             if (obj != null) // Проверяем перед обращением к объекту
             {
                 SetObjectSelectionState(obj, false);
+
+                // Если курсор находится над этим объектом, применяем hover подсветку
+                if (currentHoveredObject == obj)
+                {
+                    StartHover(obj);
+                }
             }
             UpdateSelectionInfo();
             OnSelectionChanged?.Invoke(selectedObjects);
@@ -409,13 +434,19 @@ public class SelectionManager : MonoBehaviour
     {
         // Создаем копию списка для безопасной итерации
         var objectsToProcess = new List<GameObject>(selectedObjects);
-        
+
         foreach (GameObject obj in objectsToProcess)
         {
             if (obj != null) // Проверяем, что объект не был уничтожен
             {
                 RemoveSelectionIndicator(obj);
                 SetObjectSelectionState(obj, false);
+
+                // Если курсор находится над этим объектом, применяем hover подсветку
+                if (currentHoveredObject == obj)
+                {
+                    StartHover(obj);
+                }
             }
             else
             {
@@ -426,7 +457,7 @@ public class SelectionManager : MonoBehaviour
                 }
             }
         }
-        
+
         selectedObjects.Clear();
         UpdateSelectionInfo();
         OnSelectionChanged?.Invoke(selectedObjects);
@@ -624,27 +655,255 @@ public class SelectionManager : MonoBehaviour
                 Debug.LogError($"НЕТ КОЛЛАЙДЕРА у {obj.name}!");
             }
         }
-        
+
     }
-    
+
+    /// <summary>
+    /// Обработка подсветки объектов при hover
+    /// </summary>
+    void HandleHover()
+    {
+        if (isBoxSelecting) return; // Не обрабатываем hover во время выделения рамкой
+
+        Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask);
+
+        GameObject hoveredObject = null;
+
+        // Ищем объект для подсветки
+        foreach (RaycastHit hit in hits)
+        {
+            GameObject hitObject = hit.collider.gameObject;
+
+            // Исключаем системные объекты
+            if (hitObject.name.Contains("Bounds") || hitObject.name.Contains("Grid") ||
+                hitObject.name.Contains("Location") && !hitObject.name.Contains("Test") ||
+                hitObject.name.Contains("Plane"))
+            {
+                continue;
+            }
+
+            // Ищем корневой объект для подсветки (префаб)
+            GameObject rootObject = FindHoverableRoot(hitObject);
+            if (rootObject != null)
+            {
+                hoveredObject = rootObject;
+                break;
+            }
+        }
+
+        // Обновляем подсветку
+        if (hoveredObject != currentHoveredObject)
+        {
+            // Убираем подсветку с предыдущего объекта
+            if (currentHoveredObject != null)
+            {
+                EndHover(currentHoveredObject);
+            }
+
+            // Добавляем подсветку новому объекту, только если он НЕ выделен
+            if (hoveredObject != null && !IsSelected(hoveredObject))
+            {
+                StartHover(hoveredObject);
+            }
+
+            currentHoveredObject = hoveredObject;
+        }
+    }
+
+    /// <summary>
+    /// Найти корневой объект для подсветки (префаб)
+    /// </summary>
+    GameObject FindHoverableRoot(GameObject hitObject)
+    {
+        // Проверяем, может ли сам объект быть подсвечен
+        if (CanObjectBeHighlighted(hitObject))
+        {
+            return hitObject;
+        }
+
+        // Ищем в родительских объектах
+        Transform current = hitObject.transform.parent;
+        while (current != null)
+        {
+            if (CanObjectBeHighlighted(current.gameObject))
+            {
+                return current.gameObject;
+            }
+            current = current.parent;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Проверить, может ли объект быть подсвечен
+    /// </summary>
+    bool CanObjectBeHighlighted(GameObject obj)
+    {
+        // Проверяем наличие MeshRenderer в объекте или его детях
+        MeshRenderer[] renderers = obj.GetComponentsInChildren<MeshRenderer>();
+        if (renderers.Length == 0) return false;
+
+        // ПЕРСОНАЖИ НЕ УЧАСТВУЮТ В HOVER СИСТЕМЕ - у них своя система цветов
+        if (obj.GetComponent<Character>() != null)
+        {
+            return false;
+        }
+
+        // Специальная логика для SM_Cockpit - он должен подсвечиваться целиком
+        if (obj.name == "SM_Cockpit")
+        {
+            return true;
+        }
+
+        // Для других объектов - проверяем наличие LocationObjectInfo
+        if (obj.GetComponent<LocationObjectInfo>() != null)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Начать подсветку объекта и всех его дочерних MeshRenderer'ов
+    /// </summary>
+    void StartHover(GameObject obj)
+    {
+        // Проверяем, что объект не выделен (дополнительная проверка)
+        if (IsSelected(obj)) return;
+
+        // Получаем все MeshRenderer в объекте и его детях
+        MeshRenderer[] renderers = obj.GetComponentsInChildren<MeshRenderer>();
+
+        foreach (MeshRenderer renderer in renderers)
+        {
+            if (renderer == null) continue;
+
+            // Сохраняем оригинальный материал если еще не сохранили
+            if (!originalMaterials.ContainsKey(renderer))
+            {
+                originalMaterials[renderer] = renderer.material;
+            }
+
+            // Создаем или получаем hover материал
+            if (!hoverMaterials.ContainsKey(renderer))
+            {
+                Material hoverMat = new Material(originalMaterials[renderer]);
+                hoverMat.color = hoverColor;
+                hoverMaterials[renderer] = hoverMat;
+            }
+
+            renderer.material = hoverMaterials[renderer];
+            currentHighlightedRenderers.Add(renderer);
+        }
+    }
+
+    /// <summary>
+    /// Завершить подсветку объекта и всех его дочерних MeshRenderer'ов
+    /// </summary>
+    void EndHover(GameObject obj)
+    {
+        // Восстанавливаем материалы всех подсвеченных рендереров
+        foreach (MeshRenderer renderer in currentHighlightedRenderers)
+        {
+            if (renderer != null && originalMaterials.ContainsKey(renderer))
+            {
+                renderer.material = originalMaterials[renderer];
+            }
+        }
+
+        currentHighlightedRenderers.Clear();
+    }
+
+    /// <summary>
+    /// Очистить hover материалы для конкретного объекта
+    /// </summary>
+    void ClearHoverMaterialsForObject(GameObject obj)
+    {
+        MeshRenderer[] renderers = obj.GetComponentsInChildren<MeshRenderer>();
+
+        foreach (MeshRenderer renderer in renderers)
+        {
+            if (renderer == null) continue;
+
+            // Восстанавливаем оригинальный материал
+            if (originalMaterials.ContainsKey(renderer))
+            {
+                renderer.material = originalMaterials[renderer];
+            }
+
+            // Удаляем записи о hover материалах
+            if (originalMaterials.ContainsKey(renderer))
+            {
+                originalMaterials.Remove(renderer);
+            }
+
+            if (hoverMaterials.ContainsKey(renderer))
+            {
+                Material hoverMat = hoverMaterials[renderer];
+                if (hoverMat != null)
+                {
+                    DestroyImmediate(hoverMat);
+                }
+                hoverMaterials.Remove(renderer);
+            }
+
+            // Убираем из списка подсвеченных
+            currentHighlightedRenderers.Remove(renderer);
+        }
+    }
+
+
     void OnDestroy()
     {
         try
         {
             // Безопасная очистка выделения при уничтожении
             ClearSelection();
+
+            // Очистка hover состояния
+            if (currentHoveredObject != null)
+            {
+                EndHover(currentHoveredObject);
+            }
+
+            // Уничтожение созданных hover материалов
+            foreach (var material in hoverMaterials.Values)
+            {
+                if (material != null)
+                {
+                    DestroyImmediate(material);
+                }
+            }
         }
         catch (System.Exception e)
         {
             Debug.LogWarning($"Ошибка при очистке выделения в OnDestroy: {e.Message}");
         }
-        
-        // Принудительная очистка словаря индикаторов
+
+        // Принудительная очистка словарей
         if (selectionIndicators != null)
         {
             selectionIndicators.Clear();
         }
-        
+
+        if (originalMaterials != null)
+        {
+            originalMaterials.Clear();
+        }
+
+        if (hoverMaterials != null)
+        {
+            hoverMaterials.Clear();
+        }
+
+        if (currentHighlightedRenderers != null)
+        {
+            currentHighlightedRenderers.Clear();
+        }
+
         // Очистка списка выделенных объектов
         if (selectedObjects != null)
         {

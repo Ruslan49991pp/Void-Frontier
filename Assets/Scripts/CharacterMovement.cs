@@ -72,7 +72,6 @@ public class CharacterMovement : MonoBehaviour
     /// </summary>
     public void MoveTo(Vector3 worldPosition)
     {
-
         targetPosition = worldPosition;
 
         // Сохраняем изначальную цель для мониторинга занятости
@@ -117,9 +116,16 @@ public class CharacterMovement : MonoBehaviour
         // Находим путь с обходом препятствий
         Vector2Int startGrid = gridManager.WorldToGrid(startPosition);
         Vector2Int targetGrid = gridManager.WorldToGrid(targetPosition);
-        
-        
-        currentPath = pathfinder.FindPath(startGrid, targetGrid);
+
+        if (pathfinder == null)
+        {
+            Debug.LogError($"CHARACTER MOVEMENT: {name} pathfinder is NULL!");
+            currentPath = new List<Vector2Int> { targetGrid };
+        }
+        else
+        {
+            currentPath = pathfinder.FindPath(startGrid, targetGrid);
+        }
         currentPathIndex = 0;
         
         if (currentPath != null && currentPath.Count > 0)

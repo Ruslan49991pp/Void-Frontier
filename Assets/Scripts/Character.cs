@@ -21,6 +21,7 @@ public class Character : MonoBehaviour
     public Renderer characterRenderer;
     public Color defaultColor = Color.green;
     public Color selectedColor = Color.red;
+    public Color hoverColor = Color.cyan;
     
     [Header("Stats")]
     public float moveSpeed = 3f;
@@ -62,14 +63,16 @@ public class Character : MonoBehaviour
     
     // Внутренние переменные
     private bool isSelected = false;
+    private bool isHovered = false;
     private Material characterMaterial;
+    private Camera mainCamera;
     
     void Awake()
     {
         // Находим renderer если не назначен
         if (characterRenderer == null)
             characterRenderer = GetComponent<Renderer>();
-            
+
         // Создаем собственный материал для изменения цвета
         if (characterRenderer != null)
         {
@@ -77,6 +80,9 @@ public class Character : MonoBehaviour
             characterRenderer.material = characterMaterial;
             SetColor(defaultColor);
         }
+
+        // Находим главную камеру
+        mainCamera = Camera.main;
         
         // Добавляем LocationObjectInfo для интеграции с системой выделения
         var objectInfo = GetComponent<LocationObjectInfo>();
@@ -93,6 +99,23 @@ public class Character : MonoBehaviour
         objectInfo.objectType = "Character";
         objectInfo.objectName = GetFullName();
         objectInfo.health = characterData.health;
+    }
+
+    void Update()
+    {
+        // Проверяем hover только если персонаж не выделен
+        if (!isSelected)
+        {
+            CheckMouseHover();
+        }
+        else
+        {
+            // Если персонаж выделен, убираем hover состояние
+            if (isHovered)
+            {
+                isHovered = false;
+            }
+        }
     }
     
     /// <summary>
@@ -158,8 +181,6 @@ public class Character : MonoBehaviour
         characterData.firstName = nameParts[0];
         characterData.lastName = string.Join(" ", nameParts, 1, nameParts.Length - 1);
         usedNames.Add(uniqueName);
-        
-        Debug.LogWarning($"Принудительно создано уникальное имя: {uniqueName}");
     }
     
     /// <summary>
@@ -214,10 +235,21 @@ public class Character : MonoBehaviour
     public void SetSelected(bool selected)
     {
         if (isSelected == selected) return;
-        
+
         isSelected = selected;
-        SetColor(selected ? selectedColor : defaultColor);
-        
+
+        if (selected)
+        {
+            // При выделении убираем hover и устанавливаем красный цвет
+            isHovered = false;
+            SetColor(selectedColor);
+        }
+        else
+        {
+            // При снятии выделения возвращаем цвет по умолчанию
+            // Hover будет обработан в Update()
+            SetColor(defaultColor);
+        }
     }
     
     /// <summary>
@@ -273,6 +305,42 @@ public class Character : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Проверка наведения мыши на персонажа
+    /// </summary>
+    void CheckMouseHover()
+    {
+        if (mainCamera == null) return;
+
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
+        bool shouldHover = false;
+
+        // Используем RaycastAll чтобы проверить все объекты на луче
+        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity);
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.collider.gameObject == gameObject)
+            {
+                shouldHover = true;
+                break;
+            }
+        }
+
+        // Обновляем состояние hover
+        if (shouldHover && !isHovered)
+        {
+            isHovered = true;
+            SetColor(hoverColor);
+        }
+        else if (!shouldHover && isHovered)
+        {
+            isHovered = false;
+            SetColor(defaultColor);
+        }
+    }
+
     void OnDestroy()
     {
         // Освобождаем материал
