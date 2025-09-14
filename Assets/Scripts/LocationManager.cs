@@ -62,11 +62,24 @@ public class LocationManager : MonoBehaviour
     void Start()
     {
         InitializeLocation();
-        
+
         if (autoGenerateOnStart)
         {
-            GenerateLocation();
+            // Задержка чтобы GridManager успел создать персонажей и кокпит первыми
+            StartCoroutine(DelayedGenerateLocation());
         }
+    }
+
+    /// <summary>
+    /// Генерация локации с задержкой для приоритета кокпита
+    /// </summary>
+    System.Collections.IEnumerator DelayedGenerateLocation()
+    {
+        // Ждем 2 кадра чтобы GridManager успел создать персонажей и кокпит
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForEndOfFrame();
+
+        GenerateLocation();
     }
     
     /// <summary>

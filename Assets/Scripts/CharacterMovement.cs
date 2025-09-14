@@ -135,7 +135,11 @@ public class CharacterMovement : MonoBehaviour
         
         // Завершение движения
         isMoving = false;
-        movementCoroutine = null;
+        if (movementCoroutine != null)
+        {
+            StopCoroutine(movementCoroutine);
+            movementCoroutine = null;
+        }
         currentPath = null;
         
         // Скрываем путь
@@ -158,7 +162,11 @@ public class CharacterMovement : MonoBehaviour
         {
             // Завершение движения
             isMoving = false;
-            movementCoroutine = null;
+            if (movementCoroutine != null)
+            {
+                StopCoroutine(movementCoroutine);
+                movementCoroutine = null;
+            }
             currentPath = null;
 
             // Скрываем путь
@@ -172,15 +180,45 @@ public class CharacterMovement : MonoBehaviour
             yield break;
         }
 
-        for (currentPathIndex = 0; currentPathIndex < currentPath.Count; currentPathIndex++)
+        if (currentPath == null)
         {
-            // Дополнительная проверка на случай изменения пути во время выполнения
-            if (currentPath == null || currentPathIndex >= currentPath.Count)
+            Debug.LogError("currentPath is null in MoveAlongPath");
+            yield break;
+        }
+
+        if (gridManager == null)
+        {
+            Debug.LogError("gridManager is null in MoveAlongPath");
+            yield break;
+        }
+
+        // Создаем локальную копию пути для безопасности
+        List<Vector2Int> pathCopy = new List<Vector2Int>(currentPath);
+        int pathCount = pathCopy.Count;
+
+        for (currentPathIndex = 0; currentPathIndex < pathCount; currentPathIndex++)
+        {
+            // Проверка что корутина все еще актуальна
+            if (!isMoving)
             {
+                Debug.Log("Movement was stopped, exiting MoveAlongPath");
                 yield break;
             }
 
-            Vector3 nextTarget = gridManager.GridToWorld(currentPath[currentPathIndex]);
+            // Дополнительная проверка на случай изменения пути во время выполнения
+            if (currentPath == null || currentPathIndex >= pathCopy.Count)
+            {
+                Debug.Log($"Path became invalid during movement: currentPathIndex={currentPathIndex}");
+                yield break;
+            }
+
+            if (gridManager == null)
+            {
+                Debug.LogError("gridManager became null during movement");
+                yield break;
+            }
+
+            Vector3 nextTarget = gridManager.GridToWorld(pathCopy[currentPathIndex]);
 
             // Проверяем, не слишком ли близко мы уже к этой точке
             float distanceToTarget = Vector3.Distance(transform.position, nextTarget);
@@ -194,8 +232,14 @@ public class CharacterMovement : MonoBehaviour
             
             // Движение к следующей точке пути
             int frameCount = 0;
-            while (Vector3.Distance(transform.position, nextTarget) > 0.1f)
+            while (Vector3.Distance(transform.position, nextTarget) > 0.1f && isMoving)
             {
+                // Проверка что движение не было прервано
+                if (!isMoving)
+                {
+                    Debug.Log("Movement was stopped during path execution");
+                    yield break;
+                }
                 Vector3 currentPos = transform.position;
                 Vector3 direction = (nextTarget - currentPos).normalized;
                 float moveThisFrame = MOVE_SPEED * Time.deltaTime;
