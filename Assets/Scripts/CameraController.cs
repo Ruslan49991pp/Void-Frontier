@@ -19,7 +19,7 @@ public class CameraController : MonoBehaviour
     public float maxOrthoSize = 30f;
 
     [Header("Focus / Controls")]
-    public KeyCode focusKey = KeyCode.F;   // ������� ��� �������� � ������
+    // public KeyCode focusKey = KeyCode.F;   // ������� ��� �������� � ������ - ������
     
     [Header("Mouse Edge Scrolling")]
     public bool enableEdgeScrolling = true; // �������� ��������� ����� ������
@@ -57,8 +57,8 @@ public class CameraController : MonoBehaviour
         HandleInput();
         HandleZoom();
 
-        if (Input.GetKeyDown(focusKey))
-            CenterOnTarget();
+        // if (Input.GetKeyDown(focusKey))
+        //     CenterOnTarget(); // ������ ������ Center
     }
 
     void LateUpdate()

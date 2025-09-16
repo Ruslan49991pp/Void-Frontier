@@ -337,7 +337,6 @@ public class MovementController : MonoBehaviour
             }
         }
         
-        Debug.LogWarning($"Не удалось найти свободную клетку рядом с {targetPos}, используем исходную позицию");
         return targetPos;
     }
     
@@ -407,9 +406,9 @@ public class MovementController : MonoBehaviour
                         group.allCharacters.Remove(character);
                         group.arrivedCharacters.Remove(character);
                     }
-                    catch (System.Exception e)
+                    catch (System.Exception)
                     {
-                        Debug.LogWarning($"Ошибка при очистке движения {character.name}: {e.Message}");
+                        // Ignore cleanup errors
                     }
                 }
             }
@@ -453,9 +452,9 @@ public class MovementController : MonoBehaviour
                     {
                         character.StopMovement();
                     }
-                    catch (System.Exception e)
+                    catch (System.Exception)
                     {
-                        Debug.LogWarning($"Ошибка при остановке движения {character.name}: {e.Message}");
+                        // Ignore movement stop errors
                     }
                 }
             }
@@ -495,9 +494,9 @@ public class MovementController : MonoBehaviour
                         {
                             character.StopMovement();
                         }
-                        catch (System.Exception e)
+                        catch (System.Exception)
                         {
-                            Debug.LogWarning($"Ошибка при остановке движения {character.name}: {e.Message}");
+                            // Ignore movement stop errors
                         }
                     }
                 }

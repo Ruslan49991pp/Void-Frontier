@@ -88,39 +88,7 @@ public class SelectionManager : MonoBehaviour
             canvasGO.AddComponent<GraphicRaycaster>();
         }
         
-        // Создаем панель для отображения информации о выделении
-        if (selectionInfoPanel == null)
-        {
-            GameObject infoPanelGO = new GameObject("SelectionInfoPanel");
-            infoPanelGO.transform.SetParent(uiCanvas.transform, false);
-            
-            selectionInfoPanel = infoPanelGO.AddComponent<RectTransform>();
-            selectionInfoPanel.anchorMin = new Vector2(0, 1);
-            selectionInfoPanel.anchorMax = new Vector2(0, 1);
-            selectionInfoPanel.pivot = new Vector2(0, 1);
-            selectionInfoPanel.anchoredPosition = new Vector2(10, -10);
-            selectionInfoPanel.sizeDelta = new Vector2(300, 100);
-            
-            // Добавляем фон
-            Image background = infoPanelGO.AddComponent<Image>();
-            background.color = new Color(0, 0, 0, 0.7f);
-            
-            // Создаем текст
-            GameObject textGO = new GameObject("InfoText");
-            textGO.transform.SetParent(infoPanelGO.transform, false);
-            
-            selectionInfoText = textGO.AddComponent<Text>();
-            selectionInfoText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            selectionInfoText.fontSize = 14;
-            selectionInfoText.color = Color.white;
-            selectionInfoText.text = "";
-            
-            RectTransform textRect = textGO.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.offsetMin = new Vector2(10, 10);
-            textRect.offsetMax = new Vector2(-10, -10);
-        }
+        // Убрали панель информации о выделении сверху слева - теперь будет только снизу
         
         // Создаем UI элемент для рамки выделения
         GameObject boxGO = new GameObject("SelectionBox");
@@ -495,9 +463,9 @@ public class SelectionManager : MonoBehaviour
                 {
                     DestroyImmediate(indicator);
                 }
-                catch (System.Exception e)
+                catch (System.Exception)
                 {
-                    Debug.LogWarning($"Ошибка при удалении индикатора выделения: {e.Message}");
+                    // Error handled silently
                 }
             }
             selectionIndicators.Remove(targetObject);
@@ -548,7 +516,6 @@ public class SelectionManager : MonoBehaviour
         // Проверяем, что объект не был уничтожен
         if (obj == null)
         {
-            Debug.LogWarning("SetObjectSelectionState: попытка доступа к уничтоженному объекту");
             return;
         }
         
@@ -568,51 +535,15 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Обновление информации о выделении в UI
+    /// Обновление информации о выделении в UI - теперь только для GameUI
     /// </summary>
     void UpdateSelectionInfo()
     {
-        if (selectionInfoText == null) return;
-        
         // Очищаем список от уничтоженных объектов
         selectedObjects.RemoveAll(obj => obj == null);
-        
-        if (selectedObjects.Count == 0)
-        {
-            selectionInfoText.text = "";
-            selectionInfoPanel.gameObject.SetActive(false);
-            return;
-        }
-        
-        selectionInfoPanel.gameObject.SetActive(true);
-        
-        string info = $"Выделено объектов: {selectedObjects.Count}\n\n";
-        
-        foreach (GameObject obj in selectedObjects)
-        {
-            if (obj == null) continue; // Пропускаем уничтоженные объекты
-            
-            // Приоритет для персонажей - показываем их подробную информацию
-            Character character = obj.GetComponent<Character>();
-            if (character != null)
-            {
-                info += character.GetCharacterInfo() + "\n\n";
-                continue;
-            }
-            
-            // Для остальных объектов стандартная информация
-            LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
-            if (objectInfo != null)
-            {
-                info += $"• {objectInfo.objectName} ({objectInfo.objectType})\n";
-            }
-            else
-            {
-                info += $"• {obj.name}\n";
-            }
-        }
-        
-        selectionInfoText.text = info;
+
+        // Информация о выделении теперь отображается только в нижней панели GameUI
+        // Здесь больше ничего не делаем
     }
     
     /// <summary>
@@ -652,7 +583,7 @@ public class SelectionManager : MonoBehaviour
             }
             else
             {
-                Debug.LogError($"НЕТ КОЛЛАЙДЕРА у {obj.name}!");
+                // Object has no collider
             }
         }
 
@@ -878,9 +809,9 @@ public class SelectionManager : MonoBehaviour
                 }
             }
         }
-        catch (System.Exception e)
+        catch (System.Exception)
         {
-            Debug.LogWarning($"Ошибка при очистке выделения в OnDestroy: {e.Message}");
+            // Error handled silently during cleanup
         }
 
         // Принудительная очистка словарей

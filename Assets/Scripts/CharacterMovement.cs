@@ -119,7 +119,6 @@ public class CharacterMovement : MonoBehaviour
 
         if (pathfinder == null)
         {
-            Debug.LogError($"CHARACTER MOVEMENT: {name} pathfinder is NULL!");
             currentPath = new List<Vector2Int> { targetGrid };
         }
         else
@@ -188,13 +187,11 @@ public class CharacterMovement : MonoBehaviour
 
         if (currentPath == null)
         {
-            Debug.LogError("currentPath is null in MoveAlongPath");
             yield break;
         }
 
         if (gridManager == null)
         {
-            Debug.LogError("gridManager is null in MoveAlongPath");
             yield break;
         }
 
@@ -207,20 +204,17 @@ public class CharacterMovement : MonoBehaviour
             // Проверка что корутина все еще актуальна
             if (!isMoving)
             {
-                Debug.Log("Movement was stopped, exiting MoveAlongPath");
                 yield break;
             }
 
             // Дополнительная проверка на случай изменения пути во время выполнения
             if (currentPath == null || currentPathIndex >= pathCopy.Count)
             {
-                Debug.Log($"Path became invalid during movement: currentPathIndex={currentPathIndex}");
                 yield break;
             }
 
             if (gridManager == null)
             {
-                Debug.LogError("gridManager became null during movement");
                 yield break;
             }
 
@@ -243,7 +237,6 @@ public class CharacterMovement : MonoBehaviour
                 // Проверка что движение не было прервано
                 if (!isMoving)
                 {
-                    Debug.Log("Movement was stopped during path execution");
                     yield break;
                 }
                 Vector3 currentPos = transform.position;
@@ -273,7 +266,6 @@ public class CharacterMovement : MonoBehaviour
                 // Защита от бесконечного цикла
                 if (frameCount > 1000)
                 {
-                    Debug.LogError($"CharacterMovement [{name}]: застрял в движении к точке {currentPathIndex}, принудительно завершаем");
                     transform.position = nextTarget;
                     break;
                 }

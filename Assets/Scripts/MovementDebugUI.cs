@@ -12,7 +12,7 @@ public class MovementDebugUI : MonoBehaviour
     private MovementController movementController;
     private Rect windowRect = new Rect(Screen.width - 400, 10, 380, 500);
     private Vector2 scrollPosition = Vector2.zero;
-    private bool showWindow = true;
+    private bool showWindow = false;
     private string debugLog = "";
     
     void Awake()
@@ -53,7 +53,6 @@ public class MovementDebugUI : MonoBehaviour
             yield return new WaitForSeconds(0.5f);
         }
         
-        Debug.LogWarning("MovementDebugUI: MovementController не найден после 10 попыток!");
     }
     
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -69,12 +68,18 @@ public class MovementDebugUI : MonoBehaviour
     
     void Update()
     {
-        // Переключение окна по F1
+        // Переключение окна по H
+        if (Input.GetKeyDown(KeyCode.H))
+        {
+            showWindow = !showWindow;
+        }
+
+        // Старые клавиши оставляем для совместимости
         if (Input.GetKeyDown(KeyCode.F1))
         {
             showWindow = !showWindow;
         }
-        
+
         // Дополнительная проверка на случай если F1 не работает
         if (Input.GetKeyDown(KeyCode.F2))
         {
@@ -112,7 +117,7 @@ public class MovementDebugUI : MonoBehaviour
         headerStyle.fontStyle = FontStyle.Bold;
         headerStyle.fontSize = 14;
         
-        GUILayout.Label("Movement Debug (F1 to toggle)", headerStyle);
+        GUILayout.Label("Movement Debug (H/F1 to toggle)", headerStyle);
         
         // Кнопка копирования логов
         GUILayout.BeginHorizontal();

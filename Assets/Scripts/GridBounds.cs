@@ -57,7 +57,6 @@ public class GridBounds : MonoBehaviour
             gridManager = FindObjectOfType<GridManager>();
             if (gridManager == null)
             {
-                Debug.LogWarning($"GridBounds [{gameObject.name}]: GridManager не найден");
                 return;
             }
         }
@@ -122,7 +121,6 @@ public class GridBounds : MonoBehaviour
             gridHeight = 1;
             cellSize = gridManager.cellSize;
             
-            Debug.LogWarning($"GridBounds [{gameObject.name}]: не найдены занятые ячейки, используем текущую позицию");
         }
     }
     

@@ -63,10 +63,35 @@ public class LocationManager : MonoBehaviour
     {
         InitializeLocation();
 
+        // Инициализируем UI систему здесь, когда все готово
+        EnsureGameUI();
+
         if (autoGenerateOnStart)
         {
             // Задержка чтобы GridManager успел создать персонажей и кокпит первыми
             StartCoroutine(DelayedGenerateLocation());
+        }
+    }
+
+    /// <summary>
+    /// Убедиться что GameUI существует
+    /// </summary>
+    void EnsureGameUI()
+    {
+        GameUI gameUI = FindObjectOfType<GameUI>();
+        if (gameUI == null)
+        {
+            GameObject gameUIGO = new GameObject("GameUI");
+            gameUI = gameUIGO.AddComponent<GameUI>();
+        }
+
+        // Убедимся что EventSystem тоже есть
+        UnityEngine.EventSystems.EventSystem eventSystem = FindObjectOfType<UnityEngine.EventSystems.EventSystem>();
+        if (eventSystem == null)
+        {
+            GameObject eventSystemGO = new GameObject("EventSystem");
+            eventSystem = eventSystemGO.AddComponent<UnityEngine.EventSystems.EventSystem>();
+            eventSystemGO.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
         }
     }
 
@@ -230,7 +255,6 @@ public class LocationManager : MonoBehaviour
         // Диагностика префабов
         if (spawnSettings == null)
         {
-            Debug.LogError("SpawnSettings не установлены!");
             return;
         }
         
@@ -268,9 +292,8 @@ public class LocationManager : MonoBehaviour
     void GenerateStations()
     {
         
-        if (spawnSettings.stationPrefabs == null || spawnSettings.stationPrefabs.Length == 0) 
+        if (spawnSettings.stationPrefabs == null || spawnSettings.stationPrefabs.Length == 0)
         {
-            Debug.LogWarning("Нет префабов станций для генерации");
             return;
         }
         
@@ -282,9 +305,8 @@ public class LocationManager : MonoBehaviour
             
             // Станции занимают 20x20 клеток (20x20 метров)
             GridCell cell = gridManager.GetRandomFreeCellArea(20, 20);
-            if (cell == null) 
+            if (cell == null)
             {
-                Debug.LogWarning($"Не удалось найти свободную область 20x20 для станции {i+1}");
                 continue;
             }
             
@@ -312,10 +334,6 @@ public class LocationManager : MonoBehaviour
                 currentLocation.pointsOfInterest.Add(stationPosition);
                 createdCount++;
             }
-            else
-            {
-                Debug.LogError($"stationPrefab[{i}] равен null!");
-            }
         }
         
     }
@@ -326,9 +344,8 @@ public class LocationManager : MonoBehaviour
     void GenerateAsteroids()
     {
         
-        if (spawnSettings.asteroidPrefabs == null || spawnSettings.asteroidPrefabs.Length == 0) 
+        if (spawnSettings.asteroidPrefabs == null || spawnSettings.asteroidPrefabs.Length == 0)
         {
-            Debug.LogWarning("Нет префабов астероидов для генерации");
             return;
         }
         
@@ -340,9 +357,8 @@ public class LocationManager : MonoBehaviour
             
             // Астероиды занимают 8x8 клеток (8x8 метров)
             GridCell cell = gridManager.GetRandomFreeCellArea(8, 8);
-            if (cell == null) 
+            if (cell == null)
             {
-                Debug.LogWarning($"Не удалось найти свободную область 8x8 для астероида {i+1}");
                 continue;
             }
             
@@ -369,10 +385,6 @@ public class LocationManager : MonoBehaviour
                 
                 createdCount++;
             }
-            else
-            {
-                Debug.LogError($"asteroidPrefab[{i}] равен null!");
-            }
         }
         
     }
@@ -395,9 +407,8 @@ public class LocationManager : MonoBehaviour
             
             // Обломки занимают 1 клетку и размещаются в центре
             GridCell cell = GetRandomGridCell("Debris");
-            if (cell == null) 
+            if (cell == null)
             {
-                Debug.LogWarning($"Не удалось найти свободную ячейку для обломка {i+1}");
                 continue;
             }
             
@@ -420,10 +431,6 @@ public class LocationManager : MonoBehaviour
                 RegisterObject(debris, "Debris");
                 
                 createdCount++;
-            }
-            else
-            {
-                Debug.LogError($"debrisPrefab[{i}] равен null!");
             }
         }
         
@@ -512,17 +519,12 @@ public class LocationManager : MonoBehaviour
     {
         if (gridManager == null)
         {
-            Debug.LogWarning("GridManager не найден!");
             return null;
         }
         
         GridCell cell = gridManager.GetRandomFreeCell();
         if (cell != null)
         {
-        }
-        else
-        {
-            Debug.LogWarning($"Не найдено свободных ячеек для {objectType}");
         }
         
         return cell;
@@ -549,10 +551,6 @@ public class LocationManager : MonoBehaviour
                 
         } while (attempts < maxPlacementAttempts);
         
-        if (attempts >= maxPlacementAttempts)
-        {
-            Debug.LogWarning($"Не удалось найти безопасную позицию за {maxPlacementAttempts} попыток. Используется последняя сгенерированная позиция.");
-        }
         
         return position;
     }
@@ -610,13 +608,6 @@ public class LocationManager : MonoBehaviour
         
         // Проверяем наличие коллайдера для raycast
         Collider collider = obj.GetComponent<Collider>();
-        if (collider == null)
-        {
-            Debug.LogWarning($"Объект {obj.name} не имеет коллайдера и не будет доступен для выделения!");
-        }
-        else
-        {
-        }
     }
     
     /// <summary>
@@ -775,10 +766,6 @@ public class LocationManager : MonoBehaviour
             LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
             if (objectInfo != null)
             {
-            }
-            else
-            {
-                Debug.LogWarning("LocationObjectInfo отсутствует!");
             }
             
             // Проверяем слой

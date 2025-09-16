@@ -5,7 +5,10 @@
       "Bash(find:*)",
       "Bash(dir:*)",
       "Bash(rg:*)",
-      "Bash(if exist \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\WallObstacle.cs.meta\" del \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\WallObstacle.cs.meta\")"
+      "Bash(if exist \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\WallObstacle.cs.meta\" del \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\WallObstacle.cs.meta\")",
+      "Bash(if exist \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\BuildingUI.cs.meta\" del \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\BuildingUI.cs.meta\")",
+      "Bash(cat:*)",
+      "Read(//c/Users/Ruslan49/AppData/LocalLow/DefaultCompany/VoidFrontier/**)"
     ],
     "deny": [],
     "ask": []

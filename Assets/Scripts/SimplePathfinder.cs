@@ -26,7 +26,6 @@ public class SimplePathfinder : MonoBehaviour
         var gridManager = GetGridManager();
         if (gridManager == null)
         {
-            Debug.LogError("GridManager не найден!");
             return new List<Vector2Int> { end };
         }
 

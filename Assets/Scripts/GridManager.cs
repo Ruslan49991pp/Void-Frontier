@@ -77,6 +77,9 @@ public class GridManager : MonoBehaviour
     
     void Start()
     {
+        // Инициализируем UI систему
+        EnsureGameInitializer();
+
         // Задержка для того чтобы LocationManager успел создать объекты
         StartCoroutine(DelayedStart());
     }
@@ -486,10 +489,6 @@ public class GridManager : MonoBehaviour
                 OccupyCell(spawnPosition, character, "Character");
                 
             }
-            else
-            {
-                Debug.LogWarning($"Не удалось создать персонажа {i + 1} в позиции {spawnPosition} - ячейка занята или не существует");
-            }
         }
 
         // Создаем кокпит рядом с персонажами
@@ -530,7 +529,6 @@ public class GridManager : MonoBehaviour
             }
         }
         
-        Debug.LogWarning("Не удалось найти подходящее место для размещения персонажей, используем случайную позицию");
         return Vector2Int.zero;
     }
 
@@ -546,7 +544,6 @@ public class GridManager : MonoBehaviour
 
             if (cockpitPrefab == null)
             {
-                Debug.LogWarning("Префаб кокпита не установлен и не найден в Resources/Prefabs/SM_Cockpit");
                 return;
             }
 
@@ -582,7 +579,6 @@ public class GridManager : MonoBehaviour
             }
         }
 
-        Debug.LogWarning("Не удалось найти подходящее место для размещения кокпита (5x3 клетки) рядом с персонажами");
     }
 
     /// <summary>
@@ -623,16 +619,21 @@ public class GridManager : MonoBehaviour
                     {
                         occupiedCount++;
                     }
-                    else
-                    {
-                        Debug.LogWarning($"Не удалось занять клетку {cellPos} для {objectType}");
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning($"Клетка {cellPos} недействительна для {objectType}");
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Убедиться что GameInitializer существует
+    /// </summary>
+    void EnsureGameInitializer()
+    {
+        GameInitializer initializer = FindObjectOfType<GameInitializer>();
+        if (initializer == null)
+        {
+            GameObject initializerGO = new GameObject("GameInitializer");
+            initializer = initializerGO.AddComponent<GameInitializer>();
         }
     }
 
