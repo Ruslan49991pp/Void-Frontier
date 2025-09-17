@@ -8,13 +8,19 @@ using UnityEngine.UI;
 public class SimpleCharacterIconsUI : MonoBehaviour
 {
     [Header("Settings")]
-    public float iconWidth = 150f;
+    public float iconWidth = 120f;
     public float iconHeight = 50f;
-    public float spacing = 5f;
+    public float spacing = 10f;
+
+    [Header("Selection Colors")]
+    public Color normalBackgroundColor = new Color(0, 1, 0, 1f);
+    public Color selectedBackgroundColor = new Color(1, 0.8f, 0, 1f); // Оранжевый
+    public Color selectedBorderColor = new Color(1, 1, 0, 1f); // Желтый
 
     private Canvas canvas;
     private GameObject iconsContainer;
     private Dictionary<Character, GameObject> characterIcons = new Dictionary<Character, GameObject>();
+    private SelectionManager selectionManager;
 
     void Start()
     {
@@ -22,6 +28,18 @@ public class SimpleCharacterIconsUI : MonoBehaviour
 
         try
         {
+            // Ищем SelectionManager для отслеживания выделения
+            selectionManager = FindObjectOfType<SelectionManager>();
+            if (selectionManager != null)
+            {
+                selectionManager.OnSelectionChanged += OnSelectionChanged;
+                Debug.Log("SimpleCharacterIconsUI: Connected to SelectionManager");
+            }
+            else
+            {
+                Debug.LogWarning("SimpleCharacterIconsUI: SelectionManager not found!");
+            }
+
             CreateUI();
             Debug.Log("SimpleCharacterIconsUI: UI creation completed");
 
@@ -76,15 +94,15 @@ public class SimpleCharacterIconsUI : MonoBehaviour
 
             RectTransform containerRect = iconsContainer.AddComponent<RectTransform>();
             containerRect.anchorMin = new Vector2(0, 1);
-            containerRect.anchorMax = new Vector2(0, 1);
-            containerRect.pivot = new Vector2(0, 1);
-            containerRect.anchoredPosition = new Vector2(10, -10);
-            containerRect.sizeDelta = new Vector2(200, 600); // Уже и выше
+            containerRect.anchorMax = new Vector2(1, 1);
+            containerRect.pivot = new Vector2(0.5f, 1);
+            containerRect.anchoredPosition = new Vector2(0, -10);
+            containerRect.sizeDelta = new Vector2(0, 60); // Горизонтальная панель вверху
             Debug.Log($"SimpleCharacterIconsUI: Container positioned at {containerRect.anchoredPosition} with size {containerRect.sizeDelta}");
 
-            // Добавляем фон для видимости
+            // Добавляем прозрачный фон для контейнера (убираем красный)
             Image containerBg = iconsContainer.AddComponent<Image>();
-            containerBg.color = new Color(1, 0, 0, 0.8f); // КРАСНЫЙ фон для лучшей видимости
+            containerBg.color = new Color(0, 0, 0, 0.3f); // Полупрозрачный темный фон
             Debug.Log("SimpleCharacterIconsUI: Container background added");
 
             // VerticalLayoutGroup мешает - отключаем и делаем ручное позиционирование
@@ -167,14 +185,22 @@ public class SimpleCharacterIconsUI : MonoBehaviour
                     Character character = characters[i];
                     Debug.Log($"SimpleCharacterIconsUI: [{i}] {character.name} - Active: {character.gameObject.activeInHierarchy}");
 
-                    if (!characterIcons.ContainsKey(character))
+                    // Фильтруем персонажей: исключаем шаблоны и NPC
+                    if (ShouldShowCharacterIcon(character))
                     {
-                        Debug.Log($"SimpleCharacterIconsUI: Creating new icon for {character.name}");
-                        CreateCharacterIcon(character);
+                        if (!characterIcons.ContainsKey(character))
+                        {
+                            Debug.Log($"SimpleCharacterIconsUI: Creating new icon for {character.name}");
+                            CreateCharacterIcon(character);
+                        }
+                        else
+                        {
+                            Debug.Log($"SimpleCharacterIconsUI: Icon already exists for {character.name}");
+                        }
                     }
                     else
                     {
-                        Debug.Log($"SimpleCharacterIconsUI: Icon already exists for {character.name}");
+                        Debug.Log($"SimpleCharacterIconsUI: Skipping {character.name} - not a player character");
                     }
                 }
             }
@@ -193,7 +219,7 @@ public class SimpleCharacterIconsUI : MonoBehaviour
         Character[] characters = FindObjectsOfType<Character>();
         foreach (Character character in characters)
         {
-            if (!characterIcons.ContainsKey(character) && character != null)
+            if (!characterIcons.ContainsKey(character) && character != null && ShouldShowCharacterIcon(character))
             {
                 Debug.Log($"SimpleCharacterIconsUI: Found new character {character.name}");
                 CreateCharacterIcon(character);
@@ -255,24 +281,104 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             RectTransform iconRect = iconGO.AddComponent<RectTransform>();
             iconRect.sizeDelta = new Vector2(iconWidth, iconHeight);
 
-            // Принудительно устанавливаем позицию (игнорируем Layout Group)
+            // Принудительно устанавливаем позицию горизонтально
             iconRect.anchorMin = new Vector2(0, 1);
             iconRect.anchorMax = new Vector2(0, 1);
             iconRect.pivot = new Vector2(0, 1);
-            iconRect.anchoredPosition = new Vector2(10, -10 - (characterIcons.Count * 60)); // Размещаем вертикально
+
+            // Подсчитываем существующие иконки (исключая null)
+            int existingIconsCount = 0;
+            foreach (var kvp in characterIcons)
+            {
+                if (kvp.Value != null) existingIconsCount++;
+            }
+
+            iconRect.anchoredPosition = new Vector2(10 + (existingIconsCount * (iconWidth + spacing)), -5); // Размещаем горизонтально
 
             Debug.Log($"SimpleCharacterIconsUI: Icon size: {iconRect.sizeDelta}, position: {iconRect.anchoredPosition}");
 
-            // Фон иконки - делаем более яркий для тестирования
+            // Фон иконки
             Image iconBg = iconGO.AddComponent<Image>();
-            iconBg.color = new Color(0, 1, 0, 1f); // ЗЕЛЕНЫЙ фон для максимальной видимости
+            iconBg.color = normalBackgroundColor;
             Debug.Log("SimpleCharacterIconsUI: Icon background added");
 
-            // Кнопка для раскрытия
+            // Создаем рамку для выделения (изначально невидимая)
+            GameObject borderGO = new GameObject("SelectionBorder");
+            borderGO.transform.SetParent(iconGO.transform, false);
+
+            Image borderImage = borderGO.AddComponent<Image>();
+            borderImage.color = selectedBorderColor;
+
+            RectTransform borderRect = borderGO.GetComponent<RectTransform>();
+            borderRect.anchorMin = Vector2.zero;
+            borderRect.anchorMax = Vector2.one;
+            borderRect.offsetMin = new Vector2(-3, -3); // Рамка чуть больше иконки
+            borderRect.offsetMax = new Vector2(3, 3);
+            borderRect.SetAsFirstSibling(); // Рамка сзади
+
+            borderGO.SetActive(false); // Изначально скрыта
+            Debug.Log("SimpleCharacterIconsUI: Selection border added");
+
+            // Кнопка для выделения (основной клик) - НЕ перехватывает все события
             Button iconButton = iconGO.AddComponent<Button>();
+            iconButton.interactable = true;
+            iconButton.onClick.AddListener(() => OnIconClicked(character));
+
+            // Компонент для раскрытия (по двойному клику)
             SimpleCharacterIcon iconComponent = iconGO.AddComponent<SimpleCharacterIcon>();
             iconComponent.Initialize(character, iconWidth, iconHeight);
-            iconButton.onClick.AddListener(() => iconComponent.ToggleExpanded());
+
+            // Добавляем кнопку для раскрытия (больше размер, в правом верхнем углу)
+            GameObject expandButtonGO = new GameObject("ExpandButton");
+            expandButtonGO.transform.SetParent(iconGO.transform, false);
+
+            // ВАЖНО: Добавляем RectTransform перед другими компонентами
+            RectTransform expandButtonRect = expandButtonGO.AddComponent<RectTransform>();
+            expandButtonRect.anchorMin = new Vector2(0.7f, 0.5f);  // Больше размер кнопки
+            expandButtonRect.anchorMax = new Vector2(1f, 1f);
+            expandButtonRect.offsetMin = Vector2.zero;
+            expandButtonRect.offsetMax = Vector2.zero;
+
+            Image expandButtonImage = expandButtonGO.AddComponent<Image>();
+            expandButtonImage.color = new Color(0.8f, 0.8f, 0.2f, 1f); // Желтый для лучшей видимости
+
+            Button expandButton = expandButtonGO.AddComponent<Button>();
+            expandButton.interactable = true;
+
+            // Добавляем CanvasGroup для лучшего контроля событий
+            CanvasGroup expandButtonGroup = expandButtonGO.AddComponent<CanvasGroup>();
+            expandButtonGroup.blocksRaycasts = true;
+            expandButtonGroup.interactable = true;
+
+            expandButton.onClick.AddListener(() => {
+                Debug.Log($"SimpleCharacterIconsUI: Expand button clicked for {character.name}!");
+                iconComponent.ToggleExpanded();
+            });
+
+            // Текст "i" для обозначения информации
+            GameObject expandTextGO = new GameObject("ExpandText");
+            expandTextGO.transform.SetParent(expandButtonGO.transform, false);
+
+            RectTransform expandTextRect = expandTextGO.AddComponent<RectTransform>();
+            expandTextRect.anchorMin = Vector2.zero;
+            expandTextRect.anchorMax = Vector2.one;
+            expandTextRect.offsetMin = Vector2.zero;
+            expandTextRect.offsetMax = Vector2.zero;
+
+            Text expandText = expandTextGO.AddComponent<Text>();
+            expandText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            expandText.fontSize = 14;  // Больше размер текста
+            expandText.color = Color.black;
+            expandText.text = "?";
+            expandText.alignment = TextAnchor.MiddleCenter;
+
+            // Кнопка раскрытия должна быть поверх основной кнопки
+            expandButtonGO.transform.SetAsLastSibling();
+
+            // Убеждаемся что expand button имеет высокий приоритет для событий
+            Canvas expandCanvas = expandButtonGO.AddComponent<Canvas>();
+            expandCanvas.overrideSorting = true;
+            expandCanvas.sortingOrder = 1;
             Debug.Log("SimpleCharacterIconsUI: Button and component added");
 
             // Создаем содержимое иконки
@@ -287,6 +393,9 @@ public class SimpleCharacterIconsUI : MonoBehaviour
         {
             Debug.LogError($"SimpleCharacterIconsUI: ERROR creating icon: {e.Message}");
             Debug.LogError($"SimpleCharacterIconsUI: Stack trace: {e.StackTrace}");
+
+            // ВАЖНО: Даже при ошибке добавляем персонажа в словарь, чтобы избежать бесконечных попыток
+            characterIcons[character] = null;
         }
     }
 
@@ -339,6 +448,233 @@ public class SimpleCharacterIconsUI : MonoBehaviour
         healthRect.anchorMax = new Vector2(0.05f + 0.9f * healthPercent, 0.4f);
         healthRect.offsetMin = Vector2.zero;
         healthRect.offsetMax = Vector2.zero;
+    }
+
+    /// <summary>
+    /// Проверить, должна ли отображаться иконка для этого персонажа
+    /// </summary>
+    bool ShouldShowCharacterIcon(Character character)
+    {
+        if (character == null) return false;
+
+        // Исключаем шаблоны персонажей
+        if (character.name.Contains("Template"))
+        {
+            return false;
+        }
+
+        // Исключаем неактивных персонажей
+        if (!character.gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        // Можно добавить дополнительные проверки:
+        // - Проверка принадлежности игроку
+        // - Проверка команды
+        // - Проверка состояния персонажа
+
+        return true;
+    }
+
+    private List<GameObject> lastSelectedObjects = new List<GameObject>();
+
+    /// <summary>
+    /// Обработчик изменения выделения от SelectionManager
+    /// </summary>
+    void OnSelectionChanged(List<GameObject> selectedObjects)
+    {
+        // Проверяем, изменилось ли выделение на самом деле (избегаем лишних обновлений)
+        if (AreListsEqual(lastSelectedObjects, selectedObjects))
+        {
+            return; // Выделение не изменилось, пропускаем обновление
+        }
+
+        Debug.Log($"SimpleCharacterIconsUI: Selection changed, {selectedObjects.Count} objects selected");
+
+        // Сохраняем текущее выделение
+        lastSelectedObjects = new List<GameObject>(selectedObjects);
+
+        // Обновляем визуальное состояние всех иконок (пропускаем null иконки)
+        foreach (var kvp in characterIcons)
+        {
+            Character character = kvp.Key;
+            GameObject iconGO = kvp.Value;
+
+            if (character != null && iconGO != null)
+            {
+                bool isSelected = IsCharacterSelected(character, selectedObjects);
+                UpdateIconSelectionVisual(iconGO, isSelected);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Проверить равенство двух списков объектов
+    /// </summary>
+    bool AreListsEqual(List<GameObject> list1, List<GameObject> list2)
+    {
+        if (list1.Count != list2.Count) return false;
+
+        for (int i = 0; i < list1.Count; i++)
+        {
+            if (list1[i] != list2[i]) return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Проверить, выделен ли персонаж среди выделенных объектов
+    /// </summary>
+    bool IsCharacterSelected(Character character, List<GameObject> selectedObjects)
+    {
+        foreach (GameObject selectedObj in selectedObjects)
+        {
+            if (selectedObj != null && selectedObj.GetComponent<Character>() == character)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Обновить визуальное состояние иконки (выделена/не выделена)
+    /// </summary>
+    void UpdateIconSelectionVisual(GameObject iconGO, bool isSelected)
+    {
+        if (iconGO == null) return;
+
+        // Обновляем фон иконки
+        Image iconBg = iconGO.GetComponent<Image>();
+        if (iconBg != null)
+        {
+            iconBg.color = isSelected ? selectedBackgroundColor : normalBackgroundColor;
+        }
+
+        // Обновляем видимость рамки выделения
+        Transform borderTransform = iconGO.transform.Find("SelectionBorder");
+        if (borderTransform != null)
+        {
+            borderTransform.gameObject.SetActive(isSelected);
+        }
+
+        Debug.Log($"SimpleCharacterIconsUI: Updated icon visual for {iconGO.name}, selected: {isSelected}");
+    }
+
+    private float lastClickTime = 0f;
+    private Character lastClickedCharacter = null;
+
+    /// <summary>
+    /// Обработчик клика по иконке персонажа
+    /// </summary>
+    void OnIconClicked(Character character)
+    {
+        if (character == null || selectionManager == null) return;
+
+        float currentTime = Time.time;
+        bool isDoubleClick = (currentTime - lastClickTime < 0.5f && lastClickedCharacter == character);
+
+        Debug.Log($"SimpleCharacterIconsUI: Icon clicked for {character.name}, doubleClick: {isDoubleClick}");
+
+        if (isDoubleClick)
+        {
+            // Двойной клик - фокусируем камеру на персонаже
+            Debug.Log($"SimpleCharacterIconsUI: Double click detected - focusing camera");
+            FocusCameraOnCharacter(character);
+        }
+        else
+        {
+            // Одинарный клик - выделение с задержкой чтобы избежать конфликтов
+            Debug.Log($"SimpleCharacterIconsUI: Single click detected - handling selection");
+            StartCoroutine(HandleSingleClickDelayed(character));
+        }
+
+        lastClickTime = currentTime;
+        lastClickedCharacter = character;
+    }
+
+    /// <summary>
+    /// Обработка одинарного клика с задержкой
+    /// </summary>
+    System.Collections.IEnumerator HandleSingleClickDelayed(Character character)
+    {
+        yield return new WaitForEndOfFrame(); // Ждём конца кадра
+        HandleSingleClick(character);
+    }
+
+    /// <summary>
+    /// Обработка одинарного клика
+    /// </summary>
+    void HandleSingleClick(Character character)
+    {
+        // Проверяем, выделен ли уже этот персонаж
+        bool isCurrentlySelected = selectionManager.IsSelected(character.gameObject);
+        Debug.Log($"SimpleCharacterIconsUI: Character {character.name} currently selected: {isCurrentlySelected}");
+
+        if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+        {
+            // Ctrl + клик - переключаем выделение
+            Debug.Log($"SimpleCharacterIconsUI: Ctrl+Click - toggling selection for {character.name}");
+            selectionManager.ToggleSelection(character.gameObject);
+        }
+        else
+        {
+            // Обычный клик - очищаем все выделение и выделяем только этого персонажа
+            Debug.Log($"SimpleCharacterIconsUI: Normal click - selecting only {character.name}");
+            selectionManager.ClearSelection();
+            selectionManager.AddToSelection(character.gameObject);
+        }
+    }
+
+    /// <summary>
+    /// Фокусировка камеры на персонаже
+    /// </summary>
+    void FocusCameraOnCharacter(Character character)
+    {
+        Debug.Log($"SimpleCharacterIconsUI: Focusing camera on {character.name}");
+
+        // Ищем CameraController первым - он лучше управляет камерой
+        CameraController cameraController = FindObjectOfType<CameraController>();
+        if (cameraController != null)
+        {
+            Debug.Log("SimpleCharacterIconsUI: Found CameraController, using it to focus");
+
+            // Устанавливаем персонажа как цель для фокуса
+            cameraController.SetFocusTarget(character.transform);
+            Debug.Log($"SimpleCharacterIconsUI: Set focus target to {character.name}");
+
+            // Центрируем камеру на персонаже плавно
+            cameraController.CenterOnTarget();
+            Debug.Log($"SimpleCharacterIconsUI: Camera focused on {character.name} using CameraController");
+            return;
+        }
+
+        // Fallback: используем основную камеру напрямую (но без резкого поворота)
+        Camera mainCamera = Camera.main;
+        if (mainCamera != null)
+        {
+            Debug.Log("SimpleCharacterIconsUI: Using main camera directly");
+            // Плавно перемещаем камеру к персонажу без изменения поворота
+            Vector3 characterPos = character.transform.position;
+            Vector3 currentCameraPos = mainCamera.transform.position;
+            Vector3 newCameraPos = new Vector3(characterPos.x, currentCameraPos.y, characterPos.z - 8);
+            mainCamera.transform.position = newCameraPos;
+            Debug.Log($"SimpleCharacterIconsUI: Camera moved to {newCameraPos} (keeping current rotation)");
+        }
+    }
+
+    /// <summary>
+    /// Очистка при уничтожении
+    /// </summary>
+    void OnDestroy()
+    {
+        // Отписываемся от событий SelectionManager
+        if (selectionManager != null)
+        {
+            selectionManager.OnSelectionChanged -= OnSelectionChanged;
+        }
     }
 }
 

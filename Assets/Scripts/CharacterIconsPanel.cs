@@ -12,10 +12,10 @@ public class CharacterIconsPanel : MonoBehaviour
     public RectTransform iconsPanel;
 
     [Header("Icon Settings")]
-    public float iconWidth = 120f;
-    public float iconHeight = 40f;
-    public float iconSpacing = 5f;
-    public int maxIconsPerRow = 4;
+    public float iconWidth = 100f;
+    public float iconHeight = 50f;
+    public float iconSpacing = 10f;
+    public int maxIconsPerRow = 10;
 
     [Header("Colors")]
     public Color compactBackgroundColor = new Color(0.1f, 0.1f, 0.1f, 0.8f);
@@ -68,16 +68,18 @@ public class CharacterIconsPanel : MonoBehaviour
 
         iconsPanel = panelGO.AddComponent<RectTransform>();
         iconsPanel.anchorMin = new Vector2(0, 1);
-        iconsPanel.anchorMax = new Vector2(0, 1);
-        iconsPanel.pivot = new Vector2(0, 1);
-        iconsPanel.anchoredPosition = new Vector2(10, -10);
-        iconsPanel.sizeDelta = new Vector2(500, 200); // Начальный размер
+        iconsPanel.anchorMax = new Vector2(1, 1);
+        iconsPanel.pivot = new Vector2(0.5f, 1);
+        iconsPanel.anchoredPosition = new Vector2(0, -10);
+        iconsPanel.sizeDelta = new Vector2(0, 60); // Горизонтальная панель
 
-        // Добавляем компонент для автоматической компоновки
-        VerticalLayoutGroup verticalLayout = panelGO.AddComponent<VerticalLayoutGroup>();
-        verticalLayout.childAlignment = TextAnchor.UpperLeft;
-        verticalLayout.spacing = iconSpacing;
-        verticalLayout.padding = new RectOffset(5, 5, 5, 5);
+        // Добавляем компонент для горизонтальной компоновки
+        HorizontalLayoutGroup horizontalLayout = panelGO.AddComponent<HorizontalLayoutGroup>();
+        horizontalLayout.childAlignment = TextAnchor.UpperLeft;
+        horizontalLayout.spacing = iconSpacing;
+        horizontalLayout.padding = new RectOffset(10, 10, 5, 5);
+        horizontalLayout.childForceExpandWidth = false;
+        horizontalLayout.childForceExpandHeight = false;
 
         // Компонент для автоматического изменения размера
         ContentSizeFitter sizeFitter = panelGO.AddComponent<ContentSizeFitter>();

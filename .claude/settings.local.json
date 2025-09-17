@@ -8,7 +8,9 @@
       "Bash(if exist \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\WallObstacle.cs.meta\" del \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\WallObstacle.cs.meta\")",
       "Bash(if exist \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\BuildingUI.cs.meta\" del \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\BuildingUI.cs.meta\")",
       "Bash(cat:*)",
-      "Read(//c/Users/Ruslan49/AppData/LocalLow/DefaultCompany/VoidFrontier/**)"
+      "Read(//c/Users/Ruslan49/AppData/LocalLow/DefaultCompany/VoidFrontier/**)",
+      "Read(//c/Users/**)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []

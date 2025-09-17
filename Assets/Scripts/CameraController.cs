@@ -24,7 +24,7 @@ public class CameraController : MonoBehaviour
     [Header("Mouse Edge Scrolling")]
     public bool enableEdgeScrolling = true; // �������� ��������� ����� ������
     public float edgeScrollSpeed = 15f;     // �������� ��������� ����� ������
-    public float edgeBorderSize = 10f;      // ������ ������� � �������� ��� ��������� (���������� � 50f)
+    public float edgeBorderSize = 5f;       // ������ ������� � �������� ��� ��������� (���������� � 50f)
     
     [Header("Selection Integration")]
     public SelectionManager selectionManager;
@@ -46,10 +46,14 @@ public class CameraController : MonoBehaviour
 
         if (boundsCollider != null)
             SetBoundsFromCollider(boundsCollider);
-            
+
         // Автоматически находим SelectionManager если не назначен
         if (selectionManager == null)
             selectionManager = FindObjectOfType<SelectionManager>();
+
+        // Принудительно устанавливаем минимальный размер edge border
+        edgeBorderSize = 5f;
+        Debug.Log($"[CameraController] Edge border size set to: {edgeBorderSize}");
     }
 
     void Update()
@@ -137,10 +141,22 @@ public class CameraController : MonoBehaviour
 
     public void CenterOnTarget()
     {
-        if (focusTarget == null) return;
-        // ��������� ������� �������� � ������ ���� ���, ����� ��������� ������������� ��������� ������
-        targetPosition = focusTarget.position + offsetFromFocus;
+        if (focusTarget == null)
+        {
+            Debug.LogWarning("[CameraController] CenterOnTarget: focusTarget is null!");
+            return;
+        }
+
+        Debug.Log($"[CameraController] CenterOnTarget: Focusing on {focusTarget.name} at position {focusTarget.position}");
+        Debug.Log($"[CameraController] Current camera position: {transform.position}, offsetFromFocus: {offsetFromFocus}");
+
+        // Используем разумное смещение камеры относительно персонажа (сверху-сзади)
+        Vector3 desiredOffset = new Vector3(0, 10, -8);
+        targetPosition = focusTarget.position + desiredOffset;
+
+        Debug.Log($"[CameraController] New target position: {targetPosition}");
         ClampToBounds();
+        Debug.Log($"[CameraController] Final target position after clamp: {targetPosition}");
     }
 
     private void ClampToBounds()
@@ -168,21 +184,47 @@ public class CameraController : MonoBehaviour
     private Vector3 GetEdgeScrollInput()
     {
         if (!enableEdgeScrolling) return Vector3.zero;
-        
+
         Vector3 mousePos = Input.mousePosition;
         Vector3 edgeInput = Vector3.zero;
-        
+
+        // Debug logging
+        bool isNearEdge = false;
+        string debugInfo = "";
+
         // �������� ������� ��� ����� �������
         if (mousePos.x <= edgeBorderSize)
+        {
             edgeInput.x = -1f; // �����
+            isNearEdge = true;
+            debugInfo += $"LEFT edge (x={mousePos.x} <= {edgeBorderSize}) ";
+        }
         else if (mousePos.x >= Screen.width - edgeBorderSize)
+        {
             edgeInput.x = 1f;  // ������
-            
+            isNearEdge = true;
+            debugInfo += $"RIGHT edge (x={mousePos.x} >= {Screen.width - edgeBorderSize}) ";
+        }
+
         if (mousePos.y <= edgeBorderSize)
+        {
             edgeInput.z = -1f; // ����
+            isNearEdge = true;
+            debugInfo += $"BOTTOM edge (y={mousePos.y} <= {edgeBorderSize}) ";
+        }
         else if (mousePos.y >= Screen.height - edgeBorderSize)
+        {
             edgeInput.z = 1f;  // �����
-            
+            isNearEdge = true;
+            debugInfo += $"TOP edge (y={mousePos.y} >= {Screen.height - edgeBorderSize}) ";
+        }
+
+        // Log only when edge scrolling is triggered
+        if (isNearEdge)
+        {
+            Debug.Log($"[CameraController] Edge Scroll Triggered: {debugInfo}| Mouse: ({mousePos.x:F1}, {mousePos.y:F1}) | Screen: {Screen.width}x{Screen.height} | BorderSize: {edgeBorderSize} | Input: ({edgeInput.x}, {edgeInput.z})");
+        }
+
         return edgeInput;
     }
     
