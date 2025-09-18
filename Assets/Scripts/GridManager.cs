@@ -483,8 +483,24 @@ public class GridManager : MonoBehaviour
                 // Создаем персонажа
                 GameObject character = Instantiate(characterPrefab, cell.worldPosition, Quaternion.identity);
                 character.name = $"Character_{i + 1}";
-                
-                
+
+                // ВАЖНО: Настраиваем characterRenderer для созданного персонажа
+                Character characterScript = character.GetComponent<Character>();
+                if (characterScript != null)
+                {
+                    // Находим renderer в дочерних объектах
+                    Renderer characterRenderer = character.GetComponentInChildren<Renderer>();
+                    if (characterRenderer != null)
+                    {
+                        characterScript.characterRenderer = characterRenderer;
+                        Debug.Log($"GridManager: Set characterRenderer for {character.name}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"GridManager: No Renderer found for character {character.name}");
+                    }
+                }
+
                 // Занимаем ячейку
                 OccupyCell(spawnPosition, character, "Character");
                 
@@ -668,7 +684,8 @@ public class GridManager : MonoBehaviour
 
         characterPrefab = tempCharacter;
 
-        // Скрываем префаб-шаблон, переместив его далеко от игровой области
+        // Скрываем префаб-шаблон: деактивируем и перемещаем далеко от игровой области
+        tempCharacter.SetActive(false);
         tempCharacter.transform.position = new Vector3(10000, 10000, 10000);
 
     }

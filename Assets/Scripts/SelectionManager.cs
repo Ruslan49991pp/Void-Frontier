@@ -518,7 +518,7 @@ public class SelectionManager : MonoBehaviour
         {
             return;
         }
-        
+
         // Обновляем состояние персонажа если это персонаж
         Character character = obj.GetComponent<Character>();
         if (character != null)

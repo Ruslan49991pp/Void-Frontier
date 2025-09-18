@@ -261,6 +261,16 @@ public class Character : MonoBehaviour
         {
             characterMaterial.color = color;
         }
+        else
+        {
+            // Пытаемся восстановить материал
+            if (characterRenderer != null)
+            {
+                characterMaterial = new Material(characterRenderer.material);
+                characterRenderer.material = characterMaterial;
+                characterMaterial.color = color;
+            }
+        }
     }
     
     /// <summary>

@@ -47,9 +47,6 @@ public class GameInitializer : MonoBehaviour
         GameObject spawnerGO = new GameObject("CharacterSpawnerTest");
         spawnerGO.AddComponent<CharacterSpawnerTest>();
 
-        // Добавляем тестер видимости иконок
-        GameObject iconTesterGO = new GameObject("IconVisibilityTester");
-        iconTesterGO.AddComponent<IconVisibilityTester>();
     }
 
     /// <summary>

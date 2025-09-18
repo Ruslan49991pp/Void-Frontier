@@ -10,7 +10,11 @@
       "Bash(cat:*)",
       "Read(//c/Users/Ruslan49/AppData/LocalLow/DefaultCompany/VoidFrontier/**)",
       "Read(//c/Users/**)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(if exist \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\IconVisibilityTester.cs.meta\" del \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\IconVisibilityTester.cs.meta\")",
+      "Bash(del \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\IconVisibilityTester.cs.meta\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.21f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.BuildAndRun)",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.21f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\")"
     ],
     "deny": [],
     "ask": []

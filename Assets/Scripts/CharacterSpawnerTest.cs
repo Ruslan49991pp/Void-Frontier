@@ -63,15 +63,11 @@ public class CharacterSpawnerTest : MonoBehaviour
         objectInfo.objectName = character.GetFullName();
         objectInfo.health = character.characterData.health;
 
-        // Настраиваем цвет
+        // Устанавливаем renderer для Character компонента
         Renderer renderer = characterGO.GetComponent<Renderer>();
         if (renderer != null)
         {
-            renderer.material.color = new Color(
-                Random.Range(0.3f, 1f),
-                Random.Range(0.3f, 1f),
-                Random.Range(0.3f, 1f)
-            );
+            character.characterRenderer = renderer;
         }
 
         Debug.Log($"CharacterSpawnerTest: Created character {character.GetFullName()} at {randomPos}");

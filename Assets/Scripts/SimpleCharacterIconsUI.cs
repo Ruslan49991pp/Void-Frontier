@@ -158,7 +158,18 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             }
 
             Character[] characters = FindObjectsOfType<Character>(true); // Включаем неактивные объекты
-            Debug.Log($"SimpleCharacterIconsUI: Found {characters.Length} characters in scene");
+
+            // Подсчитываем только валидных персонажей (исключаем Template и другие)
+            int validCharacterCount = 0;
+            foreach (Character character in characters)
+            {
+                if (ShouldShowCharacterIcon(character))
+                {
+                    validCharacterCount++;
+                }
+            }
+
+            Debug.Log($"SimpleCharacterIconsUI: Found {validCharacterCount} player characters in scene (total: {characters.Length})");
 
             if (characters.Length == 0)
             {
@@ -324,38 +335,57 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             iconButton.interactable = true;
             iconButton.onClick.AddListener(() => OnIconClicked(character));
 
+            // Важно: убираем Navigation чтобы избежать конфликтов
+            Navigation nav = iconButton.navigation;
+            nav.mode = Navigation.Mode.None;
+            iconButton.navigation = nav;
+
             // Компонент для раскрытия (по двойному клику)
             SimpleCharacterIcon iconComponent = iconGO.AddComponent<SimpleCharacterIcon>();
             iconComponent.Initialize(character, iconWidth, iconHeight);
 
-            // Добавляем кнопку для раскрытия (больше размер, в правом верхнем углу)
+            // Создаем содержимое иконки СНАЧАЛА
+            Debug.Log("SimpleCharacterIconsUI: Creating icon content");
+            CreateIconContent(iconGO, character);
+
+            // Добавляем кнопку для раскрытия ПОСЛЕ содержимого, чтобы она была поверх
             GameObject expandButtonGO = new GameObject("ExpandButton");
             expandButtonGO.transform.SetParent(iconGO.transform, false);
 
             // ВАЖНО: Добавляем RectTransform перед другими компонентами
             RectTransform expandButtonRect = expandButtonGO.AddComponent<RectTransform>();
-            expandButtonRect.anchorMin = new Vector2(0.7f, 0.5f);  // Больше размер кнопки
-            expandButtonRect.anchorMax = new Vector2(1f, 1f);
+            // ТЕСТИРОВАНИЕ: Делаем кнопку БОЛЬШОЙ и заметной
+            expandButtonRect.anchorMin = new Vector2(0.1f, 0.6f);  // Левый верхний угол
+            expandButtonRect.anchorMax = new Vector2(0.5f, 0.9f); // Большая кнопка для тестирования
             expandButtonRect.offsetMin = Vector2.zero;
             expandButtonRect.offsetMax = Vector2.zero;
 
             Image expandButtonImage = expandButtonGO.AddComponent<Image>();
-            expandButtonImage.color = new Color(0.8f, 0.8f, 0.2f, 1f); // Желтый для лучшей видимости
+            expandButtonImage.color = new Color(1f, 0.6f, 0f, 0.95f); // Приятный оранжевый цвет
 
             Button expandButton = expandButtonGO.AddComponent<Button>();
             expandButton.interactable = true;
+
+            // Настраиваем цвета кнопки для лучшей обратной связи
+            ColorBlock colors = expandButton.colors;
+            colors.normalColor = new Color(1f, 0.6f, 0f, 0.95f); // Приятный оранжевый
+            colors.highlightedColor = new Color(1f, 0.8f, 0.2f, 1f); // Светлее при наведении
+            colors.pressedColor = new Color(0.8f, 0.4f, 0f, 1f); // Темнее при нажатии
+            colors.selectedColor = new Color(1f, 0.6f, 0f, 0.95f);
+            colors.disabledColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
+            expandButton.colors = colors;
+
+            // Убираем Navigation чтобы избежать конфликтов
+            Navigation expandNav = expandButton.navigation;
+            expandNav.mode = Navigation.Mode.None;
+            expandButton.navigation = expandNav;
 
             // Добавляем CanvasGroup для лучшего контроля событий
             CanvasGroup expandButtonGroup = expandButtonGO.AddComponent<CanvasGroup>();
             expandButtonGroup.blocksRaycasts = true;
             expandButtonGroup.interactable = true;
 
-            expandButton.onClick.AddListener(() => {
-                Debug.Log($"SimpleCharacterIconsUI: Expand button clicked for {character.name}!");
-                iconComponent.ToggleExpanded();
-            });
-
-            // Текст "i" для обозначения информации
+            // Создаем текст кнопки СНАЧАЛА
             GameObject expandTextGO = new GameObject("ExpandText");
             expandTextGO.transform.SetParent(expandButtonGO.transform, false);
 
@@ -367,23 +397,29 @@ public class SimpleCharacterIconsUI : MonoBehaviour
 
             Text expandText = expandTextGO.AddComponent<Text>();
             expandText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            expandText.fontSize = 14;  // Больше размер текста
-            expandText.color = Color.black;
-            expandText.text = "?";
+            expandText.fontSize = 14;  // Подходящий размер для кнопки
+            expandText.color = Color.white; // Белый текст на оранжевом фоне
+            expandText.text = "i"; // Символ информации
             expandText.alignment = TextAnchor.MiddleCenter;
+            expandText.fontStyle = FontStyle.Bold;
+
+            // Передаем ссылку на текст кнопки в компонент для изменения при раскрытии
+            iconComponent.SetExpandButtonText(expandText);
+
+            expandButton.onClick.AddListener(() => {
+                Debug.Log($"SimpleCharacterIconsUI: Expand button clicked for {character.name}!");
+                iconComponent.ToggleExpanded();
+            });
+
 
             // Кнопка раскрытия должна быть поверх основной кнопки
             expandButtonGO.transform.SetAsLastSibling();
 
-            // Убеждаемся что expand button имеет высокий приоритет для событий
-            Canvas expandCanvas = expandButtonGO.AddComponent<Canvas>();
-            expandCanvas.overrideSorting = true;
-            expandCanvas.sortingOrder = 1;
-            Debug.Log("SimpleCharacterIconsUI: Button and component added");
+            // Кнопка использует родительский Canvas
 
-            // Создаем содержимое иконки
-            Debug.Log("SimpleCharacterIconsUI: Creating icon content");
-            CreateIconContent(iconGO, character);
+
+            // Убеждаемся что кнопка на переднем плане
+            expandButtonGO.transform.SetAsLastSibling();
 
             characterIcons[character] = iconGO;
 
@@ -457,14 +493,26 @@ public class SimpleCharacterIconsUI : MonoBehaviour
     {
         if (character == null) return false;
 
-        // Исключаем шаблоны персонажей
+        // Исключаем шаблоны персонажей (любые объекты с "Template" в названии)
         if (character.name.Contains("Template"))
+        {
+            return false;
+        }
+
+        // Исключаем Character_Template специально (на случай если название изменится)
+        if (character.name == "Character_Template")
         {
             return false;
         }
 
         // Исключаем неактивных персонажей
         if (!character.gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        // Исключаем персонажей, которые находятся очень далеко (вероятно, скрытые шаблоны)
+        if (Vector3.Distance(character.transform.position, Vector3.zero) > 5000f)
         {
             return false;
         }
@@ -688,12 +736,18 @@ public class SimpleCharacterIcon : MonoBehaviour
     private float expandedHeight;
     private bool isExpanded = false;
     private GameObject expandedContent;
+    private Text expandButtonText;
 
     public void Initialize(Character characterData, float width, float height)
     {
         character = characterData;
         normalHeight = height;
         expandedHeight = height * 2.5f;
+    }
+
+    public void SetExpandButtonText(Text buttonText)
+    {
+        expandButtonText = buttonText;
     }
 
     public void ToggleExpanded()
@@ -710,8 +764,18 @@ public class SimpleCharacterIcon : MonoBehaviour
             // Раскрываем
             Debug.Log($"SimpleCharacterIcon: Expanding {character.name}");
             rect.sizeDelta = new Vector2(rect.sizeDelta.x, expandedHeight);
-            bg.color = new Color(0, 0, 1, 0.9f); // Синий когда раскрыт
+            bg.color = new Color(0.2f, 0.2f, 0.8f, 0.95f); // Темно-синий когда раскрыт
             CreateExpandedContent();
+
+            // Изменяем текст кнопки на "i" (свернуть)
+            if (expandButtonText != null)
+            {
+                expandButtonText.text = "i";
+            }
+
+            // Переместим иконку на передний план чтобы она была поверх других
+            transform.SetAsLastSibling();
+
             Debug.Log($"SimpleCharacterIcon: {character.name} expanded to size {rect.sizeDelta}");
         }
         else
@@ -721,6 +785,13 @@ public class SimpleCharacterIcon : MonoBehaviour
             rect.sizeDelta = new Vector2(rect.sizeDelta.x, normalHeight);
             bg.color = new Color(0, 1, 0, 1f); // Зеленый когда свернут
             DestroyExpandedContent();
+
+            // Изменяем текст кнопки на "i" (раскрыть)
+            if (expandButtonText != null)
+            {
+                expandButtonText.text = "i";
+            }
+
             Debug.Log($"SimpleCharacterIcon: {character.name} collapsed to size {rect.sizeDelta}");
         }
     }
