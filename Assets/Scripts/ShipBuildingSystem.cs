@@ -260,19 +260,17 @@ public class ShipBuildingSystem : MonoBehaviour
         // Настраиваем материал предварительного просмотра
         Renderer renderer = visual.GetComponent<Renderer>();
 
-        // Попробуем простой Unlit/Color шейдер
-        Material previewMat = new Material(Shader.Find("Unlit/Color"));
-        if (previewMat.shader == null)
+        // Загружаем готовый зеленый материал
+        Material greenMaterial = Resources.Load<Material>("Materials/GhostGreen");
+        if (greenMaterial != null)
         {
-            // Fallback на стандартный Sprites/Default
-            previewMat = new Material(Shader.Find("Sprites/Default"));
+            renderer.material = greenMaterial;
+            Debug.Log("GhostGreen material loaded successfully");
         }
-
-        // Приятный голубоватый полупрозрачный цвет
-        previewMat.color = new Color(0.4f, 0.8f, 1f, 0.6f);
-
-
-        renderer.material = previewMat;
+        else
+        {
+            Debug.LogWarning("GhostGreen material not found in Resources/Materials folder");
+        }
     }
 
     /// <summary>
@@ -323,12 +321,44 @@ public class ShipBuildingSystem : MonoBehaviour
         Vector3 previewPosition = snapPosition + roomCenterOffset + Vector3.up * 1f;
         previewObject.transform.position = previewPosition;
 
-        // Создаем индикаторы клеток
-        UpdatePreviewCells(gridPos, currentRoom);
+        // Убираем индикаторы клеток - используем только изменение цвета призрака
+        // UpdatePreviewCells(gridPos, currentRoom);
 
-        // Проверяем, можно ли разместить комнату (для других целей)
+        // Проверяем, можно ли разместить комнату и обновляем цвет призрака
         bool canPlace = CanPlaceRoom(gridPos, currentRoom);
+        UpdatePreviewColor(canPlace);
 
+    }
+
+    /// <summary>
+    /// Обновить цвет призрака здания в зависимости от возможности строительства
+    /// </summary>
+    void UpdatePreviewColor(bool canPlace)
+    {
+        if (previewObject == null) return;
+
+        Renderer renderer = previewObject.GetComponentInChildren<Renderer>();
+        if (renderer != null)
+        {
+            if (canPlace)
+            {
+                // Используем зеленый материал
+                Material greenMaterial = Resources.Load<Material>("Materials/GhostGreen");
+                if (greenMaterial != null)
+                {
+                    renderer.material = greenMaterial;
+                }
+            }
+            else
+            {
+                // Используем красный материал
+                Material redMaterial = Resources.Load<Material>("Materials/GhostRed");
+                if (redMaterial != null)
+                {
+                    renderer.material = redMaterial;
+                }
+            }
+        }
     }
 
     /// <summary>
