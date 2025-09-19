@@ -281,7 +281,7 @@ public class RoomBuilder : MonoBehaviour
                     WallSide wallSide = DetermineWallSide(x, y, roomSize, rotation);
                     WallType wallType = DetermineWallType(wallSide);
 
-                    walls.Add(new WallData(cellPos, WallDirection.Vertical, gridPosition, roomSize, wallSide, wallType));
+                    walls.Add(new WallData(cellPos, WallDirection.Vertical, gridPosition, roomSize, wallSide, wallType, rotation));
                 }
             }
         }
@@ -641,6 +641,7 @@ public class WallData
     public Vector2Int roomSize;      // размер комнаты
     public WallSide wallSide;        // с какой стороны комнаты находится стена
     public WallType wallType;        // тип стены (прямая или угловая)
+    public int roomRotation;         // поворот комнаты в градусах (0, 90, 180, 270)
 
     public WallData(Vector2Int pos, WallDirection dir)
     {
@@ -650,9 +651,10 @@ public class WallData
         roomSize = Vector2Int.zero;
         wallSide = WallSide.None;
         wallType = WallType.Straight;
+        roomRotation = 0;
     }
 
-    public WallData(Vector2Int pos, WallDirection dir, Vector2Int roomPos, Vector2Int roomSz, WallSide side, WallType type)
+    public WallData(Vector2Int pos, WallDirection dir, Vector2Int roomPos, Vector2Int roomSz, WallSide side, WallType type, int rotation = 0)
     {
         position = pos;
         direction = dir;
@@ -660,6 +662,7 @@ public class WallData
         roomSize = roomSz;
         wallSide = side;
         wallType = type;
+        roomRotation = rotation;
     }
 
     public Vector2Int GetKey()
@@ -671,34 +674,38 @@ public class WallData
 
     /// <summary>
     /// Получить поворот стены для правильного соединения коннекторов
-    /// Базовая ориентация SM_Wall: Right=(0.5,1,-0.27), Left=(-0.5,1,-0.27)
-    /// Базовая ориентация SM_Wall_L: Right=(0.5,1,-0.27), Left=(-0.27,1,0.5) повернут на Y=90°
+    /// wallSide уже учитывает поворот комнаты, поэтому просто возвращаем нужную ориентацию
     /// </summary>
     public float GetRotationTowardRoom()
     {
+        // wallSide уже "повернут" при создании WallData, но нам нужно компенсировать поворот комнаты
+        // Получаем базовый поворот для стены как будто комната повернута на 0°
+        float baseRotation;
         switch (wallSide)
         {
             // Прямые стены - смотрят внутрь комнаты
-            case WallSide.Top:    return 180f; // смотрит вниз
-            case WallSide.Bottom: return 0f;   // смотрит вверх
-            case WallSide.Left:   return 90f;  // смотрит вправо
-            case WallSide.Right:  return 270f; // смотрит влево
+            case WallSide.Top:    baseRotation = 180f; break; // смотрит вниз
+            case WallSide.Bottom: baseRotation = 0f; break;   // смотрит вверх
+            case WallSide.Left:   baseRotation = 90f; break;  // смотрит вправо
+            case WallSide.Right:  baseRotation = 270f; break; // смотрит влево
 
             // Угловые стены (L-образные) - точное совпадение коннекторов
-            // TopLeft: Right коннектор угла → Left коннектор Top стены, Left коннектор угла → Right коннектор Left стены
-            case WallSide.TopLeft:     return 90f;
+            case WallSide.TopLeft:     baseRotation = 90f; break;
+            case WallSide.TopRight:    baseRotation = 180f; break;
+            case WallSide.BottomLeft:  baseRotation = 0f; break;
+            case WallSide.BottomRight: baseRotation = 270f; break;
 
-            // TopRight: Left коннектор угла → Right коннектор Top стены, Right коннектор угла → Left коннектор Right стены
-            case WallSide.TopRight:    return 180f;
-
-            // BottomLeft: Left коннектор угла → Left коннектор Bottom стены, Right коннектор угла → Left коннектор Left стены
-            case WallSide.BottomLeft:  return 0f;
-
-            // BottomRight: Right коннектор угла → Right коннектор Bottom стены, Left коннектор угла → Right коннектор Right стены
-            case WallSide.BottomRight: return 270f;
-
-            default: return 0f;
+            default: baseRotation = 0f; break;
         }
+
+        // Компенсируем поворот комнаты: вычитаем roomRotation из базового поворота
+        float finalRotation = (baseRotation - roomRotation) % 360f;
+        if (finalRotation < 0) finalRotation += 360f;
+
+        // Debug лог для отслеживания поворотов
+        FileLogger.Log($"[DEBUG] Wall at {position} - wallSide: {wallSide}, roomRotation: {roomRotation}, baseRotation: {baseRotation}°, finalRotation: {finalRotation}°");
+
+        return finalRotation;
     }
 }
 

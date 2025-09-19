@@ -334,7 +334,7 @@ public class ShipBuildingSystem : MonoBehaviour
                     WallSide wallSide = DetermineGhostWallSide(x, y, roomSize, rotation);
                     WallType wallType = DetermineGhostWallType(wallSide);
 
-                    walls.Add(new WallData(cellPos, WallDirection.Vertical, gridPosition, roomSize, wallSide, wallType));
+                    walls.Add(new WallData(cellPos, WallDirection.Vertical, gridPosition, roomSize, wallSide, wallType, rotation));
                 }
             }
         }
@@ -497,8 +497,8 @@ public class ShipBuildingSystem : MonoBehaviour
             Vector3 worldPos = GridToWorldPosition(wallData.position);
             ghostWall.transform.position = worldPos;
 
-            // Поворот с учетом поворота комнаты
-            float wallRotation = GetGhostWallRotation(wallData.wallSide);
+            // Поворот с учетом поворота комнаты - используем тот же метод что и для обычных стен
+            float wallRotation = wallData.GetRotationTowardRoom();
             ghostWall.transform.localRotation = Quaternion.Euler(0, wallRotation, 0);
 
             // Убираем коллайдеры
@@ -517,24 +517,6 @@ public class ShipBuildingSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Получить поворот для призрачной стены
-    /// </summary>
-    float GetGhostWallRotation(WallSide wallSide)
-    {
-        switch (wallSide)
-        {
-            case WallSide.Top: return 180f;
-            case WallSide.Bottom: return 0f;
-            case WallSide.Left: return 90f;
-            case WallSide.Right: return 270f;
-            case WallSide.TopLeft: return 90f;
-            case WallSide.TopRight: return 180f;
-            case WallSide.BottomLeft: return 0f;
-            case WallSide.BottomRight: return 270f;
-            default: return 0f;
-        }
-    }
 
     /// <summary>
     /// Преобразование координат сетки в мировые (для призраков)
@@ -674,14 +656,18 @@ public class ShipBuildingSystem : MonoBehaviour
     /// </summary>
     void HandleBuildingInput()
     {
-        // ЛКМ - построить комнату
-        if (Input.GetMouseButtonDown(0))
+        // Проверяем, не находится ли мышь над UI элементом
+        bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
+                               UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
+
+        // ЛКМ - построить комнату (только если мышь НЕ над UI)
+        if (Input.GetMouseButtonDown(0) && !isPointerOverUI)
         {
             TryBuildRoom();
         }
 
-        // ПКМ - отменить выбор комнаты или выйти из режима строительства
-        if (Input.GetMouseButtonDown(1))
+        // ПКМ - отменить выбор комнаты или выйти из режима строительства (только если мышь НЕ над UI)
+        if (Input.GetMouseButtonDown(1) && !isPointerOverUI)
         {
             if (selectedRoomIndex >= 0)
             {
@@ -799,6 +785,7 @@ public class ShipBuildingSystem : MonoBehaviour
         {
             selectedRoomIndex = index;
             roomRotation = 0; // Сбрасываем поворот при смене типа комнаты
+            FileLogger.Log($"[SetSelectedRoomType] Changed to room {index} ({availableRooms[index].roomName}), buildingMode: {buildingMode}");
             if (buildingMode)
             {
                 CreatePreviewObject();
@@ -1174,14 +1161,18 @@ public class ShipBuildingSystem : MonoBehaviour
     /// </summary>
     void HandleDeletionInput()
     {
-        // ЛКМ - удалить комнату
-        if (Input.GetMouseButtonDown(0))
+        // Проверяем, не находится ли мышь над UI элементом
+        bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
+                               UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
+
+        // ЛКМ - удалить комнату (только если мышь НЕ над UI)
+        if (Input.GetMouseButtonDown(0) && !isPointerOverUI)
         {
             TryDeleteRoom();
         }
 
-        // ПКМ или ESC - выйти из режима удаления
-        if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.Escape))
+        // ПКМ или ESC - выйти из режима удаления (только если мышь НЕ над UI для ПКМ)
+        if ((Input.GetMouseButtonDown(1) && !isPointerOverUI) || Input.GetKeyDown(KeyCode.Escape))
         {
             ToggleDeletionMode();
         }

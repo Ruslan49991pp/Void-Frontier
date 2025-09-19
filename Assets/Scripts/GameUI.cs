@@ -534,6 +534,9 @@ public class GameUI : MonoBehaviour
 
         if (buildingSystem != null)
         {
+            bool wasBuildingModeActive = buildingSystem.IsBuildingModeActive();
+            FileLogger.Log($"[SelectBuilding] buildingIndex: {buildingIndex}, wasBuildingModeActive: {wasBuildingModeActive}");
+
             buildingSystem.SetSelectedRoomType(buildingIndex);
             buildingSystem.SetBuildMode(true);
         }
