@@ -129,6 +129,11 @@ public class RoomBuilder : MonoBehaviour
     /// </summary>
     public GameObject BuildRoom(Vector2Int gridPosition, Vector2Int roomSize, string roomName, Transform parent = null)
     {
+        return BuildRoom(gridPosition, roomSize, roomName, 0, parent);
+    }
+
+    public GameObject BuildRoom(Vector2Int gridPosition, Vector2Int roomSize, string roomName, int rotation, Transform parent = null)
+    {
         GameObject roomGO = new GameObject($"Room_{roomName}_{gridPosition.x}_{gridPosition.y}");
         if (parent != null)
             roomGO.transform.SetParent(parent);
@@ -136,8 +141,8 @@ public class RoomBuilder : MonoBehaviour
         // Создаем пол
         CreateFloor(roomGO, gridPosition, roomSize);
 
-        // Создаем стены
-        CreateWalls(roomGO, gridPosition, roomSize);
+        // Создаем стены с учетом поворота
+        CreateWalls(roomGO, gridPosition, roomSize, rotation);
 
         // Добавляем компонент информации о комнате
         RoomInfo roomInfo = roomGO.AddComponent<RoomInfo>();
@@ -229,7 +234,12 @@ public class RoomBuilder : MonoBehaviour
     /// </summary>
     void CreateWalls(GameObject parent, Vector2Int gridPosition, Vector2Int roomSize)
     {
-        List<WallData> wallsToCreate = GetRoomWalls(gridPosition, roomSize);
+        CreateWalls(parent, gridPosition, roomSize, 0);
+    }
+
+    void CreateWalls(GameObject parent, Vector2Int gridPosition, Vector2Int roomSize, int rotation)
+    {
+        List<WallData> wallsToCreate = GetRoomWalls(gridPosition, roomSize, rotation);
 
         foreach (WallData wall in wallsToCreate)
         {
@@ -244,6 +254,11 @@ public class RoomBuilder : MonoBehaviour
     /// Стены располагаются НА клетках сетки по периметру комнаты
     /// </summary>
     List<WallData> GetRoomWalls(Vector2Int gridPosition, Vector2Int roomSize)
+    {
+        return GetRoomWalls(gridPosition, roomSize, 0);
+    }
+
+    List<WallData> GetRoomWalls(Vector2Int gridPosition, Vector2Int roomSize, int rotation)
     {
         List<WallData> walls = new List<WallData>();
         HashSet<Vector2Int> wallPositions = new HashSet<Vector2Int>();
@@ -262,8 +277,8 @@ public class RoomBuilder : MonoBehaviour
                 {
                     wallPositions.Add(cellPos);
 
-                    // Определяем сторону комнаты для стены
-                    WallSide wallSide = DetermineWallSide(x, y, roomSize);
+                    // Определяем сторону комнаты для стены с учетом поворота
+                    WallSide wallSide = DetermineWallSide(x, y, roomSize, rotation);
                     WallType wallType = DetermineWallType(wallSide);
 
                     walls.Add(new WallData(cellPos, WallDirection.Vertical, gridPosition, roomSize, wallSide, wallType));
@@ -279,32 +294,113 @@ public class RoomBuilder : MonoBehaviour
     /// </summary>
     WallSide DetermineWallSide(int relativeX, int relativeY, Vector2Int roomSize)
     {
+        return DetermineWallSide(relativeX, relativeY, roomSize, 0);
+    }
+
+    WallSide DetermineWallSide(int relativeX, int relativeY, Vector2Int roomSize, int rotation)
+    {
         bool isLeftEdge = (relativeX == 0);
         bool isRightEdge = (relativeX == roomSize.x - 1);
         bool isTopEdge = (relativeY == roomSize.y - 1);
         bool isBottomEdge = (relativeY == 0);
 
+        WallSide baseSide = WallSide.None;
+
         // Сначала проверяем углы (комбинации сторон)
-        if (isTopEdge && isLeftEdge)
-            return WallSide.TopLeft;
-        if (isTopEdge && isRightEdge)
-            return WallSide.TopRight;
-        if (isBottomEdge && isLeftEdge)
-            return WallSide.BottomLeft;
-        if (isBottomEdge && isRightEdge)
-            return WallSide.BottomRight;
-
+        if (isTopEdge && isLeftEdge) baseSide = WallSide.TopLeft;
+        else if (isTopEdge && isRightEdge) baseSide = WallSide.TopRight;
+        else if (isBottomEdge && isLeftEdge) baseSide = WallSide.BottomLeft;
+        else if (isBottomEdge && isRightEdge) baseSide = WallSide.BottomRight;
         // Затем проверяем обычные стороны
-        if (isTopEdge)
-            return WallSide.Top;
-        if (isBottomEdge)
-            return WallSide.Bottom;
-        if (isLeftEdge)
-            return WallSide.Left;
-        if (isRightEdge)
-            return WallSide.Right;
+        else if (isTopEdge) baseSide = WallSide.Top;
+        else if (isBottomEdge) baseSide = WallSide.Bottom;
+        else if (isLeftEdge) baseSide = WallSide.Left;
+        else if (isRightEdge) baseSide = WallSide.Right;
 
-        return WallSide.None;
+        // Применяем поворот к определенной стороне
+        return RotateWallSide(baseSide, rotation);
+    }
+
+    /// <summary>
+    /// Повернуть сторону стены на заданный угол
+    /// </summary>
+    WallSide RotateWallSide(WallSide originalSide, int rotation)
+    {
+        if (rotation == 0) return originalSide;
+
+        int rotationSteps = (rotation / 90) % 4;
+        if (rotationSteps < 0) rotationSteps += 4;
+
+        switch (originalSide)
+        {
+            case WallSide.Top:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.Right;
+                    case 2: return WallSide.Bottom;
+                    case 3: return WallSide.Left;
+                    default: return WallSide.Top;
+                }
+            case WallSide.Right:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.Bottom;
+                    case 2: return WallSide.Left;
+                    case 3: return WallSide.Top;
+                    default: return WallSide.Right;
+                }
+            case WallSide.Bottom:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.Left;
+                    case 2: return WallSide.Top;
+                    case 3: return WallSide.Right;
+                    default: return WallSide.Bottom;
+                }
+            case WallSide.Left:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.Top;
+                    case 2: return WallSide.Right;
+                    case 3: return WallSide.Bottom;
+                    default: return WallSide.Left;
+                }
+            // Углы
+            case WallSide.TopLeft:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.TopRight;
+                    case 2: return WallSide.BottomRight;
+                    case 3: return WallSide.BottomLeft;
+                    default: return WallSide.TopLeft;
+                }
+            case WallSide.TopRight:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.BottomRight;
+                    case 2: return WallSide.BottomLeft;
+                    case 3: return WallSide.TopLeft;
+                    default: return WallSide.TopRight;
+                }
+            case WallSide.BottomRight:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.BottomLeft;
+                    case 2: return WallSide.TopLeft;
+                    case 3: return WallSide.TopRight;
+                    default: return WallSide.BottomRight;
+                }
+            case WallSide.BottomLeft:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.TopLeft;
+                    case 2: return WallSide.TopRight;
+                    case 3: return WallSide.BottomRight;
+                    default: return WallSide.BottomLeft;
+                }
+            default:
+                return originalSide;
+        }
     }
 
     /// <summary>

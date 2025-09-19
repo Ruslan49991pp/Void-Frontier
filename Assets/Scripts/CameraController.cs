@@ -28,6 +28,7 @@ public class CameraController : MonoBehaviour
     
     [Header("Selection Integration")]
     public SelectionManager selectionManager;
+    public ShipBuildingSystem buildingSystem;
 
     // ����������
     private Vector3 targetPosition;
@@ -51,6 +52,9 @@ public class CameraController : MonoBehaviour
         if (selectionManager == null)
             selectionManager = FindObjectOfType<SelectionManager>();
 
+        // Автоматически находим ShipBuildingSystem если не назначен (поиск будет повторяться при необходимости)
+        TryFindBuildingSystem();
+
         // Принудительно устанавливаем минимальный размер edge border
         edgeBorderSize = 5f;
         Debug.Log($"[CameraController] Edge border size set to: {edgeBorderSize}");
@@ -58,8 +62,11 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
+        // Ищем ShipBuildingSystem если еще не найден
+        if (buildingSystem == null)
+            TryFindBuildingSystem();
+
         HandleInput();
-        HandleZoom();
 
         // if (Input.GetKeyDown(focusKey))
         //     CenterOnTarget(); // ������ ������ Center
@@ -67,8 +74,11 @@ public class CameraController : MonoBehaviour
 
     void LateUpdate()
     {
-        // ������ ���������� ������ � ������� �������
-        transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime);
+        // Обрабатываем зум после того, как ShipBuildingSystem обработал ввод
+        HandleZoom();
+
+        // ������ ���������� ������ � ������� ������� (используем unscaledDeltaTime для работы во время паузы)
+        transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime, Mathf.Infinity, Time.unscaledDeltaTime);
     }
 
     void HandleInput()
@@ -95,7 +105,7 @@ public class CameraController : MonoBehaviour
         
         if (hasWASDInput)
         {
-            targetPosition += move.normalized * panSpeed * Time.deltaTime;
+            targetPosition += move.normalized * panSpeed * Time.unscaledDeltaTime;
         }
         else
         {
@@ -104,7 +114,7 @@ public class CameraController : MonoBehaviour
             if (edgeInput.sqrMagnitude > 0.0001f)
             {
                 Vector3 edgeMove = (right * edgeInput.x + forward * edgeInput.z);
-                targetPosition += edgeMove.normalized * edgeScrollSpeed * Time.deltaTime;
+                targetPosition += edgeMove.normalized * edgeScrollSpeed * Time.unscaledDeltaTime;
             }
         }
 
@@ -123,9 +133,26 @@ public class CameraController : MonoBehaviour
     void HandleZoom()
     {
         if (cam == null) return;
+
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) > 0.0001f)
         {
+            // Повторная попытка найти ShipBuildingSystem если не найден
+            TryFindBuildingSystem();
+
+            // Проверяем, активен ли режим строительства или ролик уже использован для поворота
+            bool isBuildingMode = buildingSystem != null && buildingSystem.IsBuildingModeActive();
+            bool scrollWheelUsed = buildingSystem != null && buildingSystem.IsScrollWheelUsedThisFrame();
+
+            // Если режим строительства активен или ролик уже использован, блокируем зум камеры
+            if (isBuildingMode || scrollWheelUsed)
+            {
+                Debug.Log($"[CameraController] Zoom blocked - buildingMode: {isBuildingMode}, scrollWheelUsed: {scrollWheelUsed}");
+                return;
+            }
+
+            Debug.Log($"[CameraController] Applying zoom - buildingSystem: {buildingSystem != null}");
+
             if (cam.orthographic)
             {
                 cam.orthographicSize = Mathf.Clamp(cam.orthographicSize - scroll * zoomSpeed, minOrthoSize, maxOrthoSize);
@@ -228,6 +255,22 @@ public class CameraController : MonoBehaviour
         return edgeInput;
     }
     
+    /// <summary>
+    /// Попытаться найти ShipBuildingSystem
+    /// </summary>
+    void TryFindBuildingSystem()
+    {
+        if (buildingSystem == null)
+        {
+            buildingSystem = FindObjectOfType<ShipBuildingSystem>();
+            if (buildingSystem != null)
+            {
+                Debug.Log("[CameraController] Successfully found ShipBuildingSystem");
+            }
+            // Не выводим предупреждение - поиск будет повторяться автоматически
+        }
+    }
+
     // ����� �������� �� UI: ��������� Ship ����� ���
     public void SetFocusTarget(Transform t)
     {

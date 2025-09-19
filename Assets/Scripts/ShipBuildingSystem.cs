@@ -35,6 +35,8 @@ public class ShipBuildingSystem : MonoBehaviour
     private List<GameObject> builtRooms = new List<GameObject>();
     private GameObject highlightedRoom = null;
     private Material originalMaterial = null;
+    private int roomRotation = 0; // Поворот комнаты в градусах (0, 90, 180, 270)
+    private bool scrollWheelUsedThisFrame = false; // Флаг использования ролика в этом кадре
 
     // События
     public System.Action<GameObject> OnRoomBuilt;
@@ -49,6 +51,9 @@ public class ShipBuildingSystem : MonoBehaviour
 
     void Update()
     {
+        // Сбрасываем флаг использования ролика в начале кадра
+        scrollWheelUsedThisFrame = false;
+
         // Проверяем паузу, но разрешаем строительство во время паузы стройки
         bool isPaused = GamePauseManager.Instance.IsPaused();
         bool isBuildModePause = GamePauseManager.Instance.IsBuildModePause();
@@ -236,20 +241,21 @@ public class ShipBuildingSystem : MonoBehaviour
         ClearPreviewCells();
 
         // Создаем призрак комнаты с настоящими стенами (используем временную позицию, обновится в UpdatePreview)
-        previewObject = CreateGhostRoom(Vector2Int.zero, currentRoom.size, currentRoom.roomName + "_Preview");
+        Vector2Int rotatedSize = GetRotatedRoomSize(currentRoom.size, roomRotation);
+        previewObject = CreateGhostRoom(Vector2Int.zero, rotatedSize, currentRoom.roomName + "_Preview", roomRotation);
     }
 
     /// <summary>
     /// Создать призрак комнаты с полупрозрачными стенами
     /// </summary>
-    GameObject CreateGhostRoom(Vector2Int gridPosition, Vector2Int roomSize, string roomName)
+    GameObject CreateGhostRoom(Vector2Int gridPosition, Vector2Int roomSize, string roomName, int rotation = 0)
     {
         GameObject ghostRoom = new GameObject(roomName);
 
         // Пол не создаем - в реальных комнатах его нет
 
-        // Создаем призрачные стены
-        CreateGhostWalls(ghostRoom, Vector2Int.zero, roomSize);
+        // Создаем призрачные стены с учетом поворота
+        CreateGhostWalls(ghostRoom, Vector2Int.zero, roomSize, rotation);
 
         return ghostRoom;
     }
@@ -295,21 +301,21 @@ public class ShipBuildingSystem : MonoBehaviour
     /// <summary>
     /// Создать призрачные стены
     /// </summary>
-    void CreateGhostWalls(GameObject parent, Vector2Int gridPosition, Vector2Int roomSize)
+    void CreateGhostWalls(GameObject parent, Vector2Int gridPosition, Vector2Int roomSize, int rotation = 0)
     {
         // Используем ту же логику что и в RoomBuilder для получения стен
-        List<WallData> walls = GetGhostRoomWalls(gridPosition, roomSize);
+        List<WallData> walls = GetGhostRoomWalls(gridPosition, roomSize, rotation);
 
         foreach (WallData wallData in walls)
         {
-            CreateGhostWall(parent, wallData);
+            CreateGhostWall(parent, wallData, rotation);
         }
     }
 
     /// <summary>
     /// Получить список стен для призрачной комнаты (копия логики из RoomBuilder)
     /// </summary>
-    List<WallData> GetGhostRoomWalls(Vector2Int gridPosition, Vector2Int roomSize)
+    List<WallData> GetGhostRoomWalls(Vector2Int gridPosition, Vector2Int roomSize, int rotation = 0)
     {
         List<WallData> walls = new List<WallData>();
 
@@ -324,8 +330,8 @@ public class ShipBuildingSystem : MonoBehaviour
 
                 if (isPerimeter)
                 {
-                    // Определяем сторону комнаты для стены
-                    WallSide wallSide = DetermineGhostWallSide(x, y, roomSize);
+                    // Определяем сторону комнаты для стены с учетом поворота
+                    WallSide wallSide = DetermineGhostWallSide(x, y, roomSize, rotation);
                     WallType wallType = DetermineGhostWallType(wallSide);
 
                     walls.Add(new WallData(cellPos, WallDirection.Vertical, gridPosition, roomSize, wallSide, wallType));
@@ -339,26 +345,110 @@ public class ShipBuildingSystem : MonoBehaviour
     /// <summary>
     /// Определить сторону комнаты для призрачной стены
     /// </summary>
-    WallSide DetermineGhostWallSide(int relativeX, int relativeY, Vector2Int roomSize)
+    WallSide DetermineGhostWallSide(int relativeX, int relativeY, Vector2Int roomSize, int rotation = 0)
     {
         bool isLeftEdge = (relativeX == 0);
         bool isRightEdge = (relativeX == roomSize.x - 1);
         bool isTopEdge = (relativeY == roomSize.y - 1);
         bool isBottomEdge = (relativeY == 0);
 
+        WallSide baseSide = WallSide.None;
+
         // Сначала проверяем углы
-        if (isTopEdge && isLeftEdge) return WallSide.TopLeft;
-        if (isTopEdge && isRightEdge) return WallSide.TopRight;
-        if (isBottomEdge && isLeftEdge) return WallSide.BottomLeft;
-        if (isBottomEdge && isRightEdge) return WallSide.BottomRight;
-
+        if (isTopEdge && isLeftEdge) baseSide = WallSide.TopLeft;
+        else if (isTopEdge && isRightEdge) baseSide = WallSide.TopRight;
+        else if (isBottomEdge && isLeftEdge) baseSide = WallSide.BottomLeft;
+        else if (isBottomEdge && isRightEdge) baseSide = WallSide.BottomRight;
         // Затем обычные стороны
-        if (isTopEdge) return WallSide.Top;
-        if (isBottomEdge) return WallSide.Bottom;
-        if (isLeftEdge) return WallSide.Left;
-        if (isRightEdge) return WallSide.Right;
+        else if (isTopEdge) baseSide = WallSide.Top;
+        else if (isBottomEdge) baseSide = WallSide.Bottom;
+        else if (isLeftEdge) baseSide = WallSide.Left;
+        else if (isRightEdge) baseSide = WallSide.Right;
 
-        return WallSide.None;
+        // Применяем поворот к определенной стороне
+        return RotateWallSide(baseSide, rotation);
+    }
+
+    /// <summary>
+    /// Повернуть сторону стены на заданный угол
+    /// </summary>
+    WallSide RotateWallSide(WallSide originalSide, int rotation)
+    {
+        if (rotation == 0) return originalSide;
+
+        int rotationSteps = (rotation / 90) % 4;
+        if (rotationSteps < 0) rotationSteps += 4;
+
+        switch (originalSide)
+        {
+            case WallSide.Top:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.Right;
+                    case 2: return WallSide.Bottom;
+                    case 3: return WallSide.Left;
+                    default: return WallSide.Top;
+                }
+            case WallSide.Right:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.Bottom;
+                    case 2: return WallSide.Left;
+                    case 3: return WallSide.Top;
+                    default: return WallSide.Right;
+                }
+            case WallSide.Bottom:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.Left;
+                    case 2: return WallSide.Top;
+                    case 3: return WallSide.Right;
+                    default: return WallSide.Bottom;
+                }
+            case WallSide.Left:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.Top;
+                    case 2: return WallSide.Right;
+                    case 3: return WallSide.Bottom;
+                    default: return WallSide.Left;
+                }
+            // Углы
+            case WallSide.TopLeft:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.TopRight;
+                    case 2: return WallSide.BottomRight;
+                    case 3: return WallSide.BottomLeft;
+                    default: return WallSide.TopLeft;
+                }
+            case WallSide.TopRight:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.BottomRight;
+                    case 2: return WallSide.BottomLeft;
+                    case 3: return WallSide.TopLeft;
+                    default: return WallSide.TopRight;
+                }
+            case WallSide.BottomRight:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.BottomLeft;
+                    case 2: return WallSide.TopLeft;
+                    case 3: return WallSide.TopRight;
+                    default: return WallSide.BottomRight;
+                }
+            case WallSide.BottomLeft:
+                switch (rotationSteps)
+                {
+                    case 1: return WallSide.TopLeft;
+                    case 2: return WallSide.TopRight;
+                    case 3: return WallSide.BottomRight;
+                    default: return WallSide.BottomLeft;
+                }
+            default:
+                return originalSide;
+        }
     }
 
     /// <summary>
@@ -381,7 +471,7 @@ public class ShipBuildingSystem : MonoBehaviour
     /// <summary>
     /// Создать призрачную стену
     /// </summary>
-    void CreateGhostWall(GameObject parent, WallData wallData)
+    void CreateGhostWall(GameObject parent, WallData wallData, int roomRotation = 0)
     {
         // Выбираем правильный префаб
         GameObject prefabToUse = null;
@@ -407,9 +497,9 @@ public class ShipBuildingSystem : MonoBehaviour
             Vector3 worldPos = GridToWorldPosition(wallData.position);
             ghostWall.transform.position = worldPos;
 
-            // Поворот
-            float rotationY = GetGhostWallRotation(wallData.wallSide);
-            ghostWall.transform.localRotation = Quaternion.Euler(0, rotationY, 0);
+            // Поворот с учетом поворота комнаты
+            float wallRotation = GetGhostWallRotation(wallData.wallSide);
+            ghostWall.transform.localRotation = Quaternion.Euler(0, wallRotation, 0);
 
             // Убираем коллайдеры
             Collider[] colliders = ghostWall.GetComponentsInChildren<Collider>();
@@ -552,13 +642,14 @@ public class ShipBuildingSystem : MonoBehaviour
 
         // Обновляем призрачную комнату с правильными координатами
         RoomData currentRoom = availableRooms[selectedRoomIndex];
-        UpdateGhostRoomPosition(previewObject, gridPos, currentRoom.size);
+        Vector2Int rotatedSize = GetRotatedRoomSize(currentRoom.size, roomRotation);
+        UpdateGhostRoomPosition(previewObject, gridPos, rotatedSize);
 
         // Убираем индикаторы клеток - теперь используем полноценный призрак комнаты
         // UpdatePreviewCells(gridPos, currentRoom);
 
         // Проверяем, можно ли разместить комнату и обновляем цвет призрака
-        bool canPlace = CanPlaceRoom(gridPos, currentRoom);
+        bool canPlace = CanPlaceRoom(gridPos, currentRoom, roomRotation);
         UpdatePreviewColor(canPlace);
 
     }
@@ -610,7 +701,67 @@ public class ShipBuildingSystem : MonoBehaviour
             SetBuildMode(false);
         }
 
+        // Q - поворот против часовой стрелки
+        if (Input.GetKeyDown(KeyCode.Q))
+        {
+            RotateRoom(-90);
+        }
+
+        // E - поворот по часовой стрелке
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            RotateRoom(90);
+        }
+
+        // Ролик мышки - поворот
+        float scrollWheel = Input.GetAxis("Mouse ScrollWheel");
+        if (Mathf.Abs(scrollWheel) > 0.0001f)
+        {
+            if (scrollWheel > 0f)
+            {
+                RotateRoom(90); // Вверх - по часовой стрелке
+            }
+            else if (scrollWheel < 0f)
+            {
+                RotateRoom(-90); // Вниз - против часовой стрелки
+            }
+
+            // Помечаем что ввод ролика обработан в этом кадре
+            scrollWheelUsedThisFrame = true;
+            FileLogger.Log($"Scroll wheel used for room rotation: {scrollWheel}");
+        }
+
         // Клавиши 1,2,3 и Tab больше не используются - выбор идет через UI
+    }
+
+    /// <summary>
+    /// Повернуть комнату на заданный угол
+    /// </summary>
+    void RotateRoom(int degrees)
+    {
+        roomRotation = (roomRotation + degrees) % 360;
+        if (roomRotation < 0) roomRotation += 360;
+
+        // Пересоздаем предпросмотр с новым поворотом
+        if (buildingMode && previewObject != null)
+        {
+            CreatePreviewObject();
+        }
+
+        FileLogger.Log($"Room rotated to {roomRotation} degrees");
+    }
+
+    /// <summary>
+    /// Получить размер комнаты с учетом поворота
+    /// </summary>
+    Vector2Int GetRotatedRoomSize(Vector2Int originalSize, int rotation)
+    {
+        if (rotation == 90 || rotation == 270)
+        {
+            // При повороте на 90 или 270 градусов меняем местами X и Y
+            return new Vector2Int(originalSize.y, originalSize.x);
+        }
+        return originalSize;
     }
 
     /// <summary>
@@ -619,6 +770,7 @@ public class ShipBuildingSystem : MonoBehaviour
     public void ClearRoomSelection()
     {
         selectedRoomIndex = -1;
+        roomRotation = 0; // Сбрасываем поворот при смене выбора
 
         // Убираем предпросмотр
         if (previewObject != null)
@@ -646,6 +798,7 @@ public class ShipBuildingSystem : MonoBehaviour
         if (index >= 0 && index < availableRooms.Count)
         {
             selectedRoomIndex = index;
+            roomRotation = 0; // Сбрасываем поворот при смене типа комнаты
             if (buildingMode)
             {
                 CreatePreviewObject();
@@ -659,6 +812,7 @@ public class ShipBuildingSystem : MonoBehaviour
     public void CycleRoomType()
     {
         selectedRoomIndex = (selectedRoomIndex + 1) % availableRooms.Count;
+        roomRotation = 0; // Сбрасываем поворот при смене типа комнаты
         if (buildingMode)
         {
             CreatePreviewObject();
@@ -705,31 +859,33 @@ public class ShipBuildingSystem : MonoBehaviour
 
         Vector3 snapPosition = gridManager.GridToWorld(gridPos);
 
-        if (CanPlaceRoom(gridPos, currentRoom))
+        if (CanPlaceRoom(gridPos, currentRoom, roomRotation))
         {
-            BuildRoom(gridPos, currentRoom);
+            BuildRoom(gridPos, currentRoom, roomRotation);
         }
     }
 
     /// <summary>
     /// Проверка возможности размещения комнаты
     /// </summary>
-    bool CanPlaceRoom(Vector2Int gridPosition, RoomData roomData)
+    bool CanPlaceRoom(Vector2Int gridPosition, RoomData roomData, int rotation = 0)
     {
-        return gridManager.CanPlaceObjectAt(gridPosition, roomData.size.x, roomData.size.y);
+        Vector2Int rotatedSize = GetRotatedRoomSize(roomData.size, rotation);
+        return gridManager.CanPlaceObjectAt(gridPosition, rotatedSize.x, rotatedSize.y);
     }
 
     /// <summary>
     /// Построить комнату
     /// </summary>
-    void BuildRoom(Vector2Int gridPosition, RoomData roomData)
+    void BuildRoom(Vector2Int gridPosition, RoomData roomData, int rotation = 0)
     {
         GameObject room;
+        Vector2Int rotatedSize = GetRotatedRoomSize(roomData.size, rotation);
 
         // Используем RoomBuilder для создания комнат из примитивов
         if (roomData.prefab == null)
         {
-            room = RoomBuilder.Instance.BuildRoom(gridPosition, roomData.size, roomData.roomName);
+            room = RoomBuilder.Instance.BuildRoom(gridPosition, rotatedSize, roomData.roomName, rotation);
             room.name = $"{roomData.roomName}_{builtRooms.Count + 1}";
 
             // Добавляем информацию об объекте для системы выделения
@@ -748,14 +904,14 @@ public class ShipBuildingSystem : MonoBehaviour
             if (roomCollider == null)
             {
                 roomCollider = room.AddComponent<BoxCollider>();
-                // Настраиваем размер коллайдера на всю комнату
-                float width = roomData.size.x * gridManager.cellSize;
-                float height = roomData.size.y * gridManager.cellSize;
+                // Настраиваем размер коллайдера на всю комнату с учетом поворота
+                float width = rotatedSize.x * gridManager.cellSize;
+                float height = rotatedSize.y * gridManager.cellSize;
                 roomCollider.size = new Vector3(width, 2f, height);
                 roomCollider.center = new Vector3(
-                    (roomData.size.x - 1) * 0.5f * gridManager.cellSize,
+                    (rotatedSize.x - 1) * 0.5f * gridManager.cellSize,
                     1f,
-                    (roomData.size.y - 1) * 0.5f * gridManager.cellSize
+                    (rotatedSize.y - 1) * 0.5f * gridManager.cellSize
                 );
                 roomCollider.isTrigger = true; // Триггер чтобы не мешать движению
             }
@@ -764,22 +920,22 @@ public class ShipBuildingSystem : MonoBehaviour
         {
             // Старый способ с префабами (для совместимости)
             Vector3 centerOffset = new Vector3(
-                (roomData.size.x - 1) * 0.5f * gridManager.cellSize,
+                (rotatedSize.x - 1) * 0.5f * gridManager.cellSize,
                 0,
-                (roomData.size.y - 1) * 0.5f * gridManager.cellSize
+                (rotatedSize.y - 1) * 0.5f * gridManager.cellSize
             );
             Vector3 roomPosition = gridManager.GridToWorld(gridPosition) + centerOffset;
 
-            room = Instantiate(roomData.prefab, roomPosition, Quaternion.identity);
+            room = Instantiate(roomData.prefab, roomPosition, Quaternion.Euler(0, rotation, 0));
             room.SetActive(true);
             room.name = $"{roomData.roomName}_{builtRooms.Count + 1}";
         }
 
-        // Занимаем клетки в сетке
-        gridManager.OccupyCellArea(gridPosition, roomData.size.x, roomData.size.y, room, roomData.roomType);
+        // Занимаем клетки в сетке с учетом поворота
+        gridManager.OccupyCellArea(gridPosition, rotatedSize.x, rotatedSize.y, room, roomData.roomType);
 
         // Регистрируем стены как непроходимые
-        RegisterRoomWalls(gridPosition, roomData.size);
+        RegisterRoomWalls(gridPosition, rotatedSize);
 
         // Добавляем в список построенных комнат
         builtRooms.Add(room);
@@ -871,6 +1027,14 @@ public class ShipBuildingSystem : MonoBehaviour
     public bool IsBuildingModeActive()
     {
         return buildingMode;
+    }
+
+    /// <summary>
+    /// Проверить, был ли ролик мыши использован для поворота в этом кадре
+    /// </summary>
+    public bool IsScrollWheelUsedThisFrame()
+    {
+        return scrollWheelUsedThisFrame;
     }
 
     /// <summary>
