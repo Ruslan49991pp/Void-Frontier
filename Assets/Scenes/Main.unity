@@ -353,6 +353,7 @@ MonoBehaviour:
   edgeScrollSpeed: 15
   edgeBorderSize: 50
   selectionManager: {fileID: 0}
+  buildingSystem: {fileID: 0}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0

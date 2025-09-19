@@ -23,6 +23,7 @@ public class RoomBuilder : MonoBehaviour
     private static RoomBuilder instance;
     private Dictionary<Vector2Int, WallInfo> globalWalls = new Dictionary<Vector2Int, WallInfo>();
     private Dictionary<Vector2Int, GameObject> activeWalls = new Dictionary<Vector2Int, GameObject>();
+    private Vector2Int? excludedDoorPosition = null; // Позиция где не нужно создавать стену (для двери)
 
     public static RoomBuilder Instance
     {
@@ -149,6 +150,7 @@ public class RoomBuilder : MonoBehaviour
         roomInfo.gridPosition = gridPosition;
         roomInfo.roomSize = roomSize;
         roomInfo.roomName = roomName;
+        roomInfo.roomRotation = rotation;
 
         return roomGO;
     }
@@ -434,9 +436,26 @@ public class RoomBuilder : MonoBehaviour
     {
         Vector2Int key = wallData.GetKey();
 
+        // Проверяем исключение для двери
+        if (excludedDoorPosition.HasValue && excludedDoorPosition.Value == key)
+        {
+            FileLogger.Log($"DEBUG: SKIPPING wall creation at {key} - door exclusion is active!");
+            return;
+        }
+
+        // DEBUG: Проверяем есть ли уже дверь в этой позиции
+        if (IsDoorAtPosition(key))
+        {
+            FileLogger.Log($"DEBUG: SKIPPING wall creation at {key} - door already exists!");
+            return; // НЕ добавляем стену если там уже есть дверь
+        }
+
+        FileLogger.Log($"DEBUG: Adding wall to global registry at {key}");
+
         if (globalWalls.ContainsKey(key))
         {
             globalWalls[key].referenceCount++;
+            FileLogger.Log($"DEBUG: Incremented wall reference count at {key} to {globalWalls[key].referenceCount}");
         }
         else
         {
@@ -445,7 +464,41 @@ public class RoomBuilder : MonoBehaviour
                 wallData = wallData,
                 referenceCount = 1
             };
+            FileLogger.Log($"DEBUG: Created new wall entry at {key}");
         }
+    }
+
+    /// <summary>
+    /// Проверить есть ли дверь в указанной позиции
+    /// </summary>
+    bool IsDoorAtPosition(Vector2Int position)
+    {
+        GameObject[] allObjects = FindObjectsOfType<GameObject>();
+        foreach (GameObject obj in allObjects)
+        {
+            if (obj.name.Contains("Door") && obj.activeInHierarchy && !obj.name.Contains("Preview"))
+            {
+                Vector3 objWorldPos = obj.transform.position;
+                Vector2Int objGridPos = WorldToGrid(objWorldPos);
+                if (objGridPos == position)
+                {
+                    FileLogger.Log($"DEBUG: Found door at {position}: {obj.name}");
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Преобразовать мировую позицию в координаты сетки
+    /// </summary>
+    Vector2Int WorldToGrid(Vector3 worldPos)
+    {
+        // Используем тот же алгоритм что и в GridManager
+        int x = Mathf.FloorToInt(worldPos.x / cellSize);
+        int z = Mathf.FloorToInt(worldPos.z / cellSize);
+        return new Vector2Int(x, z);
     }
 
     /// <summary>
@@ -627,6 +680,27 @@ public class RoomBuilder : MonoBehaviour
         WallData wallData = new WallData(gridPos, direction);
         return globalWalls.ContainsKey(wallData.GetKey());
     }
+
+    /// <summary>
+    /// Установить позицию где не нужно создавать стену (для двери)
+    /// </summary>
+    public void SetDoorExclusion(Vector2Int doorPosition)
+    {
+        excludedDoorPosition = doorPosition;
+        FileLogger.Log($"DEBUG: RoomBuilder - door exclusion set at {doorPosition}");
+    }
+
+    /// <summary>
+    /// Очистить исключение двери
+    /// </summary>
+    public void ClearDoorExclusion()
+    {
+        if (excludedDoorPosition.HasValue)
+        {
+            FileLogger.Log($"DEBUG: RoomBuilder - door exclusion cleared from {excludedDoorPosition.Value}");
+        }
+        excludedDoorPosition = null;
+    }
 }
 
 /// <summary>
@@ -769,4 +843,5 @@ public class RoomInfo : MonoBehaviour
     public Vector2Int roomSize;
     public string roomName;
     public string roomType;
+    public int roomRotation; // поворот комнаты в градусах (0, 90, 180, 270)
 }

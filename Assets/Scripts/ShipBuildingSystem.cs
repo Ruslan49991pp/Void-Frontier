@@ -25,14 +25,35 @@ public class ShipBuildingSystem : MonoBehaviour
     public Material previewMaterial;
     public LayerMask groundLayerMask = 1;
 
+    // Состояния строительства
+    public enum BuildingPhase
+    {
+        None,           // Режим строительства неактивен
+        PlacingRoom,    // Этап 1: Размещение призрака комнаты
+        PlacingDoor     // Этап 2: Размещение двери
+    }
+
     // Внутренние переменные
     private bool buildingMode = false;
     private bool deletionMode = false;
+    private BuildingPhase currentPhase = BuildingPhase.None;
     private int selectedRoomIndex = 0;
     private GameObject previewObject;
+    private GameObject doorPreviewObject; // Призрак двери
+    private Vector2Int pendingRoomPosition; // Позиция размещаемой комнаты
+    private Vector2Int pendingRoomSize; // Размер размещаемой комнаты
+    private int pendingRoomRotation; // Поворот размещаемой комнаты
+    private List<Vector2Int> straightWallPositions = new List<Vector2Int>(); // Позиции прямых стен для двери
+    private Vector2Int doorPosition = Vector2Int.zero; // Текущая позиция двери
     private List<GameObject> previewCells = new List<GameObject>();
     private GameUI gameUI;
     private List<GameObject> builtRooms = new List<GameObject>();
+
+    // Автоматическое строительство при выборе двери
+    private float doorSelectionTimer = 0f;
+    private const float AUTO_BUILD_DELAY = 0.5f; // задержка в секундах
+    private Vector2Int lastDoorPosition = Vector2Int.zero;
+    private bool roomBuilt = false;
     private GameObject highlightedRoom = null;
     private Material originalMaterial = null;
     private int roomRotation = 0; // Поворот комнаты в градусах (0, 90, 180, 270)
@@ -191,13 +212,15 @@ public class ShipBuildingSystem : MonoBehaviour
 
         if (buildingMode)
         {
+            currentPhase = BuildingPhase.PlacingRoom;
             StartBuildingMode();
-            FileLogger.Log("Build mode activated via UI");
+            FileLogger.Log("Build mode activated - Phase 1: Placing room");
         }
         else
         {
+            currentPhase = BuildingPhase.None;
             StopBuildingMode();
-            FileLogger.Log("Build mode deactivated via UI");
+            FileLogger.Log("Build mode deactivated");
         }
 
         OnBuildingModeChanged?.Invoke();
@@ -222,7 +245,14 @@ public class ShipBuildingSystem : MonoBehaviour
             previewObject = null;
         }
 
+        if (doorPreviewObject != null)
+        {
+            DestroyImmediate(doorPreviewObject);
+            doorPreviewObject = null;
+        }
+
         ClearPreviewCells();
+        currentPhase = BuildingPhase.None;
     }
 
     /// <summary>
@@ -592,6 +622,18 @@ public class ShipBuildingSystem : MonoBehaviour
         if (previewObject == null || playerCamera == null)
             return;
 
+        // В фазе размещения двери призрак комнаты должен оставаться зафиксированным
+        if (currentPhase == BuildingPhase.PlacingDoor)
+        {
+            // Обновляем только цвет призрака комнаты (зеленый, так как позиция уже выбрана)
+            UpdatePreviewColor(true);
+            return;
+        }
+
+        // Только в фазе размещения комнаты обновляем позицию призрака
+        if (currentPhase != BuildingPhase.PlacingRoom)
+            return;
+
         // Получаем позицию мыши в мире
         Vector3 mousePosition = Input.mousePosition;
         Ray ray = playerCamera.ScreenPointToRay(mousePosition);
@@ -660,64 +702,618 @@ public class ShipBuildingSystem : MonoBehaviour
         bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
                                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
-        // ЛКМ - построить комнату (только если мышь НЕ над UI)
-        if (Input.GetMouseButtonDown(0) && !isPointerOverUI)
+        // Обрабатываем ввод в зависимости от текущей фазы строительства
+        switch (currentPhase)
         {
-            TryBuildRoom();
+            case BuildingPhase.PlacingRoom:
+                HandleRoomPlacementInput(isPointerOverUI);
+                break;
+            case BuildingPhase.PlacingDoor:
+                HandleDoorPlacementInput(isPointerOverUI);
+                break;
         }
 
-        // ПКМ - отменить выбор комнаты или выйти из режима строительства (только если мышь НЕ над UI)
+        // Общие клавиши для всех фаз
+        HandleCommonBuildingInput();
+    }
+
+    /// <summary>
+    /// Обработка ввода для фазы размещения комнаты
+    /// </summary>
+    void HandleRoomPlacementInput(bool isPointerOverUI)
+    {
+        // ЛКМ - зафиксировать позицию комнаты и перейти к размещению двери
+        if (Input.GetMouseButtonDown(0) && !isPointerOverUI)
+        {
+            TryPlaceRoomGhost();
+        }
+
+        // ПКМ - отменить выбор комнаты или выйти из режима строительства
         if (Input.GetMouseButtonDown(1) && !isPointerOverUI)
         {
             if (selectedRoomIndex >= 0)
             {
-                // Если комната выбрана, отменяем выбор
                 ClearRoomSelection();
             }
             else
             {
-                // Если комната не выбрана, выходим из режима строительства
                 SetBuildMode(false);
             }
         }
+    }
 
+    /// <summary>
+    /// Обработка ввода для фазы размещения двери
+    /// </summary>
+    void HandleDoorPlacementInput(bool isPointerOverUI)
+    {
+        FileLogger.Log($"DEBUG: HandleDoorPlacementInput called - doorPosition: {doorPosition}, timer: {doorSelectionTimer:F2}, roomBuilt: {roomBuilt}");
+
+        // Обновляем позицию двери по движению мыши
+        UpdateDoorPosition();
+
+        // ЛКМ - мгновенно финализировать строительство
+        if (Input.GetMouseButtonDown(0) && !isPointerOverUI && !roomBuilt)
+        {
+            FileLogger.Log("DEBUG: Manual build triggered by LEFT CLICK");
+            TryFinalizeBuildRoom();
+        }
+
+        // Автоматическое строительство при остановке на позиции двери
+        if (!roomBuilt)
+        {
+            if (doorPosition == lastDoorPosition)
+            {
+                // Позиция не изменилась - увеличиваем таймер
+                doorSelectionTimer += Time.unscaledDeltaTime;
+
+                if (doorSelectionTimer >= AUTO_BUILD_DELAY)
+                {
+                    FileLogger.Log("DEBUG: Auto-building room after door position stabilized");
+                    TryFinalizeBuildRoom();
+                }
+            }
+            else
+            {
+                // Позиция изменилась - сбрасываем таймер
+                doorSelectionTimer = 0f;
+                lastDoorPosition = doorPosition;
+                FileLogger.Log($"DEBUG: Door position changed to {doorPosition}, timer reset");
+            }
+        }
+
+        // ПКМ - вернуться к размещению комнаты
+        if (Input.GetMouseButtonDown(1) && !isPointerOverUI)
+        {
+            ReturnToRoomPlacement();
+        }
+    }
+
+    /// <summary>
+    /// Обновить позицию двери в зависимости от позиции мыши
+    /// </summary>
+    void UpdateDoorPosition()
+    {
+        Vector2Int mouseGridPos = GetGridPositionFromMouse();
+        FileLogger.Log($"DEBUG: UpdateDoorPosition - mouseGridPos: {mouseGridPos}, current doorPosition: {doorPosition}");
+
+        // Находим ближайшую прямую стену к позиции мыши
+        Vector2Int closestWallPos = doorPosition; // по умолчанию текущая позиция
+        float minDistance = float.MaxValue;
+
+        foreach (Vector2Int wallPos in straightWallPositions)
+        {
+            float distance = Vector2Int.Distance(mouseGridPos, wallPos);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                closestWallPos = wallPos;
+            }
+        }
+
+        // Обновляем позицию двери если она изменилась
+        if (closestWallPos != doorPosition)
+        {
+            FileLogger.Log($"DEBUG: Door position changed from {doorPosition} to {closestWallPos}");
+            doorPosition = closestWallPos;
+            UpdateDoorPreviewPosition();
+        }
+        else
+        {
+            FileLogger.Log($"DEBUG: Door position unchanged: {doorPosition}");
+        }
+    }
+
+    /// <summary>
+    /// Общие клавиши для всех фаз строительства
+    /// </summary>
+    void HandleCommonBuildingInput()
+    {
         // ESC - выйти из режима строительства
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             SetBuildMode(false);
         }
 
-        // Q - поворот против часовой стрелки
-        if (Input.GetKeyDown(KeyCode.Q))
+        // Q и E - поворот комнаты (только в фазе размещения комнаты)
+        if (currentPhase == BuildingPhase.PlacingRoom)
         {
-            RotateRoom(-90);
-        }
-
-        // E - поворот по часовой стрелке
-        if (Input.GetKeyDown(KeyCode.E))
-        {
-            RotateRoom(90);
-        }
-
-        // Ролик мышки - поворот
-        float scrollWheel = Input.GetAxis("Mouse ScrollWheel");
-        if (Mathf.Abs(scrollWheel) > 0.0001f)
-        {
-            if (scrollWheel > 0f)
+            if (Input.GetKeyDown(KeyCode.Q))
             {
-                RotateRoom(90); // Вверх - по часовой стрелке
-            }
-            else if (scrollWheel < 0f)
-            {
-                RotateRoom(-90); // Вниз - против часовой стрелки
+                RotateRoom(-90);
             }
 
-            // Помечаем что ввод ролика обработан в этом кадре
-            scrollWheelUsedThisFrame = true;
-            FileLogger.Log($"Scroll wheel used for room rotation: {scrollWheel}");
+            if (Input.GetKeyDown(KeyCode.E))
+            {
+                RotateRoom(90);
+            }
+
+            // Ролик мышки - поворот (только в фазе размещения комнаты)
+            float scrollWheel = Input.GetAxis("Mouse ScrollWheel");
+            if (Mathf.Abs(scrollWheel) > 0.0001f)
+            {
+                scrollWheelUsedThisFrame = true;
+                if (scrollWheel > 0)
+                {
+                    RotateRoom(90);
+                }
+                else
+                {
+                    RotateRoom(-90);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Попытка зафиксировать позицию комнаты и перейти к размещению двери
+    /// </summary>
+    void TryPlaceRoomGhost()
+    {
+        Vector2Int gridPosition = GetGridPositionFromMouse();
+        if (selectedRoomIndex < 0 || selectedRoomIndex >= availableRooms.Count) return;
+
+        RoomData roomData = availableRooms[selectedRoomIndex];
+        if (!CanPlaceRoom(gridPosition, roomData, roomRotation))
+        {
+            FileLogger.Log("Cannot place room at this position");
+            return;
         }
 
-        // Клавиши 1,2,3 и Tab больше не используются - выбор идет через UI
+        // Сохраняем данные о размещаемой комнате
+        pendingRoomPosition = gridPosition;
+        pendingRoomSize = GetRotatedRoomSize(roomData.size, roomRotation);
+        pendingRoomRotation = roomRotation;
+
+        // Переходим к фазе размещения двери
+        currentPhase = BuildingPhase.PlacingDoor;
+
+        // Сбрасываем флаги автоматического строительства
+        doorSelectionTimer = 0f;
+        roomBuilt = false;
+        lastDoorPosition = Vector2Int.zero;
+
+        // Фиксируем призрак комнаты в выбранной позиции
+        UpdateGhostRoomPosition(previewObject, pendingRoomPosition, pendingRoomSize);
+
+        // Находим все прямые стены для размещения двери
+        FindStraightWallPositions();
+
+        // Создаем призрак двери
+        CreateDoorPreview();
+
+        FileLogger.Log("Phase 2: Placing door - room ghost locked");
+    }
+
+    /// <summary>
+    /// Найти позиции прямых стен для размещения двери
+    /// </summary>
+    void FindStraightWallPositions()
+    {
+        FileLogger.Log($"DEBUG: FindStraightWallPositions - room at {pendingRoomPosition}, size {pendingRoomSize}");
+        straightWallPositions.Clear();
+
+        for (int x = 0; x < pendingRoomSize.x; x++)
+        {
+            for (int y = 0; y < pendingRoomSize.y; y++)
+            {
+                Vector2Int cellPos = new Vector2Int(pendingRoomPosition.x + x, pendingRoomPosition.y + y);
+
+                // Проверяем, является ли клетка частью периметра
+                bool isPerimeter = (x == 0 || x == pendingRoomSize.x - 1 || y == 0 || y == pendingRoomSize.y - 1);
+
+                if (isPerimeter)
+                {
+                    // Проверяем, является ли это прямой стеной (не угол)
+                    bool isCorner = (x == 0 && y == 0) ||
+                                   (x == 0 && y == pendingRoomSize.y - 1) ||
+                                   (x == pendingRoomSize.x - 1 && y == 0) ||
+                                   (x == pendingRoomSize.x - 1 && y == pendingRoomSize.y - 1);
+
+                    if (!isCorner)
+                    {
+                        straightWallPositions.Add(cellPos);
+                        FileLogger.Log($"DEBUG: Added straight wall position: {cellPos}");
+                    }
+                    else
+                    {
+                        FileLogger.Log($"DEBUG: Skipped corner position: {cellPos}");
+                    }
+                }
+            }
+        }
+
+        // Устанавливаем начальную позицию двери на первой доступной прямой стене
+        if (straightWallPositions.Count > 0)
+        {
+            doorPosition = straightWallPositions[0];
+            FileLogger.Log($"DEBUG: Set initial door position to: {doorPosition}");
+        }
+        else
+        {
+            FileLogger.Log("ERROR: No straight wall positions found for door placement!");
+        }
+
+        FileLogger.Log($"DEBUG: Found {straightWallPositions.Count} straight wall positions for door placement");
+    }
+
+    /// <summary>
+    /// Создать призрак двери
+    /// </summary>
+    void CreateDoorPreview()
+    {
+        if (doorPreviewObject != null)
+            DestroyImmediate(doorPreviewObject);
+
+        // Загружаем префаб двери
+        GameObject doorPrefab = Resources.Load<GameObject>("Prefabs/SM_Door");
+        if (doorPrefab == null)
+        {
+            // Fallback: создаем простой куб если префаб не найден
+            doorPreviewObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            doorPreviewObject.name = "DoorPreview_Fallback";
+            DestroyImmediate(doorPreviewObject.GetComponent<Collider>());
+        }
+        else
+        {
+            // Создаем экземпляр префаба двери
+            doorPreviewObject = Instantiate(doorPrefab);
+            doorPreviewObject.name = "DoorPreview";
+
+            // Убираем коллайдеры у призрака
+            Collider[] colliders = doorPreviewObject.GetComponentsInChildren<Collider>();
+            foreach (Collider col in colliders)
+                DestroyImmediate(col);
+        }
+
+        // Применяем красный полупрозрачный материал ко всем рендерерам
+        Renderer[] renderers = doorPreviewObject.GetComponentsInChildren<Renderer>();
+        Material doorMaterial = new Material(Shader.Find("Standard"));
+        doorMaterial.color = new Color(1f, 0f, 0f, 0.5f); // Красный полупрозрачный
+        doorMaterial.SetFloat("_Mode", 3); // Transparent mode
+        doorMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        doorMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        doorMaterial.SetInt("_ZWrite", 0);
+        doorMaterial.DisableKeyword("_ALPHATEST_ON");
+        doorMaterial.EnableKeyword("_ALPHABLEND_ON");
+        doorMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        doorMaterial.renderQueue = 3000;
+
+        foreach (Renderer renderer in renderers)
+            renderer.material = doorMaterial;
+
+        // Позиционируем призрак двери
+        UpdateDoorPreviewPosition();
+    }
+
+    /// <summary>
+    /// Обновить позицию призрака двери
+    /// </summary>
+    void UpdateDoorPreviewPosition()
+    {
+        if (doorPreviewObject == null) return;
+
+        Vector3 worldPos = gridManager.GridToWorld(doorPosition);
+        doorPreviewObject.transform.position = worldPos;
+
+        // Получаем ориентацию стены в этой позиции для правильного поворота двери
+        float doorRotation = GetWallRotationAtPosition(doorPosition);
+        doorPreviewObject.transform.rotation = Quaternion.Euler(0, doorRotation, 0);
+
+        // Если это fallback куб, устанавливаем размер
+        if (doorPreviewObject.name.Contains("Fallback"))
+        {
+            doorPreviewObject.transform.localScale = new Vector3(gridManager.cellSize * 0.8f, 2f, gridManager.cellSize * 0.8f);
+        }
+    }
+
+    /// <summary>
+    /// Получить ориентацию стены в указанной позиции
+    /// </summary>
+    float GetWallRotationAtPosition(Vector2Int position)
+    {
+        // Определяем где находится позиция относительно комнаты
+        Vector2Int relativePos = position - pendingRoomPosition;
+
+        float baseRotation = 0f;
+
+        // Определяем на какой стороне комнаты находится позиция
+        if (relativePos.x == 0) // Левая сторона
+            baseRotation = 90f;
+        else if (relativePos.x == pendingRoomSize.x - 1) // Правая сторона
+            baseRotation = -90f;
+        else if (relativePos.y == 0) // Нижняя сторона
+            baseRotation = 180f;
+        else if (relativePos.y == pendingRoomSize.y - 1) // Верхняя сторона
+            baseRotation = 0f;
+
+        // Учитываем поворот комнаты
+        float finalRotation = (baseRotation + pendingRoomRotation) % 360f;
+        if (finalRotation < 0) finalRotation += 360f;
+
+        return finalRotation;
+    }
+
+    /// <summary>
+    /// Финализировать строительство комнаты с дверью
+    /// </summary>
+    void TryFinalizeBuildRoom()
+    {
+        if (selectedRoomIndex < 0 || selectedRoomIndex >= availableRooms.Count) return;
+
+        RoomData roomData = availableRooms[selectedRoomIndex];
+
+        FileLogger.Log("=== DEBUG: STARTING ROOM FINALIZATION ===");
+        FileLogger.Log($"Building room at {pendingRoomPosition}, size {pendingRoomSize}, rotation {pendingRoomRotation}");
+        FileLogger.Log($"Door will be placed at {doorPosition}");
+
+        // Логируем все существующие двери перед строительством
+        LogExistingDoors();
+
+        // Строим комнату БЕЗ стены в позиции двери
+        FileLogger.Log("Building room walls (excluding door position)...");
+        BuildRoomWithDoor(pendingRoomPosition, roomData, pendingRoomRotation, doorPosition);
+
+        // Создаем дверь в выбранной позиции
+        FileLogger.Log($"Creating door at {doorPosition}...");
+        CreateDoorAtPosition(doorPosition);
+
+        // Освобождаем клетку где стоит дверь
+        FileLogger.Log($"Freeing door cell at {doorPosition}...");
+        gridManager.FreeCell(doorPosition);
+
+        // Логируем все двери после строительства
+        LogExistingDoors();
+
+        // Очищаем призраки
+        if (previewObject != null)
+            DestroyImmediate(previewObject);
+        if (doorPreviewObject != null)
+            DestroyImmediate(doorPreviewObject);
+
+        // Помечаем что комната построена
+        roomBuilt = true;
+
+        // Возвращаемся к фазе размещения комнаты для следующего строительства
+        currentPhase = BuildingPhase.PlacingRoom;
+        roomRotation = 0; // Сбрасываем поворот
+
+        // Сбрасываем таймер автоматического строительства
+        doorSelectionTimer = 0f;
+        roomBuilt = false;
+
+        CreatePreviewObject(); // Создаем новый призрак комнаты
+
+        FileLogger.Log($"=== DEBUG: ROOM FINALIZATION COMPLETE ===");
+    }
+
+    /// <summary>
+    /// Логировать все существующие двери на сцене
+    /// </summary>
+    void LogExistingDoors()
+    {
+        GameObject[] allObjects = FindObjectsOfType<GameObject>();
+        int doorCount = 0;
+        FileLogger.Log("--- Existing doors on scene ---");
+        foreach (GameObject obj in allObjects)
+        {
+            if (obj.name.Contains("Door") && obj.activeInHierarchy)
+            {
+                Vector3 objWorldPos = obj.transform.position;
+                Vector2Int objGridPos = gridManager.WorldToGrid(objWorldPos);
+                FileLogger.Log($"Door found: {obj.name} at world {objWorldPos} grid {objGridPos}");
+                doorCount++;
+            }
+        }
+        FileLogger.Log($"Total doors found: {doorCount}");
+        FileLogger.Log("--- End of door list ---");
+    }
+
+    /// <summary>
+    /// Строить комнату с дверью (исключая позицию двери из стен)
+    /// </summary>
+    void BuildRoomWithDoor(Vector2Int gridPosition, RoomData roomData, int rotation, Vector2Int doorPosition)
+    {
+        // Сначала говорим RoomBuilder исключить позицию двери
+        RoomBuilder.Instance.SetDoorExclusion(doorPosition);
+
+        // Строим комнату как обычно
+        BuildRoom(gridPosition, roomData, rotation);
+
+        // Очищаем исключение
+        RoomBuilder.Instance.ClearDoorExclusion();
+    }
+
+    /// <summary>
+    /// Создать дверь в указанной позиции
+    /// </summary>
+    void CreateDoorAtPosition(Vector2Int position)
+    {
+        // Загружаем префаб двери
+        GameObject doorPrefab = Resources.Load<GameObject>("Prefabs/SM_Door");
+        if (doorPrefab == null)
+        {
+            FileLogger.Log("ERROR: SM_Door prefab not found in Resources/Prefabs/!");
+            return;
+        }
+
+        // Вычисляем позицию и поворот двери
+        Vector3 worldPos = gridManager.GridToWorld(position);
+        float doorRotation = GetWallRotationAtPosition(position);
+        Quaternion rotation = Quaternion.Euler(0, doorRotation, 0);
+
+        // Создаем дверь
+        GameObject door = Instantiate(doorPrefab, worldPos, rotation);
+        door.name = $"Door_{position.x}_{position.y}";
+
+        FileLogger.Log($"DEBUG: Door created: {door.name} at {door.transform.position}");
+        FileLogger.Log($"SUCCESS: Created door at {position}");
+    }
+
+    /// <summary>
+    /// Заменить стену на дверь в указанной позиции (СТАРЫЙ МЕТОД - НЕ ИСПОЛЬЗУЕТСЯ)
+    /// </summary>
+    void ReplaceWallWithDoor(Vector2Int position)
+    {
+        FileLogger.Log($"DEBUG: Starting wall replacement at {position}");
+
+        // Получаем RoomBuilder для доступа к стенам
+        RoomBuilder roomBuilder = RoomBuilder.Instance;
+        if (roomBuilder == null)
+        {
+            FileLogger.Log("ERROR: RoomBuilder not found!");
+            return;
+        }
+
+        // Загружаем префаб двери
+        GameObject doorPrefab = Resources.Load<GameObject>("Prefabs/SM_Door");
+        if (doorPrefab == null)
+        {
+            FileLogger.Log("ERROR: SM_Door prefab not found in Resources/Prefabs/!");
+            return;
+        }
+
+        // Ищем стену в указанной позиции через RoomBuilder
+        FileLogger.Log($"DEBUG: Looking for wall at position {position}");
+        GameObject wallToReplace = FindWallAtPosition(position);
+        if (wallToReplace == null)
+        {
+            FileLogger.Log($"ERROR: Wall not found at position {position}");
+            LogAllWallsOnScene(); // Дополнительный лог всех стен
+            return;
+        }
+
+        // Проверяем что объект стены все еще существует
+        if (wallToReplace == null)
+        {
+            FileLogger.Log($"ERROR: Wall object is null after finding it at {position}");
+            return;
+        }
+
+        FileLogger.Log($"DEBUG: Found wall to replace: {wallToReplace.name} at {wallToReplace.transform.position}");
+
+        // Сохраняем позицию и поворот старой стены
+        Vector3 wallPosition;
+        Quaternion wallRotation;
+        string wallName;
+
+        try
+        {
+            wallPosition = wallToReplace.transform.position;
+            wallRotation = wallToReplace.transform.rotation;
+            wallName = wallToReplace.name;
+            FileLogger.Log($"DEBUG: Wall position: {wallPosition}, rotation: {wallRotation.eulerAngles}");
+        }
+        catch (System.Exception e)
+        {
+            FileLogger.Log($"ERROR: Failed to get wall properties: {e.Message}");
+            return;
+        }
+
+        // Удаляем старую стену
+        try
+        {
+            DestroyImmediate(wallToReplace);
+            FileLogger.Log($"DEBUG: Wall {wallName} destroyed");
+        }
+        catch (System.Exception e)
+        {
+            FileLogger.Log($"ERROR: Failed to destroy wall: {e.Message}");
+            return;
+        }
+
+        // Создаем дверь
+        GameObject door = Instantiate(doorPrefab, wallPosition, wallRotation);
+        door.name = $"Door_{position.x}_{position.y}";
+
+        FileLogger.Log($"DEBUG: Door created: {door.name} at {door.transform.position}");
+        FileLogger.Log($"SUCCESS: Replaced wall with door at {position}");
+    }
+
+    /// <summary>
+    /// Логировать все стены на сцене для отладки
+    /// </summary>
+    void LogAllWallsOnScene()
+    {
+        GameObject[] allObjects = FindObjectsOfType<GameObject>();
+        int wallCount = 0;
+        FileLogger.Log("--- All walls on scene ---");
+        foreach (GameObject obj in allObjects)
+        {
+            if (obj.name.Contains("Wall") && !obj.name.Contains("Preview") && obj.activeInHierarchy)
+            {
+                Vector3 objWorldPos = obj.transform.position;
+                Vector2Int objGridPos = gridManager.WorldToGrid(objWorldPos);
+                FileLogger.Log($"Wall found: {obj.name} at world {objWorldPos} grid {objGridPos}");
+                wallCount++;
+            }
+        }
+        FileLogger.Log($"Total walls found: {wallCount}");
+        FileLogger.Log("--- End of wall list ---");
+    }
+
+    /// <summary>
+    /// Найти стену в указанной позиции
+    /// </summary>
+    GameObject FindWallAtPosition(Vector2Int position)
+    {
+        FileLogger.Log($"DEBUG: FindWallAtPosition looking for wall at {position}");
+
+        // Ищем среди всех объектов с тегом или именем стены
+        GameObject[] allObjects = FindObjectsOfType<GameObject>();
+        int wallsFound = 0;
+        foreach (GameObject obj in allObjects)
+        {
+            if (obj.name.Contains("Wall") && !obj.name.Contains("Preview"))
+            {
+                wallsFound++;
+                Vector3 objWorldPos = obj.transform.position;
+                Vector2Int objGridPos = gridManager.WorldToGrid(objWorldPos);
+                FileLogger.Log($"DEBUG: Checking wall {obj.name} at world {objWorldPos} grid {objGridPos}");
+                if (objGridPos == position)
+                {
+                    FileLogger.Log($"DEBUG: FOUND target wall: {obj.name} at {position}");
+                    return obj;
+                }
+            }
+        }
+        FileLogger.Log($"DEBUG: No wall found at {position}. Total walls checked: {wallsFound}");
+        return null;
+    }
+
+    /// <summary>
+    /// Вернуться к размещению комнаты
+    /// </summary>
+    void ReturnToRoomPlacement()
+    {
+        // Очищаем призрак двери
+        if (doorPreviewObject != null)
+            DestroyImmediate(doorPreviewObject);
+
+        // Возвращаемся к фазе размещения комнаты
+        currentPhase = BuildingPhase.PlacingRoom;
+
+        FileLogger.Log("Returned to Phase 1: Placing room");
     }
 
     /// <summary>
@@ -858,7 +1454,7 @@ public class ShipBuildingSystem : MonoBehaviour
     bool CanPlaceRoom(Vector2Int gridPosition, RoomData roomData, int rotation = 0)
     {
         Vector2Int rotatedSize = GetRotatedRoomSize(roomData.size, rotation);
-        return gridManager.CanPlaceObjectAt(gridPosition, rotatedSize.x, rotatedSize.y);
+        return gridManager.CanPlacePerimeterAt(gridPosition, rotatedSize.x, rotatedSize.y);
     }
 
     /// <summary>
@@ -918,8 +1514,8 @@ public class ShipBuildingSystem : MonoBehaviour
             room.name = $"{roomData.roomName}_{builtRooms.Count + 1}";
         }
 
-        // Занимаем клетки в сетке с учетом поворота
-        gridManager.OccupyCellArea(gridPosition, rotatedSize.x, rotatedSize.y, room, roomData.roomType);
+        // Занимаем только периметр комнаты (стены), внутренние клетки остаются свободными
+        gridManager.OccupyCellPerimeter(gridPosition, rotatedSize.x, rotatedSize.y, room, roomData.roomType);
 
         // Регистрируем стены как непроходимые
         RegisterRoomWalls(gridPosition, rotatedSize);
@@ -1208,14 +1804,17 @@ public class ShipBuildingSystem : MonoBehaviour
         RoomInfo roomInfo = room.GetComponent<RoomInfo>();
         if (roomInfo == null) return;
 
-        // Освобождаем клетки стен в GridManager
-        FreeRoomWallCells(roomInfo.gridPosition, roomInfo.roomSize);
+        // Получаем размер с учетом поворота комнаты
+        Vector2Int rotatedSize = GetRotatedRoomSize(roomInfo.roomSize, roomInfo.roomRotation);
 
-        // Освобождаем клетки в GridManager
-        gridManager.FreeCellArea(roomInfo.gridPosition, roomInfo.roomSize.x, roomInfo.roomSize.y);
+        // Освобождаем клетки стен в GridManager
+        FreeRoomWallCells(roomInfo.gridPosition, rotatedSize);
+
+        // Освобождаем только периметр комнаты (стены) в GridManager
+        gridManager.FreeCellPerimeter(roomInfo.gridPosition, rotatedSize.x, rotatedSize.y);
 
         // Удаляем стены через RoomBuilder
-        RoomBuilder.Instance.RemoveRoom(roomInfo.gridPosition, roomInfo.roomSize);
+        RoomBuilder.Instance.RemoveRoom(roomInfo.gridPosition, rotatedSize);
 
         // Удаляем из списка построенных комнат
         if (builtRooms.Contains(room))
@@ -1340,6 +1939,32 @@ public class ShipBuildingSystem : MonoBehaviour
         return availableRooms;
     }
 
+    private Vector2Int GetGridPositionFromMouse()
+    {
+        if (playerCamera == null || gridManager == null)
+            return Vector2Int.zero;
+
+        Vector3 mousePosition = Input.mousePosition;
+        Ray ray = playerCamera.ScreenPointToRay(mousePosition);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity))
+        {
+            Vector3 worldPos = hit.point;
+            return gridManager.WorldToGrid(worldPos);
+        }
+        else
+        {
+            if (ray.direction.y != 0)
+            {
+                float t = -ray.origin.y / ray.direction.y;
+                Vector3 worldPos = ray.origin + ray.direction * t;
+                return gridManager.WorldToGrid(worldPos);
+            }
+        }
+
+        return Vector2Int.zero;
+    }
+
     /// <summary>
     /// Получить текущий выбранный индекс комнаты
     /// </summary>
@@ -1347,5 +1972,4 @@ public class ShipBuildingSystem : MonoBehaviour
     {
         return selectedRoomIndex;
     }
-
 }

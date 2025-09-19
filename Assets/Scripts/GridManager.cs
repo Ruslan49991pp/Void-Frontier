@@ -339,6 +339,99 @@ public class GridManager : MonoBehaviour
     }
     
     /// <summary>
+    /// Проверить, можно ли разместить объект по периметру заданной области
+    /// </summary>
+    public bool CanPlacePerimeterAt(Vector2Int startPosition, int width, int height)
+    {
+        // Проверяем только клетки по периметру области
+        for (int x = 0; x < width; x++)
+        {
+            for (int z = 0; z < height; z++)
+            {
+                // Проверяем, является ли клетка частью периметра
+                bool isPerimeter = (x == 0 || x == width - 1 || z == 0 || z == height - 1);
+
+                if (isPerimeter)
+                {
+                    Vector2Int checkPos = new Vector2Int(startPosition.x + x, startPosition.y + z);
+
+                    // Проверяем валидность позиции
+                    if (!IsValidGridPosition(checkPos))
+                        return false;
+
+                    // Проверяем занятость ячейки
+                    GridCell cell = GetCell(checkPos);
+                    if (cell == null || cell.isOccupied)
+                        return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Занять только периметр области (для комнат - только стены занимают клетки)
+    /// </summary>
+    public bool OccupyCellPerimeter(Vector2Int startPosition, int width, int height, GameObject obj, string objectType)
+    {
+        // Сначала проверяем, можно ли разместить только периметр
+        if (!CanPlacePerimeterAt(startPosition, width, height))
+        {
+            return false;
+        }
+
+        // Занимаем только клетки по периметру области
+        for (int x = 0; x < width; x++)
+        {
+            for (int z = 0; z < height; z++)
+            {
+                // Проверяем, является ли клетка частью периметра
+                bool isPerimeter = (x == 0 || x == width - 1 || z == 0 || z == height - 1);
+
+                if (isPerimeter)
+                {
+                    Vector2Int cellPos = new Vector2Int(startPosition.x + x, startPosition.y + z);
+                    GridCell cell = GetCell(cellPos);
+                    if (cell != null)
+                    {
+                        cell.SetOccupied(obj, objectType);
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Освободить только периметр области (для комнат - только стены)
+    /// </summary>
+    public bool FreeCellPerimeter(Vector2Int startPosition, int width, int height)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int z = 0; z < height; z++)
+            {
+                // Проверяем, является ли клетка частью периметра
+                bool isPerimeter = (x == 0 || x == width - 1 || z == 0 || z == height - 1);
+
+                if (isPerimeter)
+                {
+                    Vector2Int cellPos = new Vector2Int(startPosition.x + x, startPosition.y + z);
+                    GridCell cell = GetCell(cellPos);
+                    if (cell != null)
+                    {
+                        cell.ClearOccupied();
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Освободить область ячеек
     /// </summary>
     public bool FreeCellArea(Vector2Int startPosition, int width, int height)
@@ -355,7 +448,7 @@ public class GridManager : MonoBehaviour
                 }
             }
         }
-        
+
         return true;
     }
     
