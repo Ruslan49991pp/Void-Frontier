@@ -235,37 +235,280 @@ public class ShipBuildingSystem : MonoBehaviour
 
         ClearPreviewCells();
 
-        previewObject = new GameObject("RoomPreview");
+        // Создаем призрак комнаты с настоящими стенами (используем временную позицию, обновится в UpdatePreview)
+        previewObject = CreateGhostRoom(Vector2Int.zero, currentRoom.size, currentRoom.roomName + "_Preview");
+    }
 
-        // Создаем визуальное представление
-        GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        visual.name = "PreviewVisual";
-        visual.transform.SetParent(previewObject.transform);
-        visual.transform.localPosition = Vector3.zero;
+    /// <summary>
+    /// Создать призрак комнаты с полупрозрачными стенами
+    /// </summary>
+    GameObject CreateGhostRoom(Vector2Int gridPosition, Vector2Int roomSize, string roomName)
+    {
+        GameObject ghostRoom = new GameObject(roomName);
 
-        // Масштабируем по размеру комнаты
-        float width = currentRoom.size.x * gridManager.cellSize;
-        float height = currentRoom.size.y * gridManager.cellSize;
-        visual.transform.localScale = new Vector3(width, 2f, height);
+        // Пол не создаем - в реальных комнатах его нет
 
-        // Убираем коллайдер
-        Collider collider = visual.GetComponent<Collider>();
-        if (collider != null)
-            DestroyImmediate(collider);
+        // Создаем призрачные стены
+        CreateGhostWalls(ghostRoom, Vector2Int.zero, roomSize);
 
-        // Настраиваем материал предварительного просмотра
-        Renderer renderer = visual.GetComponent<Renderer>();
+        return ghostRoom;
+    }
 
-        // Загружаем готовый зеленый материал
-        Material greenMaterial = Resources.Load<Material>("Materials/GhostGreen");
-        if (greenMaterial != null)
+    /// <summary>
+    /// Создать призрачный пол
+    /// </summary>
+    void CreateGhostFloor(GameObject parent, Vector2Int gridPosition, Vector2Int roomSize)
+    {
+        // Создаем пол только для внутренних клеток (без стен по периметру)
+        int innerWidth = Mathf.Max(1, roomSize.x - 2);
+        int innerHeight = Mathf.Max(1, roomSize.y - 2);
+
+        if (innerWidth > 0 && innerHeight > 0)
         {
-            renderer.material = greenMaterial;
-            Debug.Log("GhostGreen material loaded successfully");
+            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            floor.name = "GhostFloor";
+            floor.transform.SetParent(parent.transform);
+
+            // Размеры внутреннего пола
+            float width = innerWidth * gridManager.cellSize;
+            float height = innerHeight * gridManager.cellSize;
+            float floorThickness = 0.1f;
+
+            // Позиция - центр внутренней области
+            Vector3 centerOffset = new Vector3(
+                (roomSize.x - 1) * gridManager.cellSize * 0.5f,
+                -floorThickness * 0.5f,
+                (roomSize.y - 1) * gridManager.cellSize * 0.5f
+            );
+
+            floor.transform.localPosition = centerOffset;
+            floor.transform.localScale = new Vector3(width, floorThickness, height);
+
+            // Убираем коллайдер
+            Destroy(floor.GetComponent<Collider>());
+
+            // Применяем призрачный материал
+            ApplyGhostMaterial(floor.GetComponent<Renderer>(), true);
+        }
+    }
+
+    /// <summary>
+    /// Создать призрачные стены
+    /// </summary>
+    void CreateGhostWalls(GameObject parent, Vector2Int gridPosition, Vector2Int roomSize)
+    {
+        // Используем ту же логику что и в RoomBuilder для получения стен
+        List<WallData> walls = GetGhostRoomWalls(gridPosition, roomSize);
+
+        foreach (WallData wallData in walls)
+        {
+            CreateGhostWall(parent, wallData);
+        }
+    }
+
+    /// <summary>
+    /// Получить список стен для призрачной комнаты (копия логики из RoomBuilder)
+    /// </summary>
+    List<WallData> GetGhostRoomWalls(Vector2Int gridPosition, Vector2Int roomSize)
+    {
+        List<WallData> walls = new List<WallData>();
+
+        for (int x = 0; x < roomSize.x; x++)
+        {
+            for (int y = 0; y < roomSize.y; y++)
+            {
+                Vector2Int cellPos = new Vector2Int(gridPosition.x + x, gridPosition.y + y);
+
+                // Проверяем, является ли клетка частью периметра
+                bool isPerimeter = (x == 0 || x == roomSize.x - 1 || y == 0 || y == roomSize.y - 1);
+
+                if (isPerimeter)
+                {
+                    // Определяем сторону комнаты для стены
+                    WallSide wallSide = DetermineGhostWallSide(x, y, roomSize);
+                    WallType wallType = DetermineGhostWallType(wallSide);
+
+                    walls.Add(new WallData(cellPos, WallDirection.Vertical, gridPosition, roomSize, wallSide, wallType));
+                }
+            }
+        }
+
+        return walls;
+    }
+
+    /// <summary>
+    /// Определить сторону комнаты для призрачной стены
+    /// </summary>
+    WallSide DetermineGhostWallSide(int relativeX, int relativeY, Vector2Int roomSize)
+    {
+        bool isLeftEdge = (relativeX == 0);
+        bool isRightEdge = (relativeX == roomSize.x - 1);
+        bool isTopEdge = (relativeY == roomSize.y - 1);
+        bool isBottomEdge = (relativeY == 0);
+
+        // Сначала проверяем углы
+        if (isTopEdge && isLeftEdge) return WallSide.TopLeft;
+        if (isTopEdge && isRightEdge) return WallSide.TopRight;
+        if (isBottomEdge && isLeftEdge) return WallSide.BottomLeft;
+        if (isBottomEdge && isRightEdge) return WallSide.BottomRight;
+
+        // Затем обычные стороны
+        if (isTopEdge) return WallSide.Top;
+        if (isBottomEdge) return WallSide.Bottom;
+        if (isLeftEdge) return WallSide.Left;
+        if (isRightEdge) return WallSide.Right;
+
+        return WallSide.None;
+    }
+
+    /// <summary>
+    /// Определить тип призрачной стены
+    /// </summary>
+    WallType DetermineGhostWallType(WallSide wallSide)
+    {
+        switch (wallSide)
+        {
+            case WallSide.TopLeft:
+            case WallSide.TopRight:
+            case WallSide.BottomLeft:
+            case WallSide.BottomRight:
+                return WallType.Corner;
+            default:
+                return WallType.Straight;
+        }
+    }
+
+    /// <summary>
+    /// Создать призрачную стену
+    /// </summary>
+    void CreateGhostWall(GameObject parent, WallData wallData)
+    {
+        // Выбираем правильный префаб
+        GameObject prefabToUse = null;
+        if (wallData.wallType == WallType.Corner && RoomBuilder.Instance.wallCornerPrefab != null)
+        {
+            prefabToUse = RoomBuilder.Instance.wallCornerPrefab;
+        }
+        else if (RoomBuilder.Instance.wallPrefab != null)
+        {
+            prefabToUse = RoomBuilder.Instance.wallPrefab;
+        }
+
+        if (prefabToUse != null)
+        {
+            GameObject ghostWall = Instantiate(prefabToUse, parent.transform);
+
+            // Используем относительные координаты в имени (wallData.position - это абсолютные координаты)
+            int relativeX = wallData.position.x - wallData.roomPosition.x;
+            int relativeY = wallData.position.y - wallData.roomPosition.y;
+            ghostWall.name = $"GhostWall_{relativeX}_{relativeY}_{wallData.wallSide}";
+
+            // Позиционирование временное - будет обновлено в UpdateGhostRoomPosition
+            Vector3 worldPos = GridToWorldPosition(wallData.position);
+            ghostWall.transform.position = worldPos;
+
+            // Поворот
+            float rotationY = GetGhostWallRotation(wallData.wallSide);
+            ghostWall.transform.localRotation = Quaternion.Euler(0, rotationY, 0);
+
+            // Убираем коллайдеры
+            Collider[] colliders = ghostWall.GetComponentsInChildren<Collider>();
+            foreach (Collider col in colliders)
+            {
+                Destroy(col);
+            }
+
+            // Применяем призрачный материал ко всем рендерерам
+            Renderer[] renderers = ghostWall.GetComponentsInChildren<Renderer>();
+            foreach (Renderer renderer in renderers)
+            {
+                ApplyGhostMaterial(renderer, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Получить поворот для призрачной стены
+    /// </summary>
+    float GetGhostWallRotation(WallSide wallSide)
+    {
+        switch (wallSide)
+        {
+            case WallSide.Top: return 180f;
+            case WallSide.Bottom: return 0f;
+            case WallSide.Left: return 90f;
+            case WallSide.Right: return 270f;
+            case WallSide.TopLeft: return 90f;
+            case WallSide.TopRight: return 180f;
+            case WallSide.BottomLeft: return 0f;
+            case WallSide.BottomRight: return 270f;
+            default: return 0f;
+        }
+    }
+
+    /// <summary>
+    /// Преобразование координат сетки в мировые (для призраков)
+    /// </summary>
+    Vector3 GridToWorldPosition(Vector2Int gridPos)
+    {
+        return new Vector3(gridPos.x * gridManager.cellSize + gridManager.cellSize * 0.5f, 0,
+                          gridPos.y * gridManager.cellSize + gridManager.cellSize * 0.5f);
+    }
+
+    /// <summary>
+    /// Обновить позиции всех элементов призрачной комнаты
+    /// </summary>
+    void UpdateGhostRoomPosition(GameObject ghostRoom, Vector2Int gridPos, Vector2Int roomSize)
+    {
+        if (ghostRoom == null) return;
+
+        // Находим все призрачные стены и обновляем их позиции
+        Transform[] children = ghostRoom.GetComponentsInChildren<Transform>();
+        foreach (Transform child in children)
+        {
+            if (child.name.StartsWith("GhostWall_"))
+            {
+                // Извлекаем относительные координаты из имени стены
+                string[] nameParts = child.name.Split('_');
+                if (nameParts.Length >= 3)
+                {
+                    int relativeX = int.Parse(nameParts[1]);
+                    int relativeY = int.Parse(nameParts[2]);
+
+                    // Вычисляем абсолютные координаты стены
+                    Vector2Int absolutePos = new Vector2Int(gridPos.x + relativeX, gridPos.y + relativeY);
+
+                    // Обновляем позицию стены
+                    Vector3 worldPos = GridToWorldPosition(absolutePos);
+                    child.transform.position = worldPos;
+                }
+            }
+        }
+
+        // Устанавливаем базовую позицию родительского объекта
+        ghostRoom.transform.position = Vector3.zero;
+    }
+
+    /// <summary>
+    /// Применить призрачный материал к рендереру
+    /// </summary>
+    void ApplyGhostMaterial(Renderer renderer, bool canPlace)
+    {
+        if (renderer == null) return;
+
+        Material ghostMaterial = null;
+        if (canPlace)
+        {
+            ghostMaterial = Resources.Load<Material>("Materials/GhostGreen");
         }
         else
         {
-            Debug.LogWarning("GhostGreen material not found in Resources/Materials folder");
+            ghostMaterial = Resources.Load<Material>("Materials/GhostRed");
+        }
+
+        if (ghostMaterial != null)
+        {
+            renderer.material = ghostMaterial;
         }
     }
 
@@ -307,17 +550,11 @@ public class ShipBuildingSystem : MonoBehaviour
 
         Vector3 snapPosition = gridManager.GridToWorld(gridPos);
 
-        // Размещаем предпросмотр с учетом размера комнаты
+        // Обновляем призрачную комнату с правильными координатами
         RoomData currentRoom = availableRooms[selectedRoomIndex];
-        Vector3 roomCenterOffset = new Vector3(
-            (currentRoom.size.x - 1) * 0.5f * gridManager.cellSize,
-            0,
-            (currentRoom.size.y - 1) * 0.5f * gridManager.cellSize
-        );
-        Vector3 previewPosition = snapPosition + roomCenterOffset + Vector3.up * 1f;
-        previewObject.transform.position = previewPosition;
+        UpdateGhostRoomPosition(previewObject, gridPos, currentRoom.size);
 
-        // Убираем индикаторы клеток - используем только изменение цвета призрака
+        // Убираем индикаторы клеток - теперь используем полноценный призрак комнаты
         // UpdatePreviewCells(gridPos, currentRoom);
 
         // Проверяем, можно ли разместить комнату и обновляем цвет призрака
@@ -333,27 +570,11 @@ public class ShipBuildingSystem : MonoBehaviour
     {
         if (previewObject == null) return;
 
-        Renderer renderer = previewObject.GetComponentInChildren<Renderer>();
-        if (renderer != null)
+        // Обновляем материалы всех рендереров в призрачной комнате
+        Renderer[] renderers = previewObject.GetComponentsInChildren<Renderer>();
+        foreach (Renderer renderer in renderers)
         {
-            if (canPlace)
-            {
-                // Используем зеленый материал
-                Material greenMaterial = Resources.Load<Material>("Materials/GhostGreen");
-                if (greenMaterial != null)
-                {
-                    renderer.material = greenMaterial;
-                }
-            }
-            else
-            {
-                // Используем красный материал
-                Material redMaterial = Resources.Load<Material>("Materials/GhostRed");
-                if (redMaterial != null)
-                {
-                    renderer.material = redMaterial;
-                }
-            }
+            ApplyGhostMaterial(renderer, canPlace);
         }
     }
 
