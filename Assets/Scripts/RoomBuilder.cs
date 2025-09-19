@@ -10,6 +10,10 @@ public class RoomBuilder : MonoBehaviour
     public Material floorMaterial;
     public Material wallMaterial;
 
+    [Header("Wall Prefabs")]
+    public GameObject wallPrefab;         // Обычная стена SM_Wall
+    public GameObject wallCornerPrefab;   // Угловая стена SM_Wall_L
+
     [Header("Room Settings")]
     public float cellSize = 1f;
     public float wallHeight = 3f;
@@ -89,6 +93,34 @@ public class RoomBuilder : MonoBehaviour
             wallMaterial.SetFloat("_Metallic", 0.05f);
             wallMaterial.SetFloat("_Smoothness", 0.6f);
             wallMaterial.name = "WallMaterial_Lit";
+        }
+
+        // Загружаем префаб стены если он не назначен
+        if (wallPrefab == null)
+        {
+            wallPrefab = Resources.Load<GameObject>("Prefabs/SM_Wall");
+            if (wallPrefab == null)
+            {
+                FileLogger.Log("Warning: SM_Wall prefab not found in Resources/Prefabs/, using primitive cube");
+            }
+            else
+            {
+                FileLogger.Log("SM_Wall prefab loaded successfully");
+            }
+        }
+
+        // Загружаем префаб угловой стены если он не назначен
+        if (wallCornerPrefab == null)
+        {
+            wallCornerPrefab = Resources.Load<GameObject>("Prefabs/SM_Wall_L");
+            if (wallCornerPrefab == null)
+            {
+                FileLogger.Log("Warning: SM_Wall_L prefab not found in Resources/Prefabs/, using regular wall for corners");
+            }
+            else
+            {
+                FileLogger.Log("SM_Wall_L prefab loaded successfully");
+            }
         }
     }
 
@@ -229,12 +261,74 @@ public class RoomBuilder : MonoBehaviour
                 if (isPerimeter && !wallPositions.Contains(cellPos))
                 {
                     wallPositions.Add(cellPos);
-                    walls.Add(new WallData(cellPos, WallDirection.Vertical)); // направление не важно теперь
+
+                    // Определяем сторону комнаты для стены
+                    WallSide wallSide = DetermineWallSide(x, y, roomSize);
+                    WallType wallType = DetermineWallType(wallSide);
+
+                    walls.Add(new WallData(cellPos, WallDirection.Vertical, gridPosition, roomSize, wallSide, wallType));
                 }
             }
         }
 
         return walls;
+    }
+
+    /// <summary>
+    /// Определить сторону комнаты для стены по её относительной позиции
+    /// </summary>
+    WallSide DetermineWallSide(int relativeX, int relativeY, Vector2Int roomSize)
+    {
+        bool isLeftEdge = (relativeX == 0);
+        bool isRightEdge = (relativeX == roomSize.x - 1);
+        bool isTopEdge = (relativeY == roomSize.y - 1);
+        bool isBottomEdge = (relativeY == 0);
+
+        // Сначала проверяем углы (комбинации сторон)
+        if (isTopEdge && isLeftEdge)
+            return WallSide.TopLeft;
+        if (isTopEdge && isRightEdge)
+            return WallSide.TopRight;
+        if (isBottomEdge && isLeftEdge)
+            return WallSide.BottomLeft;
+        if (isBottomEdge && isRightEdge)
+            return WallSide.BottomRight;
+
+        // Затем проверяем обычные стороны
+        if (isTopEdge)
+            return WallSide.Top;
+        if (isBottomEdge)
+            return WallSide.Bottom;
+        if (isLeftEdge)
+            return WallSide.Left;
+        if (isRightEdge)
+            return WallSide.Right;
+
+        return WallSide.None;
+    }
+
+    /// <summary>
+    /// Определить тип стены (прямая или угловая) по её стороне
+    /// </summary>
+    WallType DetermineWallType(WallSide wallSide)
+    {
+        switch (wallSide)
+        {
+            case WallSide.TopLeft:
+            case WallSide.TopRight:
+            case WallSide.BottomLeft:
+            case WallSide.BottomRight:
+                return WallType.Corner;
+
+            case WallSide.Top:
+            case WallSide.Bottom:
+            case WallSide.Left:
+            case WallSide.Right:
+                return WallType.Straight;
+
+            default:
+                return WallType.Straight;
+        }
     }
 
     /// <summary>
@@ -320,23 +414,85 @@ public class RoomBuilder : MonoBehaviour
     /// </summary>
     GameObject CreateWallGameObject(WallData wallData)
     {
-        GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        wall.name = $"Wall_{wallData.position.x}_{wallData.position.y}";
+        GameObject wall;
 
-        // Позиционирование стены в центре клетки
-        Vector3 worldPos = GridToWorldPosition(wallData.position);
-        worldPos.y = wallHeight * 0.5f; // центр стены по высоте
-        wall.transform.position = worldPos;
+        // Выбираем правильный префаб в зависимости от типа стены
+        GameObject prefabToUse = null;
+        if (wallData.wallType == WallType.Corner && wallCornerPrefab != null)
+        {
+            prefabToUse = wallCornerPrefab;
+        }
+        else if (wallPrefab != null)
+        {
+            prefabToUse = wallPrefab;
+        }
 
-        // Стена занимает полную клетку по размеру
-        wall.transform.localScale = new Vector3(cellSize, wallHeight, cellSize);
+        // Используем выбранный префаб если доступен, иначе примитив
+        if (prefabToUse != null)
+        {
+            wall = Instantiate(prefabToUse);
+            wall.name = $"Wall_{wallData.position.x}_{wallData.position.y}_{wallData.wallSide}_{wallData.wallType}";
 
-        // Материал
-        wall.GetComponent<Renderer>().material = wallMaterial;
+            // Позиционирование стены в центре клетки
+            Vector3 worldPos = GridToWorldPosition(wallData.position);
+            wall.transform.position = worldPos;
 
-        // Настраиваем коллайдер для блокировки прохода
-        BoxCollider collider = wall.GetComponent<BoxCollider>();
-        collider.isTrigger = false;
+            // Поворачиваем стену так, чтобы она смотрела внутрь комнаты
+            float rotationY = wallData.GetRotationTowardRoom();
+            wall.transform.rotation = Quaternion.Euler(0, rotationY, 0);
+
+            // Устанавливаем стандартный размер для префаба
+            wall.transform.localScale = Vector3.one;
+
+            // Убеждаемся что есть коллайдер для блокировки прохода
+            BoxCollider collider = wall.GetComponent<BoxCollider>();
+            if (collider == null)
+            {
+                collider = wall.AddComponent<BoxCollider>();
+            }
+            collider.isTrigger = false;
+
+            // Применяем материал к рендереру если есть
+            Renderer renderer = wall.GetComponent<Renderer>();
+            if (renderer != null && wallMaterial != null)
+            {
+                renderer.material = wallMaterial;
+            }
+
+            // Логируем для отладки
+            string prefabName = (wallData.wallType == WallType.Corner) ? "SM_Wall_L" : "SM_Wall";
+            string connectionInfo = "";
+            if (wallData.wallType == WallType.Corner)
+            {
+                connectionInfo = " (connector-aligned)";
+            }
+            else
+            {
+                connectionInfo = " (room-facing)";
+            }
+            FileLogger.Log($"{prefabName} created at {wallData.position} on {wallData.wallSide} side, rotation: {rotationY}°{connectionInfo}");
+        }
+        else
+        {
+            // Fallback на примитив куб если префаб недоступен
+            wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wall.name = $"Wall_{wallData.position.x}_{wallData.position.y}";
+
+            // Позиционирование стены в центре клетки
+            Vector3 worldPos = GridToWorldPosition(wallData.position);
+            worldPos.y = wallHeight * 0.5f; // центр стены по высоте
+            wall.transform.position = worldPos;
+
+            // Стена занимает полную клетку по размеру
+            wall.transform.localScale = new Vector3(cellSize, wallHeight, cellSize);
+
+            // Материал
+            wall.GetComponent<Renderer>().material = wallMaterial;
+
+            // Настраиваем коллайдер для блокировки прохода
+            BoxCollider collider = wall.GetComponent<BoxCollider>();
+            collider.isTrigger = false;
+        }
 
         // Добавляем компонент для идентификации
         WallComponent wallComp = wall.AddComponent<WallComponent>();
@@ -385,11 +541,29 @@ public class WallData
 {
     public Vector2Int position;
     public WallDirection direction;
+    public Vector2Int roomPosition;  // позиция комнаты
+    public Vector2Int roomSize;      // размер комнаты
+    public WallSide wallSide;        // с какой стороны комнаты находится стена
+    public WallType wallType;        // тип стены (прямая или угловая)
 
     public WallData(Vector2Int pos, WallDirection dir)
     {
         position = pos;
         direction = dir;
+        roomPosition = Vector2Int.zero;
+        roomSize = Vector2Int.zero;
+        wallSide = WallSide.None;
+        wallType = WallType.Straight;
+    }
+
+    public WallData(Vector2Int pos, WallDirection dir, Vector2Int roomPos, Vector2Int roomSz, WallSide side, WallType type)
+    {
+        position = pos;
+        direction = dir;
+        roomPosition = roomPos;
+        roomSize = roomSz;
+        wallSide = side;
+        wallType = type;
     }
 
     public Vector2Int GetKey()
@@ -397,6 +571,38 @@ public class WallData
         // Создаем уникальный ключ для стены на основе только позиции
         // (направление больше не важно, так как стена занимает полную клетку)
         return new Vector2Int(position.x, position.y);
+    }
+
+    /// <summary>
+    /// Получить поворот стены для правильного соединения коннекторов
+    /// Базовая ориентация SM_Wall: Right=(0.5,1,-0.27), Left=(-0.5,1,-0.27)
+    /// Базовая ориентация SM_Wall_L: Right=(0.5,1,-0.27), Left=(-0.27,1,0.5) повернут на Y=90°
+    /// </summary>
+    public float GetRotationTowardRoom()
+    {
+        switch (wallSide)
+        {
+            // Прямые стены - смотрят внутрь комнаты
+            case WallSide.Top:    return 180f; // смотрит вниз
+            case WallSide.Bottom: return 0f;   // смотрит вверх
+            case WallSide.Left:   return 90f;  // смотрит вправо
+            case WallSide.Right:  return 270f; // смотрит влево
+
+            // Угловые стены (L-образные) - точное совпадение коннекторов
+            // TopLeft: Right коннектор угла → Left коннектор Top стены, Left коннектор угла → Right коннектор Left стены
+            case WallSide.TopLeft:     return 90f;
+
+            // TopRight: Left коннектор угла → Right коннектор Top стены, Right коннектор угла → Left коннектор Right стены
+            case WallSide.TopRight:    return 180f;
+
+            // BottomLeft: Left коннектор угла → Left коннектор Bottom стены, Right коннектор угла → Left коннектор Left стены
+            case WallSide.BottomLeft:  return 0f;
+
+            // BottomRight: Right коннектор угла → Right коннектор Bottom стены, Left коннектор угла → Right коннектор Right стены
+            case WallSide.BottomRight: return 270f;
+
+            default: return 0f;
+        }
     }
 }
 
@@ -416,6 +622,31 @@ public enum WallDirection
 {
     Horizontal = 0,
     Vertical = 1
+}
+
+/// <summary>
+/// Сторона комнаты, где расположена стена
+/// </summary>
+public enum WallSide
+{
+    None = 0,
+    Top = 1,        // верхняя сторона комнаты
+    Bottom = 2,     // нижняя сторона комнаты
+    Left = 3,       // левая сторона комнаты
+    Right = 4,      // правая сторона комнаты
+    TopLeft = 5,    // верхний левый угол
+    TopRight = 6,   // верхний правый угол
+    BottomLeft = 7, // нижний левый угол
+    BottomRight = 8 // нижний правый угол
+}
+
+/// <summary>
+/// Тип стены
+/// </summary>
+public enum WallType
+{
+    Straight = 0,   // Обычная прямая стена (SM_Wall)
+    Corner = 1      // Угловая стена (SM_Wall_L)
 }
 
 /// <summary>

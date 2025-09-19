@@ -187,15 +187,11 @@ public class ShipBuildingSystem : MonoBehaviour
         if (buildingMode)
         {
             StartBuildingMode();
-            // Ставим игру на паузу для строительства
-            GamePauseManager.Instance.SetBuildModePause(true);
             FileLogger.Log("Build mode activated via UI");
         }
         else
         {
             StopBuildingMode();
-            // Снимаем паузу
-            GamePauseManager.Instance.SetBuildModePause(false);
             FileLogger.Log("Build mode deactivated via UI");
         }
 

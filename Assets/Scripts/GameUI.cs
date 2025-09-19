@@ -491,6 +491,9 @@ public class GameUI : MonoBehaviour
         {
             // Активируем режим строительства
             UpdateBuildingUI(true);
+            // Ставим игру на паузу сразу при входе в режим строительства
+            GamePauseManager.Instance.SetBuildModePause(true);
+            FileLogger.Log("Build mode activated via UI button - game paused");
         }
         else
         {
@@ -501,6 +504,9 @@ public class GameUI : MonoBehaviour
             {
                 buildingSystem.SetBuildMode(false);
             }
+            // Снимаем паузу при выходе из режима строительства
+            GamePauseManager.Instance.SetBuildModePause(false);
+            FileLogger.Log("Build mode deactivated via UI button - game unpaused");
         }
     }
 
@@ -619,6 +625,18 @@ public class GameUI : MonoBehaviour
             {
                 buildModeActive = systemBuildMode;
                 UpdateBuildingUI(buildModeActive);
+
+                // Управляем паузой при любых изменениях режима строительства
+                if (buildModeActive)
+                {
+                    GamePauseManager.Instance.SetBuildModePause(true);
+                    FileLogger.Log("Build mode activated externally - game paused");
+                }
+                else
+                {
+                    GamePauseManager.Instance.SetBuildModePause(false);
+                    FileLogger.Log("Build mode deactivated externally - game unpaused");
+                }
             }
         }
     }
