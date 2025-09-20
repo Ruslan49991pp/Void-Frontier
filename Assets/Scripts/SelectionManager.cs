@@ -27,14 +27,14 @@ public class SelectionManager : MonoBehaviour
     private List<GameObject> selectedObjects = new List<GameObject>();
     private Dictionary<GameObject, GameObject> selectionIndicators = new Dictionary<GameObject, GameObject>();
     
-    // Для box selection
+    // Переменные для box selection и кликов
     private bool isBoxSelecting = false;
     private bool isMousePressed = false;
     private Vector3 boxStartPosition;
     private Vector3 boxEndPosition;
     private Vector3 mouseDownPosition;
     private float clickThreshold = 5f; // Пикселей для определения клика vs рамки
-    
+
     // UI для рамки выделения
     private GameObject selectionBoxUI;
     private Image selectionBoxImage;
@@ -89,20 +89,20 @@ public class SelectionManager : MonoBehaviour
         }
         
         // Убрали панель информации о выделении сверху слева - теперь будет только снизу
-        
+
         // Создаем UI элемент для рамки выделения
         GameObject boxGO = new GameObject("SelectionBox");
         boxGO.transform.SetParent(uiCanvas.transform, false);
-        
+
         selectionBoxUI = boxGO;
         selectionBoxImage = boxGO.AddComponent<Image>();
         selectionBoxImage.color = selectionBoxColor;
-        
+
         RectTransform boxRect = boxGO.GetComponent<RectTransform>();
         boxRect.anchorMin = Vector2.zero;
         boxRect.anchorMax = Vector2.zero;
         boxRect.pivot = Vector2.zero;
-        
+
         selectionBoxUI.SetActive(false);
     }
     
@@ -150,21 +150,137 @@ public class SelectionManager : MonoBehaviour
             isMousePressed = true;
             mouseDownPosition = Input.mousePosition;
             boxStartPosition = Input.mousePosition;
-            
         }
-        
-        // Box selection отключен для модулей - ничего не делаем при движении мыши
-        
-        // Отпускание ЛКМ - всегда считаем это кликом
+
+        // Движение мыши при зажатой ЛКМ
+        if (isMousePressed && Input.GetMouseButton(0))
+        {
+            boxEndPosition = Input.mousePosition;
+            float distance = Vector3.Distance(mouseDownPosition, Input.mousePosition);
+
+            // Начинаем box selection только если мышь двинулась достаточно далеко
+            if (distance > clickThreshold && !isBoxSelecting)
+            {
+                // Проверяем, есть ли под курсором юниты (персонажи)
+                if (HasCharactersInArea())
+                {
+                    isBoxSelecting = true;
+                    selectionBoxUI.SetActive(true);
+                }
+            }
+        }
+
+        // Отпускание ЛКМ
         if (Input.GetMouseButtonUp(0) && isMousePressed)
         {
-            PerformClickSelection(mouseDownPosition);
+            if (isBoxSelecting)
+            {
+                // Выполняем box selection только для юнитов
+                PerformBoxSelection();
+                isBoxSelecting = false;
+                selectionBoxUI.SetActive(false);
+            }
+            else
+            {
+                // Обычное клик-выделение
+                PerformClickSelection(mouseDownPosition);
+            }
             isMousePressed = false;
         }
     }
     
     /// <summary>
-    /// Выполнение выделения по клику
+    /// Проверка наличия юнитов (персонажей) в области
+    /// </summary>
+    bool HasCharactersInArea()
+    {
+        // Простое определение - возвращаем true если в сцене есть Character'ы
+        Character[] characters = FindObjectsOfType<Character>();
+        return characters.Length > 0;
+    }
+
+    /// <summary>
+    /// Обновление визуальной рамки выделения
+    /// </summary>
+    void UpdateSelectionBox()
+    {
+        if (!isBoxSelecting || selectionBoxUI == null) return;
+
+        Vector2 start = boxStartPosition;
+        Vector2 end = boxEndPosition;
+
+        Vector2 min = Vector2.Min(start, end);
+        Vector2 max = Vector2.Max(start, end);
+
+        RectTransform boxRect = selectionBoxUI.GetComponent<RectTransform>();
+        boxRect.anchoredPosition = min;
+        boxRect.sizeDelta = max - min;
+    }
+
+    /// <summary>
+    /// Выполнение box selection только для юнитов
+    /// </summary>
+    void PerformBoxSelection()
+    {
+        Vector2 start = playerCamera.ScreenToWorldPoint(boxStartPosition);
+        Vector2 end = playerCamera.ScreenToWorldPoint(boxEndPosition);
+
+        Vector2 min = Vector2.Min(start, end);
+        Vector2 max = Vector2.Max(start, end);
+
+        List<GameObject> newSelections = new List<GameObject>();
+
+        // Находим только Character'ов в области
+        Character[] allCharacters = FindObjectsOfType<Character>();
+
+        foreach (Character character in allCharacters)
+        {
+            Vector3 worldPos = character.transform.position;
+            Vector2 screenPos = playerCamera.WorldToScreenPoint(worldPos);
+
+            Vector2 boxMin = Vector2.Min(boxStartPosition, boxEndPosition);
+            Vector2 boxMax = Vector2.Max(boxStartPosition, boxEndPosition);
+
+            if (screenPos.x >= boxMin.x && screenPos.x <= boxMax.x &&
+                screenPos.y >= boxMin.y && screenPos.y <= boxMax.y)
+            {
+                newSelections.Add(character.gameObject);
+            }
+        }
+
+        // Логика выделения
+        if (newSelections.Count > 0)
+        {
+            // Есть юниты в рамке
+            if (!Input.GetKey(KeyCode.LeftControl))
+            {
+                // Если Ctrl не зажат, заменяем выделение
+                ClearSelection();
+            }
+
+            // Добавляем новых юнитов
+            foreach (GameObject obj in newSelections)
+            {
+                if (!selectedObjects.Contains(obj))
+                {
+                    AddToSelection(obj);
+                }
+            }
+        }
+        else
+        {
+            // В рамку ничего не попало
+            if (!Input.GetKey(KeyCode.LeftControl))
+            {
+                ClearSelection();
+            }
+        }
+
+        UpdateSelectionInfo();
+    }
+
+    /// <summary>
+    /// Выполнение выделения по клику (для зданий и модулей)
     /// </summary>
     void PerformClickSelection(Vector3 mousePosition)
     {
@@ -195,8 +311,22 @@ public class SelectionManager : MonoBehaviour
                     continue;
                 }
 
-                LocationObjectInfo objectInfo = hitObject.GetComponent<LocationObjectInfo>();
+                // Проверяем, является ли это персонажом
+                Character character = hitObject.GetComponent<Character>();
+                if (character != null)
+                {
+                    FileLogger.Log($"DEBUG: Found Character: {hitObject.name}");
 
+                    // Для персонажей поддерживаем Ctrl+клик для множественного выделения
+                    if (!Input.GetKey(KeyCode.LeftControl))
+                    {
+                        ClearSelection();
+                    }
+                    ToggleSelection(hitObject);
+                    return;
+                }
+
+                LocationObjectInfo objectInfo = hitObject.GetComponent<LocationObjectInfo>();
                 if (objectInfo != null)
                 {
                     FileLogger.Log($"DEBUG: Found LocationObjectInfo on {hitObject.name}: {objectInfo.objectName}");
@@ -211,7 +341,7 @@ public class SelectionManager : MonoBehaviour
                     }
 
                     // Найден подходящий объект для выделения
-                    // Для модулей всегда выделяем только один объект
+                    // Для зданий/модулей всегда выделяем только один объект
                     ClearSelection();
                     ToggleSelection(targetObject);
                     return;
@@ -229,101 +359,7 @@ public class SelectionManager : MonoBehaviour
         ClearSelection();
     }
     
-    /// <summary>
-    /// Обновление визуальной рамки выделения
-    /// </summary>
-    void UpdateSelectionBox()
-    {
-        if (!isBoxSelecting || selectionBoxUI == null) return;
-        
-        Vector2 start = boxStartPosition;
-        Vector2 end = boxEndPosition;
-        
-        Vector2 min = Vector2.Min(start, end);
-        Vector2 max = Vector2.Max(start, end);
-        
-        RectTransform boxRect = selectionBoxUI.GetComponent<RectTransform>();
-        boxRect.anchoredPosition = min;
-        boxRect.sizeDelta = max - min;
-    }
     
-    /// <summary>
-    /// Выполнение выделения области
-    /// </summary>
-    void PerformBoxSelection()
-    {
-        Vector2 start = playerCamera.ScreenToWorldPoint(boxStartPosition);
-        Vector2 end = playerCamera.ScreenToWorldPoint(boxEndPosition);
-        
-        Vector2 min = Vector2.Min(start, end);
-        Vector2 max = Vector2.Max(start, end);
-        
-        List<GameObject> newSelections = new List<GameObject>();
-        
-        // Находим все объекты в области
-        LocationObjectInfo[] allObjects = FindObjectsOfType<LocationObjectInfo>();
-        
-        foreach (LocationObjectInfo objectInfo in allObjects)
-        {
-            Vector3 worldPos = objectInfo.transform.position;
-            Vector2 screenPos = playerCamera.WorldToScreenPoint(worldPos);
-
-            Vector2 boxMin = Vector2.Min(boxStartPosition, boxEndPosition);
-            Vector2 boxMax = Vector2.Max(boxStartPosition, boxEndPosition);
-
-            if (screenPos.x >= boxMin.x && screenPos.x <= boxMax.x &&
-                screenPos.y >= boxMin.y && screenPos.y <= boxMax.y)
-            {
-                GameObject targetObject = objectInfo.gameObject;
-
-                // Проверяем, является ли это полом комнаты
-                RoomFloorMarker floorMarker = objectInfo.GetComponent<RoomFloorMarker>();
-                if (floorMarker != null && floorMarker.GetParentRoom() != null)
-                {
-                    // Если это пол комнаты, добавляем родительскую комнату
-                    targetObject = floorMarker.GetParentRoom();
-                }
-
-                newSelections.Add(targetObject);
-            }
-        }
-        
-        // Логика выделения в зависимости от результата
-        if (newSelections.Count > 0)
-        {
-            // Есть объекты в рамке
-            if (!Input.GetKey(KeyCode.LeftControl))
-            {
-                // Если Ctrl не зажат, заменяем выделение
-                ClearSelection();
-            }
-            
-            // Добавляем новые выделения
-            foreach (GameObject obj in newSelections)
-            {
-                if (!selectedObjects.Contains(obj))
-                {
-                    AddToSelection(obj);
-                }
-            }
-            
-        }
-        else
-        {
-            // В рамку ничего не попало
-            
-            // Очищаем выделение если не зажат Ctrl
-            if (!Input.GetKey(KeyCode.LeftControl))
-            {
-                ClearSelection();
-            }
-            else
-            {
-            }
-        }
-        
-        UpdateSelectionInfo();
-    }
     
     /// <summary>
     /// Переключение выделения объекта
