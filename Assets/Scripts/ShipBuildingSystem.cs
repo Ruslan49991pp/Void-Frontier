@@ -49,9 +49,9 @@ public class ShipBuildingSystem : MonoBehaviour
     private GameUI gameUI;
     private List<GameObject> builtRooms = new List<GameObject>();
 
-    // Автоматическое строительство при выборе двери
+    // Автоматическое строительство при выборе двери (ОТКЛЮЧЕНО)
     private float doorSelectionTimer = 0f;
-    private const float AUTO_BUILD_DELAY = 0.5f; // задержка в секундах
+    private const float AUTO_BUILD_DELAY = float.MaxValue; // автоматическое строительство отключено
     private Vector2Int lastDoorPosition = Vector2Int.zero;
     private bool roomBuilt = false;
     private GameObject highlightedRoom = null;
@@ -759,28 +759,7 @@ public class ShipBuildingSystem : MonoBehaviour
             TryFinalizeBuildRoom();
         }
 
-        // Автоматическое строительство при остановке на позиции двери
-        if (!roomBuilt)
-        {
-            if (doorPosition == lastDoorPosition)
-            {
-                // Позиция не изменилась - увеличиваем таймер
-                doorSelectionTimer += Time.unscaledDeltaTime;
-
-                if (doorSelectionTimer >= AUTO_BUILD_DELAY)
-                {
-                    FileLogger.Log("DEBUG: Auto-building room after door position stabilized");
-                    TryFinalizeBuildRoom();
-                }
-            }
-            else
-            {
-                // Позиция изменилась - сбрасываем таймер
-                doorSelectionTimer = 0f;
-                lastDoorPosition = doorPosition;
-                FileLogger.Log($"DEBUG: Door position changed to {doorPosition}, timer reset");
-            }
-        }
+        // Автоматическое строительство ОТКЛЮЧЕНО - только ручное подтверждение ЛКМ
 
         // ПКМ - вернуться к размещению комнаты
         if (Input.GetMouseButtonDown(1) && !isPointerOverUI)
@@ -986,21 +965,31 @@ public class ShipBuildingSystem : MonoBehaviour
                 DestroyImmediate(col);
         }
 
-        // Применяем красный полупрозрачный материал ко всем рендерерам
+        // Убираем красную подсветку - дверь остается в оригинальном виде
+        // Просто делаем двери полупрозрачными чтобы показать что это призрак
         Renderer[] renderers = doorPreviewObject.GetComponentsInChildren<Renderer>();
-        Material doorMaterial = new Material(Shader.Find("Standard"));
-        doorMaterial.color = new Color(1f, 0f, 0f, 0.5f); // Красный полупрозрачный
-        doorMaterial.SetFloat("_Mode", 3); // Transparent mode
-        doorMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-        doorMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-        doorMaterial.SetInt("_ZWrite", 0);
-        doorMaterial.DisableKeyword("_ALPHATEST_ON");
-        doorMaterial.EnableKeyword("_ALPHABLEND_ON");
-        doorMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-        doorMaterial.renderQueue = 3000;
-
         foreach (Renderer renderer in renderers)
-            renderer.material = doorMaterial;
+        {
+            if (renderer.material != null)
+            {
+                Material ghostMaterial = new Material(renderer.material);
+                Color originalColor = ghostMaterial.color;
+                ghostMaterial.color = new Color(originalColor.r, originalColor.g, originalColor.b, 0.7f);
+
+                // Настройка прозрачности
+                if (ghostMaterial.HasProperty("_Mode"))
+                    ghostMaterial.SetFloat("_Mode", 3); // Transparent mode
+                if (ghostMaterial.HasProperty("_SrcBlend"))
+                    ghostMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                if (ghostMaterial.HasProperty("_DstBlend"))
+                    ghostMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                if (ghostMaterial.HasProperty("_ZWrite"))
+                    ghostMaterial.SetInt("_ZWrite", 0);
+                ghostMaterial.renderQueue = 3000;
+
+                renderer.material = ghostMaterial;
+            }
+        }
 
         // Позиционируем призрак двери
         UpdateDoorPreviewPosition();
@@ -1032,23 +1021,73 @@ public class ShipBuildingSystem : MonoBehaviour
     /// </summary>
     float GetWallRotationAtPosition(Vector2Int position)
     {
+        // Получаем оригинальный размер комнаты (до поворота)
+        RoomData currentRoom = availableRooms[selectedRoomIndex];
+        Vector2Int originalRoomSize = currentRoom.size;
+
         // Определяем где находится позиция относительно комнаты
         Vector2Int relativePos = position - pendingRoomPosition;
 
-        float baseRotation = 0f;
+        // Определяем сторону стены в повернутой комнате используя ту же логику что и в RoomBuilder
+        WallSide wallSide = DetermineWallSideInRotatedRoom(relativePos, pendingRoomSize, pendingRoomRotation);
 
-        // Определяем на какой стороне комнаты находится позиция
-        if (relativePos.x == 0) // Левая сторона
-            baseRotation = 90f;
-        else if (relativePos.x == pendingRoomSize.x - 1) // Правая сторона
-            baseRotation = -90f;
-        else if (relativePos.y == 0) // Нижняя сторона
-            baseRotation = 180f;
-        else if (relativePos.y == pendingRoomSize.y - 1) // Верхняя сторона
-            baseRotation = 0f;
+        // Получаем поворот стены используя тот же алгоритм что и в RoomBuilder
+        return GetWallRotationFromSide(wallSide, pendingRoomRotation);
+    }
 
-        // Учитываем поворот комнаты
-        float finalRotation = (baseRotation + pendingRoomRotation) % 360f;
+    /// <summary>
+    /// Определить сторону стены в повернутой комнате (копия логики из RoomBuilder)
+    /// </summary>
+    WallSide DetermineWallSideInRotatedRoom(Vector2Int relativePos, Vector2Int roomSize, int rotation)
+    {
+        bool isLeftEdge = (relativePos.x == 0);
+        bool isRightEdge = (relativePos.x == roomSize.x - 1);
+        bool isTopEdge = (relativePos.y == roomSize.y - 1);
+        bool isBottomEdge = (relativePos.y == 0);
+
+        WallSide baseSide = WallSide.None;
+
+        // Сначала проверяем углы (комбинации сторон)
+        if (isTopEdge && isLeftEdge) baseSide = WallSide.TopLeft;
+        else if (isTopEdge && isRightEdge) baseSide = WallSide.TopRight;
+        else if (isBottomEdge && isLeftEdge) baseSide = WallSide.BottomLeft;
+        else if (isBottomEdge && isRightEdge) baseSide = WallSide.BottomRight;
+        // Затем проверяем обычные стороны
+        else if (isTopEdge) baseSide = WallSide.Top;
+        else if (isBottomEdge) baseSide = WallSide.Bottom;
+        else if (isLeftEdge) baseSide = WallSide.Left;
+        else if (isRightEdge) baseSide = WallSide.Right;
+
+        // Применяем поворот к определенной стороне (та же логика что в RoomBuilder)
+        return RotateWallSide(baseSide, rotation);
+    }
+
+    /// <summary>
+    /// Получить поворот стены от стороны (копия логики из RoomBuilder.GetRotationTowardRoom)
+    /// </summary>
+    float GetWallRotationFromSide(WallSide wallSide, int roomRotation)
+    {
+        // Получаем базовый поворот для стены как будто комната повернута на 0°
+        float baseRotation;
+        switch (wallSide)
+        {
+            // Прямые стены - смотрят внутрь комнаты
+            case WallSide.Top:    baseRotation = 180f; break; // смотрит вниз
+            case WallSide.Bottom: baseRotation = 0f; break;   // смотрит вверх
+            case WallSide.Left:   baseRotation = 90f; break;  // смотрит вправо
+            case WallSide.Right:  baseRotation = 270f; break; // смотрит влево
+
+            // Угловые стены (L-образные) - точное совпадение коннекторов
+            case WallSide.TopLeft:     baseRotation = 90f; break;
+            case WallSide.TopRight:    baseRotation = 180f; break;
+            case WallSide.BottomLeft:  baseRotation = 0f; break;
+            case WallSide.BottomRight: baseRotation = 270f; break;
+
+            default: baseRotation = 0f; break;
+        }
+
+        // Компенсируем поворот комнаты: вычитаем roomRotation из базового поворота
+        float finalRotation = (baseRotation - roomRotation) % 360f;
         if (finalRotation < 0) finalRotation += 360f;
 
         return finalRotation;
@@ -1166,7 +1205,7 @@ public class ShipBuildingSystem : MonoBehaviour
         GameObject door = Instantiate(doorPrefab, worldPos, rotation);
         door.name = $"Door_{position.x}_{position.y}";
 
-        FileLogger.Log($"DEBUG: Door created: {door.name} at {door.transform.position}");
+        FileLogger.Log($"DEBUG: Door created: {door.name} at {door.transform.position} with rotation {doorRotation}°");
         FileLogger.Log($"SUCCESS: Created door at {position}");
     }
 
@@ -1324,10 +1363,36 @@ public class ShipBuildingSystem : MonoBehaviour
         roomRotation = (roomRotation + degrees) % 360;
         if (roomRotation < 0) roomRotation += 360;
 
-        // Пересоздаем предпросмотр с новым поворотом
-        if (buildingMode && previewObject != null)
+        // Обновляем предпросмотр в зависимости от фазы
+        if (buildingMode)
         {
-            CreatePreviewObject();
+            if (currentPhase == BuildingPhase.PlacingRoom && previewObject != null)
+            {
+                // В фазе размещения комнаты - пересоздаем призрак комнаты
+                CreatePreviewObject();
+            }
+            else if (currentPhase == BuildingPhase.PlacingDoor)
+            {
+                // В фазе размещения двери - полностью пересоздаем призрак комнаты
+                RoomData roomData = availableRooms[selectedRoomIndex];
+                pendingRoomSize = GetRotatedRoomSize(roomData.size, roomRotation);
+                pendingRoomRotation = roomRotation;
+
+                // Пересоздаем призрак комнаты с правильными поворотами стен
+                if (previewObject != null)
+                    DestroyImmediate(previewObject);
+
+                previewObject = CreateGhostRoom(pendingRoomPosition, pendingRoomSize, roomData.roomName + "_Preview", roomRotation);
+
+                // Пересчитываем позиции прямых стен
+                FindStraightWallPositions();
+
+                // Обновляем призрак двери
+                if (doorPreviewObject != null)
+                {
+                    UpdateDoorPreviewPosition();
+                }
+            }
         }
 
         FileLogger.Log($"Room rotated to {roomRotation} degrees");
