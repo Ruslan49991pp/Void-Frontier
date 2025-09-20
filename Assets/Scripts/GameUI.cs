@@ -27,7 +27,6 @@ public class GameUI : MonoBehaviour
     private SelectionManager selectionManager;
     private List<Button> buildingButtons = new List<Button>();
     private Button buildModeButton;
-    private Button destroyModeButton;
     private Button destroyRoomButton;
     
     // Текущее выделение
@@ -35,7 +34,6 @@ public class GameUI : MonoBehaviour
 
     // Состояние UI
     private bool buildModeActive = false;
-    private bool deleteModeActive = false;
     private int selectedBuildingIndex = -1;
     private ShipBuildingSystem buildingSystem;
     
@@ -230,13 +228,7 @@ public class GameUI : MonoBehaviour
 
         // Создаем кнопки
         CreateBuildButton(buttonAreaGO);
-        CreateDestroyButton(buttonAreaGO);
 
-        // Изначально скрываем кнопку разрушения
-        if (destroyModeButton != null)
-        {
-            destroyModeButton.gameObject.SetActive(false);
-        }
     }
 
     /// <summary>
@@ -371,7 +363,7 @@ public class GameUI : MonoBehaviour
         buttonText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         buttonText.fontSize = 12;
         buttonText.color = Color.white;
-        buttonText.text = "РАЗРУШИТЬ КОМНАТУ";
+        buttonText.text = "РАЗРУШИТЬ МОДУЛЬ";
         buttonText.alignment = TextAnchor.MiddleCenter;
 
         RectTransform textRect = textGO.GetComponent<RectTransform>();
@@ -382,47 +374,6 @@ public class GameUI : MonoBehaviour
 
         // Изначально скрываем кнопку
         destroyRoomButton.gameObject.SetActive(false);
-    }
-
-    /// <summary>
-    /// Создание кнопки разрушения
-    /// </summary>
-    void CreateDestroyButton(GameObject parentArea)
-    {
-        GameObject buttonGO = new GameObject("DestroyButton");
-        buttonGO.transform.SetParent(parentArea.transform, false);
-
-        RectTransform buttonRect = buttonGO.AddComponent<RectTransform>();
-        buttonRect.anchorMin = new Vector2(0.1f, 0.35f);
-        buttonRect.anchorMax = new Vector2(0.9f, 0.55f);
-        buttonRect.offsetMin = Vector2.zero;
-        buttonRect.offsetMax = Vector2.zero;
-
-        // Фон кнопки
-        Image buttonImage = buttonGO.AddComponent<Image>();
-        buttonImage.color = new Color(0.6f, 0.2f, 0.2f, 1f);
-
-        // Компонент Button
-        destroyModeButton = buttonGO.AddComponent<Button>();
-        destroyModeButton.image = buttonImage;
-        destroyModeButton.onClick.AddListener(ToggleDestroyMode);
-
-        // Текст кнопки
-        GameObject textGO = new GameObject("ButtonText");
-        textGO.transform.SetParent(buttonGO.transform, false);
-
-        Text buttonText = textGO.AddComponent<Text>();
-        buttonText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        buttonText.fontSize = 12;
-        buttonText.color = Color.white;
-        buttonText.text = "РАЗРУШИТЬ";
-        buttonText.alignment = TextAnchor.MiddleCenter;
-
-        RectTransform textRect = textGO.GetComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
     }
 
     /// <summary>
@@ -441,7 +392,6 @@ public class GameUI : MonoBehaviour
         if (buildingSystem != null)
         {
             buildingSystem.OnBuildingModeChanged += OnBuildingModeChanged;
-            buildingSystem.OnDeletionModeChanged += OnDeletionModeChanged;
             buildingSystem.OnRoomBuilt += OnRoomBuilt;
             buildingSystem.OnRoomDeleted += OnRoomDeleted;
         }
@@ -550,17 +500,6 @@ public class GameUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Переключение режима разрушения
-    /// </summary>
-    void ToggleDestroyMode()
-    {
-        if (buildingSystem != null)
-        {
-            buildingSystem.ToggleDeletionMode();
-        }
-    }
-
-    /// <summary>
     /// Обновление UI строительства
     /// </summary>
     void UpdateBuildingUI(bool active)
@@ -587,11 +526,6 @@ public class GameUI : MonoBehaviour
             }
         }
 
-        // Показываем/скрываем кнопку разрушения только в режиме строительства
-        if (destroyModeButton != null)
-        {
-            destroyModeButton.gameObject.SetActive(active);
-        }
 
         if (!active && infoText != null)
         {
@@ -659,37 +593,6 @@ public class GameUI : MonoBehaviour
         UpdateBuildingButtonsSelection();
     }
 
-    /// <summary>
-    /// Обработчик изменения режима разрушения
-    /// </summary>
-    void OnDeletionModeChanged()
-    {
-        if (buildingSystem == null) return;
-
-        deleteModeActive = buildingSystem.IsDeletionModeActive();
-
-        if (destroyModeButton != null)
-        {
-            if (deleteModeActive)
-            {
-                destroyModeButton.image.color = new Color(0.8f, 0.4f, 0.4f, 1f);
-                destroyModeButton.GetComponentInChildren<Text>().text = "ОТМЕНА";
-                if (infoText != null)
-                {
-                    infoText.text = "Режим разрушения активен!\n\nУправление:\nЛКМ - разрушить комнату\nПКМ/ESC - отмена";
-                }
-            }
-            else
-            {
-                destroyModeButton.image.color = new Color(0.6f, 0.2f, 0.2f, 1f);
-                destroyModeButton.GetComponentInChildren<Text>().text = "РАЗРУШИТЬ";
-                if (infoText != null && !buildModeActive)
-                {
-                    infoText.text = "Выберите объект для просмотра информации";
-                }
-            }
-        }
-    }
 
 
     /// <summary>
@@ -728,8 +631,8 @@ public class GameUI : MonoBehaviour
     {
         if (infoText == null) return;
 
-        // Не обновляем информацию если активен режим строительства или разрушения
-        if (buildModeActive || deleteModeActive) return;
+        // Не обновляем информацию если активен режим строительства
+        if (buildModeActive) return;
 
         if (currentSelection.Count == 0)
         {
@@ -878,6 +781,12 @@ public class GameUI : MonoBehaviour
                     {
                         destroyRoomButton.gameObject.SetActive(false);
                     }
+
+                    // Очищаем выделение чтобы исчез красный кружок
+                    if (selectionManager != null)
+                    {
+                        selectionManager.ClearSelection();
+                    }
                 }
             }
         }
@@ -932,7 +841,6 @@ public class GameUI : MonoBehaviour
         if (buildingSystem != null)
         {
             buildingSystem.OnBuildingModeChanged -= OnBuildingModeChanged;
-            buildingSystem.OnDeletionModeChanged -= OnDeletionModeChanged;
             buildingSystem.OnRoomBuilt -= OnRoomBuilt;
             buildingSystem.OnRoomDeleted -= OnRoomDeleted;
         }

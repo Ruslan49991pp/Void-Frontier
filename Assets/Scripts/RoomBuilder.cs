@@ -135,22 +135,32 @@ public class RoomBuilder : MonoBehaviour
 
     public GameObject BuildRoom(Vector2Int gridPosition, Vector2Int roomSize, string roomName, int rotation, Transform parent = null)
     {
+        FileLogger.Log($"DEBUG: BuildRoom called - name: {roomName}, position: {gridPosition}, size: {roomSize}, rotation: {rotation}");
+
         GameObject roomGO = new GameObject($"Room_{roomName}_{gridPosition.x}_{gridPosition.y}");
         if (parent != null)
             roomGO.transform.SetParent(parent);
 
-        // Создаем пол
-        CreateFloor(roomGO, gridPosition, roomSize);
+        FileLogger.Log($"DEBUG: Room GameObject created: {roomGO.name}");
 
-        // Создаем стены с учетом поворота
-        CreateWalls(roomGO, gridPosition, roomSize, rotation);
-
-        // Добавляем компонент информации о комнате
+        // СНАЧАЛА добавляем компонент информации о комнате, чтобы пол мог его использовать
         RoomInfo roomInfo = roomGO.AddComponent<RoomInfo>();
         roomInfo.gridPosition = gridPosition;
         roomInfo.roomSize = roomSize;
         roomInfo.roomName = roomName;
         roomInfo.roomRotation = rotation;
+
+        FileLogger.Log($"DEBUG: RoomInfo added to {roomGO.name}");
+
+        // Создаем пол (теперь RoomInfo уже есть)
+        FileLogger.Log($"DEBUG: About to call CreateFloor...");
+        CreateFloor(roomGO, gridPosition, roomSize);
+
+        // Создаем стены с учетом поворота
+        FileLogger.Log($"DEBUG: About to call CreateWalls...");
+        CreateWalls(roomGO, gridPosition, roomSize, rotation);
+
+        FileLogger.Log($"DEBUG: RoomInfo added to {roomGO.name}");
 
         return roomGO;
     }
@@ -160,15 +170,21 @@ public class RoomBuilder : MonoBehaviour
     /// </summary>
     void CreateFloor(GameObject parent, Vector2Int gridPosition, Vector2Int roomSize)
     {
+        FileLogger.Log($"DEBUG: CreateFloor called for room {parent.name}, size: {roomSize}, gridPos: {gridPosition}");
+
         // Создаем пол только для внутренних клеток (без стен по периметру)
         int innerWidth = Mathf.Max(1, roomSize.x - 2);  // убираем левую и правую стены
         int innerHeight = Mathf.Max(1, roomSize.y - 2); // убираем верхнюю и нижнюю стены
+
+        FileLogger.Log($"DEBUG: Inner floor dimensions: {innerWidth}x{innerHeight}");
 
         if (innerWidth > 0 && innerHeight > 0)
         {
             GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
             floor.name = "Floor";
             floor.transform.SetParent(parent.transform);
+
+            FileLogger.Log($"DEBUG: Floor object created: {floor.name}");
 
             // Размеры внутреннего пола
             float width = innerWidth * cellSize;
@@ -187,15 +203,60 @@ public class RoomBuilder : MonoBehaviour
             // Материал
             floor.GetComponent<Renderer>().material = floorMaterial;
 
-            // Убираем коллайдер с пола, он не нужен для навигации
-            Destroy(floor.GetComponent<Collider>());
+            // Настраиваем коллайдер пола для выделения комнаты
+            BoxCollider floorCollider = floor.GetComponent<BoxCollider>();
+            if (floorCollider != null)
+            {
+                // Коллайдер становится не-триггером для работы с raycast
+                floorCollider.isTrigger = false;
+
+                FileLogger.Log($"DEBUG: Floor collider configured as non-trigger");
+
+                // Добавляем компонент для выделения к полу
+                LocationObjectInfo locationInfo = floor.AddComponent<LocationObjectInfo>();
+                RoomInfo roomInfo = parent.GetComponent<RoomInfo>();
+                if (roomInfo != null)
+                {
+                    locationInfo.objectName = roomInfo.roomName;
+                    locationInfo.objectType = roomInfo.roomType;
+                    locationInfo.health = 500f;
+                    locationInfo.isDestructible = true;
+
+                    FileLogger.Log($"DEBUG: LocationObjectInfo added to floor with room name: {roomInfo.roomName}");
+                }
+                else
+                {
+                    locationInfo.objectName = "Room";
+                    locationInfo.objectType = "Room";
+                    locationInfo.health = 500f;
+                    locationInfo.isDestructible = true;
+
+                    FileLogger.Log($"DEBUG: LocationObjectInfo added to floor with default name (no RoomInfo found)");
+                }
+
+                // Добавляем ссылку на родительскую комнату для удобства
+                RoomFloorMarker floorMarker = floor.AddComponent<RoomFloorMarker>();
+                floorMarker.parentRoom = parent;
+
+                FileLogger.Log($"DEBUG: RoomFloorMarker added to floor, parent: {parent.name}");
+                FileLogger.Log($"DEBUG: Floor layer: {floor.layer}, position: {floor.transform.position}");
+            }
+            else
+            {
+                FileLogger.Log($"ERROR: Floor collider is null!");
+            }
         }
 
         // Для очень маленьких комнат (например 2x2) создаем минимальный пол
         if (roomSize.x <= 2 || roomSize.y <= 2)
         {
+            FileLogger.Log($"DEBUG: Creating small room floor for {roomSize.x}x{roomSize.y} room");
+
             // Создаем отдельные плитки пола для проходимых клеток
             CreateFloorTiles(parent, gridPosition, roomSize);
+
+            // Добавляем общий коллайдер для выделения маленькой комнаты
+            CreateSmallRoomSelectionFloor(parent, gridPosition, roomSize);
         }
     }
 
@@ -225,10 +286,61 @@ public class RoomBuilder : MonoBehaviour
                 // Материал
                 floorTile.GetComponent<Renderer>().material = floorMaterial;
 
-                // Убираем коллайдер
+                // Убираем коллайдер (коллайдер выделения будет отдельно)
                 Destroy(floorTile.GetComponent<Collider>());
             }
         }
+    }
+
+    /// <summary>
+    /// Создать невидимый коллайдер для выделения маленькой комнаты
+    /// </summary>
+    void CreateSmallRoomSelectionFloor(GameObject parent, Vector2Int gridPosition, Vector2Int roomSize)
+    {
+        FileLogger.Log($"DEBUG: CreateSmallRoomSelectionFloor for {parent.name}");
+
+        GameObject selectionFloor = new GameObject("SelectionFloor");
+        selectionFloor.transform.SetParent(parent.transform);
+
+        // Позиция - центр комнаты, ниже уровня земли
+        Vector3 centerOffset = new Vector3(
+            (roomSize.x - 1) * cellSize * 0.5f,  // центр комнаты по X
+            -floorThickness * 2f,                // еще ниже визуального пола
+            (roomSize.y - 1) * cellSize * 0.5f   // центр комнаты по Z
+        );
+
+        selectionFloor.transform.localPosition = centerOffset;
+
+        // Добавляем коллайдер для выделения
+        BoxCollider selectionCollider = selectionFloor.AddComponent<BoxCollider>();
+        float width = roomSize.x * cellSize;
+        float height = roomSize.y * cellSize;
+        selectionCollider.size = new Vector3(width, floorThickness, height);
+        selectionCollider.isTrigger = false; // Не триггер для raycast
+
+        // Добавляем компонент для выделения
+        LocationObjectInfo locationInfo = selectionFloor.AddComponent<LocationObjectInfo>();
+        RoomInfo roomInfo = parent.GetComponent<RoomInfo>();
+        if (roomInfo != null)
+        {
+            locationInfo.objectName = roomInfo.roomName;
+            locationInfo.objectType = roomInfo.roomType;
+            locationInfo.health = 500f;
+            locationInfo.isDestructible = true;
+        }
+        else
+        {
+            locationInfo.objectName = "Small Room";
+            locationInfo.objectType = "Room";
+            locationInfo.health = 500f;
+            locationInfo.isDestructible = true;
+        }
+
+        // Добавляем ссылку на родительскую комнату
+        RoomFloorMarker floorMarker = selectionFloor.AddComponent<RoomFloorMarker>();
+        floorMarker.parentRoom = parent;
+
+        FileLogger.Log($"DEBUG: SmallRoom SelectionFloor created, layer: {selectionFloor.layer}, position: {selectionFloor.transform.position}");
     }
 
     /// <summary>
@@ -262,6 +374,8 @@ public class RoomBuilder : MonoBehaviour
 
     List<WallData> GetRoomWalls(Vector2Int gridPosition, Vector2Int roomSize, int rotation)
     {
+        FileLogger.Log($"DEBUG: GetRoomWalls called with position {gridPosition}, size {roomSize}, rotation {rotation}");
+
         List<WallData> walls = new List<WallData>();
         HashSet<Vector2Int> wallPositions = new HashSet<Vector2Int>();
 
@@ -283,11 +397,15 @@ public class RoomBuilder : MonoBehaviour
                     WallSide wallSide = DetermineWallSide(x, y, roomSize, rotation);
                     WallType wallType = DetermineWallType(wallSide);
 
-                    walls.Add(new WallData(cellPos, WallDirection.Vertical, gridPosition, roomSize, wallSide, wallType, rotation));
+                    WallData wallData = new WallData(cellPos, WallDirection.Vertical, gridPosition, roomSize, wallSide, wallType, rotation);
+                    walls.Add(wallData);
+
+                    FileLogger.Log($"DEBUG: Added wall at position {cellPos}, side {wallSide}, type {wallType}");
                 }
             }
         }
 
+        FileLogger.Log($"DEBUG: GetRoomWalls returning {walls.Count} walls");
         return walls;
     }
 
@@ -491,6 +609,29 @@ public class RoomBuilder : MonoBehaviour
     }
 
     /// <summary>
+    /// Удалить дверь в указанной позиции
+    /// </summary>
+    void RemoveDoorAtPosition(Vector2Int position)
+    {
+        GameObject[] allObjects = FindObjectsOfType<GameObject>();
+        foreach (GameObject obj in allObjects)
+        {
+            if (obj.name.Contains("Door") && obj.activeInHierarchy && !obj.name.Contains("Preview"))
+            {
+                Vector3 objWorldPos = obj.transform.position;
+                Vector2Int objGridPos = WorldToGrid(objWorldPos);
+                if (objGridPos == position)
+                {
+                    FileLogger.Log($"DEBUG: Destroying door GameObject: {obj.name} at position {position}");
+                    DestroyImmediate(obj);
+                    return;
+                }
+            }
+        }
+        FileLogger.Log($"WARNING: No door found at position {position} to remove");
+    }
+
+    /// <summary>
     /// Преобразовать мировую позицию в координаты сетки
     /// </summary>
     Vector2Int WorldToGrid(Vector3 worldPos)
@@ -506,11 +647,57 @@ public class RoomBuilder : MonoBehaviour
     /// </summary>
     public void RemoveRoom(Vector2Int gridPosition, Vector2Int roomSize)
     {
-        List<WallData> wallsToRemove = GetRoomWalls(gridPosition, roomSize);
+        RemoveRoom(gridPosition, roomSize, 0);
+    }
+
+    /// <summary>
+    /// Удалить комнату с учетом поворота
+    /// </summary>
+    public void RemoveRoom(Vector2Int gridPosition, Vector2Int roomSize, int rotation)
+    {
+        FileLogger.Log($"DEBUG: RemoveRoom called for position {gridPosition}, size {roomSize}, rotation {rotation}");
+
+        // Сначала покажем что есть в глобальном реестре
+        FileLogger.Log($"DEBUG: Current globalWalls registry has {globalWalls.Count} entries:");
+        foreach (var kvp in globalWalls)
+        {
+            FileLogger.Log($"DEBUG: globalWalls contains key {kvp.Key} with refCount {kvp.Value.referenceCount}");
+        }
+
+        List<WallData> allPotentialWalls = GetRoomWalls(gridPosition, roomSize, rotation);
+
+        // Фильтруем только те стены, которые реально существуют в globalWalls
+        List<WallData> wallsToRemove = new List<WallData>();
+        foreach (WallData wall in allPotentialWalls)
+        {
+            Vector2Int key = wall.GetKey();
+            if (globalWalls.ContainsKey(key))
+            {
+                wallsToRemove.Add(wall);
+            }
+            else
+            {
+                FileLogger.Log($"DEBUG: Skipping wall at {wall.position} - not found in globalWalls (likely door position)");
+            }
+        }
+
+        FileLogger.Log($"DEBUG: Found {wallsToRemove.Count} actual walls to remove (from {allPotentialWalls.Count} potential)");
 
         foreach (WallData wall in wallsToRemove)
         {
+            FileLogger.Log($"DEBUG: Removing wall at {wall.position}");
             RemoveWallFromGlobal(wall);
+        }
+
+        // Отдельно удаляем двери в позициях где не было стен (исключенные позиции)
+        foreach (WallData potentialWall in allPotentialWalls)
+        {
+            Vector2Int key = potentialWall.GetKey();
+            if (!globalWalls.ContainsKey(key) && IsDoorAtPosition(key))
+            {
+                FileLogger.Log($"DEBUG: Found door at excluded position {key}, removing it");
+                RemoveDoorAtPosition(key);
+            }
         }
 
         UpdateWallVisuals();
@@ -522,15 +709,54 @@ public class RoomBuilder : MonoBehaviour
     void RemoveWallFromGlobal(WallData wallData)
     {
         Vector2Int key = wallData.GetKey();
+        FileLogger.Log($"DEBUG: RemoveWallFromGlobal called for key {key}");
 
         if (globalWalls.ContainsKey(key))
         {
+            int oldRefCount = globalWalls[key].referenceCount;
             globalWalls[key].referenceCount--;
+            FileLogger.Log($"DEBUG: Wall reference count reduced from {oldRefCount} to {globalWalls[key].referenceCount}");
 
             if (globalWalls[key].referenceCount <= 0)
             {
+                FileLogger.Log($"DEBUG: Removing wall from globalWalls registry at {key}");
                 globalWalls.Remove(key);
+
+                // Также удаляем дверь, если она есть в этой позиции
+                if (IsDoorAtPosition(key))
+                {
+                    FileLogger.Log($"DEBUG: Found and removing door at position {key}");
+
+                    // Найдем дверь и удалим её
+                    GameObject[] allObjects = FindObjectsOfType<GameObject>();
+                    foreach (GameObject obj in allObjects)
+                    {
+                        if (obj.name.Contains("Door") && obj.activeInHierarchy && !obj.name.Contains("Preview"))
+                        {
+                            Vector3 objWorldPos = obj.transform.position;
+                            Vector2Int objGridPos = new Vector2Int(
+                                Mathf.RoundToInt(objWorldPos.x / cellSize),
+                                Mathf.RoundToInt(objWorldPos.z / cellSize)
+                            );
+
+                            if (objGridPos == key)
+                            {
+                                FileLogger.Log($"DEBUG: Destroying door GameObject: {obj.name}");
+                                DestroyImmediate(obj);
+                                break;
+                            }
+                        }
+                    }
+                }
             }
+            else
+            {
+                FileLogger.Log($"DEBUG: Wall still has {globalWalls[key].referenceCount} references, keeping it");
+            }
+        }
+        else
+        {
+            FileLogger.Log($"DEBUG: Wall at {key} not found in globalWalls registry (likely shared wall already removed)");
         }
     }
 
@@ -539,15 +765,23 @@ public class RoomBuilder : MonoBehaviour
     /// </summary>
     void UpdateWallVisuals()
     {
+        FileLogger.Log($"DEBUG: UpdateWallVisuals started. Current activeWalls count: {activeWalls.Count}, globalWalls count: {globalWalls.Count}");
+
         // Удаляем старые стены
+        int destroyedWalls = 0;
         foreach (var kvp in activeWalls)
         {
             if (kvp.Value != null)
+            {
                 DestroyImmediate(kvp.Value);
+                destroyedWalls++;
+            }
         }
+        FileLogger.Log($"DEBUG: Destroyed {destroyedWalls} old wall GameObjects");
         activeWalls.Clear();
 
         // Создаем новые стены
+        int createdWalls = 0;
         foreach (var kvp in globalWalls)
         {
             Vector2Int key = kvp.Key;
@@ -555,7 +789,11 @@ public class RoomBuilder : MonoBehaviour
 
             GameObject wallGO = CreateWallGameObject(wallData);
             activeWalls[key] = wallGO;
+            createdWalls++;
         }
+        FileLogger.Log($"DEBUG: Created {createdWalls} new wall GameObjects");
+
+        FileLogger.Log($"DEBUG: UpdateWallVisuals completed. Final activeWalls count: {activeWalls.Count}");
     }
 
     /// <summary>

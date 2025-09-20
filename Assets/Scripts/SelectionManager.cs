@@ -153,47 +153,12 @@ public class SelectionManager : MonoBehaviour
             
         }
         
-        // Мышь зажата - проверяем движение
-        if (Input.GetMouseButton(0) && isMousePressed)
-        {
-            Vector3 currentMousePos = Input.mousePosition;
-            float distance = Vector3.Distance(mouseDownPosition, currentMousePos);
-            
-            // Если движение больше порога и рамка еще не активна, начинаем box selection
-            if (distance > clickThreshold && !isBoxSelecting)
-            {
-                isBoxSelecting = true;
-                selectionBoxUI.SetActive(true);
-                
-                // НЕ очищаем выделение здесь! Будем очищать в конце, если ничего не найдем
-            }
-            
-            // Обновляем конечную позицию для рамки
-            if (isBoxSelecting)
-            {
-                boxEndPosition = currentMousePos;
-            }
-        }
+        // Box selection отключен для модулей - ничего не делаем при движении мыши
         
-        // Отпускание ЛКМ - решаем что это было: клик или рамка
+        // Отпускание ЛКМ - всегда считаем это кликом
         if (Input.GetMouseButtonUp(0) && isMousePressed)
         {
-            Vector3 currentMousePos = Input.mousePosition;
-            float distance = Vector3.Distance(mouseDownPosition, currentMousePos);
-            
-            if (isBoxSelecting)
-            {
-                // Это была рамка
-                isBoxSelecting = false;
-                selectionBoxUI.SetActive(false);
-                PerformBoxSelection();
-            }
-            else if (distance <= clickThreshold)
-            {
-                // Это был клик
-                PerformClickSelection(mouseDownPosition);
-            }
-            
+            PerformClickSelection(mouseDownPosition);
             isMousePressed = false;
         }
     }
@@ -204,10 +169,14 @@ public class SelectionManager : MonoBehaviour
     void PerformClickSelection(Vector3 mousePosition)
     {
         Ray ray = playerCamera.ScreenPointToRay(mousePosition);
-        
-        // Используем RaycastAll чтобы получить все объекты на луче
-        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask);
-        
+
+        FileLogger.Log($"DEBUG: PerformClickSelection at mouse position: {mousePosition}");
+
+        // Используем RaycastAll чтобы получить все объекты на луче, включая триггеры
+        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask, QueryTriggerInteraction.Collide);
+
+        FileLogger.Log($"DEBUG: Raycast found {hits.Length} hits with layer mask: {selectableLayerMask}");
+
         if (hits.Length > 0)
         {
             // Ищем первый подходящий объект для выделения
@@ -215,11 +184,14 @@ public class SelectionManager : MonoBehaviour
             {
                 GameObject hitObject = rayHit.collider.gameObject;
 
+                FileLogger.Log($"DEBUG: Hit object: {hitObject.name} on layer {hitObject.layer}");
+
                 // Исключаем системные объекты из выделения
                 if (hitObject.name.Contains("Bounds") || hitObject.name.Contains("Grid") ||
                     hitObject.name.Contains("Location") && !hitObject.name.Contains("Test") ||
                     hitObject.name.Contains("Plane"))
                 {
+                    FileLogger.Log($"DEBUG: Skipping system object: {hitObject.name}");
                     continue;
                 }
 
@@ -227,24 +199,34 @@ public class SelectionManager : MonoBehaviour
 
                 if (objectInfo != null)
                 {
-                    // Найден подходящий объект для выделения
-                    if (!Input.GetKey(KeyCode.LeftControl))
+                    FileLogger.Log($"DEBUG: Found LocationObjectInfo on {hitObject.name}: {objectInfo.objectName}");
+                    GameObject targetObject = hitObject;
+
+                    // Проверяем, является ли это полом комнаты
+                    RoomFloorMarker floorMarker = hitObject.GetComponent<RoomFloorMarker>();
+                    if (floorMarker != null && floorMarker.GetParentRoom() != null)
                     {
-                        ClearSelection();
+                        // Если это пол комнаты, выделяем родительскую комнату
+                        targetObject = floorMarker.GetParentRoom();
                     }
 
-                    ToggleSelection(hitObject);
+                    // Найден подходящий объект для выделения
+                    // Для модулей всегда выделяем только один объект
+                    ClearSelection();
+                    ToggleSelection(targetObject);
                     return;
                 }
             }
         }
 
         // Если мы дошли до этого места, значит не найдено подходящих объектов
-        // Это считается кликом в пустое место - очищаем выделение если не зажат Ctrl
-        if (!Input.GetKey(KeyCode.LeftControl))
-        {
-            ClearSelection();
-        }
+        FileLogger.Log($"DEBUG: No selectable objects found. Running room component check...");
+
+        // Попробуем исправить компоненты комнат если их не было найдено
+        CheckAndFixRoomComponents();
+
+        // Это считается кликом в пустое место - всегда очищаем выделение
+        ClearSelection();
     }
     
     /// <summary>
@@ -285,14 +267,24 @@ public class SelectionManager : MonoBehaviour
         {
             Vector3 worldPos = objectInfo.transform.position;
             Vector2 screenPos = playerCamera.WorldToScreenPoint(worldPos);
-            
+
             Vector2 boxMin = Vector2.Min(boxStartPosition, boxEndPosition);
             Vector2 boxMax = Vector2.Max(boxStartPosition, boxEndPosition);
-            
+
             if (screenPos.x >= boxMin.x && screenPos.x <= boxMax.x &&
                 screenPos.y >= boxMin.y && screenPos.y <= boxMax.y)
             {
-                newSelections.Add(objectInfo.gameObject);
+                GameObject targetObject = objectInfo.gameObject;
+
+                // Проверяем, является ли это полом комнаты
+                RoomFloorMarker floorMarker = objectInfo.GetComponent<RoomFloorMarker>();
+                if (floorMarker != null && floorMarker.GetParentRoom() != null)
+                {
+                    // Если это пол комнаты, добавляем родительскую комнату
+                    targetObject = floorMarker.GetParentRoom();
+                }
+
+                newSelections.Add(targetObject);
             }
         }
         
@@ -567,17 +559,15 @@ public class SelectionManager : MonoBehaviour
     /// </summary>
     void DiagnoseSelectableObjects()
     {
-        
         LocationObjectInfo[] allObjects = FindObjectsOfType<LocationObjectInfo>();
-        
+
         foreach (LocationObjectInfo objectInfo in allObjects)
         {
             GameObject obj = objectInfo.gameObject;
-            
+
             Collider collider = obj.GetComponent<Collider>();
             if (collider != null)
             {
-                
                 // Проверяем, попадает ли в LayerMask
                 bool inMask = (selectableLayerMask & (1 << obj.layer)) != 0;
             }
@@ -587,6 +577,106 @@ public class SelectionManager : MonoBehaviour
             }
         }
 
+        // Проверяем комнаты без LocationObjectInfo и добавляем их
+        CheckAndFixRoomComponents();
+    }
+
+    /// <summary>
+    /// Проверить и исправить компоненты комнат
+    /// </summary>
+    void CheckAndFixRoomComponents()
+    {
+        // Ищем все объекты с RoomInfo
+        RoomInfo[] allRooms = FindObjectsOfType<RoomInfo>();
+
+        FileLogger.Log($"DEBUG: CheckAndFixRoomComponents found {allRooms.Length} rooms");
+
+        foreach (RoomInfo roomInfo in allRooms)
+        {
+            GameObject roomObj = roomInfo.gameObject;
+
+            // Проверяем, есть ли у комнаты пол с компонентами выделения
+            Transform floorTransform = roomObj.transform.Find("Floor");
+            Transform selectionFloorTransform = roomObj.transform.Find("SelectionFloor");
+
+            // Для больших комнат - проверяем обычный пол
+            if (floorTransform != null)
+            {
+                GameObject floor = floorTransform.gameObject;
+
+                // Проверяем наличие LocationObjectInfo на полу
+                LocationObjectInfo locationInfo = floor.GetComponent<LocationObjectInfo>();
+                if (locationInfo == null)
+                {
+                    // Добавляем недостающий компонент к полу
+                    locationInfo = floor.AddComponent<LocationObjectInfo>();
+                    locationInfo.objectName = roomInfo.roomName;
+                    locationInfo.objectType = roomInfo.roomType;
+                    locationInfo.health = 500f;
+                    locationInfo.isDestructible = true;
+
+                    FileLogger.Log($"Added missing LocationObjectInfo to floor of room: {roomInfo.roomName}");
+                }
+
+                // Проверяем наличие RoomFloorMarker на полу
+                RoomFloorMarker floorMarker = floor.GetComponent<RoomFloorMarker>();
+                if (floorMarker == null)
+                {
+                    floorMarker = floor.AddComponent<RoomFloorMarker>();
+                    floorMarker.parentRoom = roomObj;
+
+                    FileLogger.Log($"Added missing RoomFloorMarker to floor of room: {roomInfo.roomName}");
+                }
+
+                // Проверяем наличие коллайдера на полу
+                BoxCollider floorCollider = floor.GetComponent<BoxCollider>();
+                if (floorCollider == null)
+                {
+                    floorCollider = floor.AddComponent<BoxCollider>();
+                    floorCollider.isTrigger = false; // Не триггер для raycast
+
+                    FileLogger.Log($"Added missing BoxCollider to floor of room: {roomInfo.roomName}");
+                }
+            }
+            // Для маленьких комнат - проверяем SelectionFloor
+            else if (selectionFloorTransform != null)
+            {
+                GameObject selectionFloor = selectionFloorTransform.gameObject;
+
+                // Проверяем наличие LocationObjectInfo
+                LocationObjectInfo locationInfo = selectionFloor.GetComponent<LocationObjectInfo>();
+                if (locationInfo == null)
+                {
+                    locationInfo = selectionFloor.AddComponent<LocationObjectInfo>();
+                    locationInfo.objectName = roomInfo.roomName;
+                    locationInfo.objectType = roomInfo.roomType;
+                    locationInfo.health = 500f;
+                    locationInfo.isDestructible = true;
+
+                    FileLogger.Log($"Added missing LocationObjectInfo to SelectionFloor of room: {roomInfo.roomName}");
+                }
+
+                // Проверяем наличие RoomFloorMarker
+                RoomFloorMarker floorMarker = selectionFloor.GetComponent<RoomFloorMarker>();
+                if (floorMarker == null)
+                {
+                    floorMarker = selectionFloor.AddComponent<RoomFloorMarker>();
+                    floorMarker.parentRoom = roomObj;
+
+                    FileLogger.Log($"Added missing RoomFloorMarker to SelectionFloor of room: {roomInfo.roomName}");
+                }
+
+                // Проверяем наличие коллайдера
+                BoxCollider selectionCollider = selectionFloor.GetComponent<BoxCollider>();
+                if (selectionCollider == null)
+                {
+                    selectionCollider = selectionFloor.AddComponent<BoxCollider>();
+                    selectionCollider.isTrigger = false;
+
+                    FileLogger.Log($"Added missing BoxCollider to SelectionFloor of room: {roomInfo.roomName}");
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -597,7 +687,7 @@ public class SelectionManager : MonoBehaviour
         if (isBoxSelecting) return; // Не обрабатываем hover во время выделения рамкой
 
         Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask);
+        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask, QueryTriggerInteraction.Collide);
 
         GameObject hoveredObject = null;
 
@@ -618,7 +708,17 @@ public class SelectionManager : MonoBehaviour
             GameObject rootObject = FindHoverableRoot(hitObject);
             if (rootObject != null)
             {
-                hoveredObject = rootObject;
+                // Проверяем, является ли это полом комнаты
+                RoomFloorMarker floorMarker = rootObject.GetComponent<RoomFloorMarker>();
+                if (floorMarker != null && floorMarker.GetParentRoom() != null)
+                {
+                    // Если это пол комнаты, подсвечиваем родительскую комнату
+                    hoveredObject = floorMarker.GetParentRoom();
+                }
+                else
+                {
+                    hoveredObject = rootObject;
+                }
                 break;
             }
         }

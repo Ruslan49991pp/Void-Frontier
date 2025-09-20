@@ -1527,42 +1527,28 @@ public class ShipBuildingSystem : MonoBehaviour
     /// </summary>
     void BuildRoom(Vector2Int gridPosition, RoomData roomData, int rotation = 0)
     {
+        FileLogger.Log($"DEBUG: BuildRoom called for {roomData.roomName} at position {gridPosition}, rotation {rotation}");
+
         GameObject room;
         Vector2Int rotatedSize = GetRotatedRoomSize(roomData.size, rotation);
+
+        FileLogger.Log($"DEBUG: Rotated size: {rotatedSize}");
 
         // Используем RoomBuilder для создания комнат из примитивов
         if (roomData.prefab == null)
         {
+            FileLogger.Log($"DEBUG: About to call RoomBuilder.BuildRoom for {roomData.roomName}");
             room = RoomBuilder.Instance.BuildRoom(gridPosition, rotatedSize, roomData.roomName, rotation);
             room.name = $"{roomData.roomName}_{builtRooms.Count + 1}";
 
-            // Добавляем информацию об объекте для системы выделения
-            LocationObjectInfo objectInfo = room.GetComponent<LocationObjectInfo>();
-            if (objectInfo == null)
-            {
-                objectInfo = room.AddComponent<LocationObjectInfo>();
-            }
-            objectInfo.objectName = roomData.roomName;
-            objectInfo.objectType = roomData.roomType;
-            objectInfo.health = 500f;
-            objectInfo.isDestructible = true; // Теперь комнаты можно разрушать
+            // ВАЖНО: Устанавливаем позицию комнаты в мире
+            Vector3 worldPosition = gridManager.GridToWorld(gridPosition);
+            room.transform.position = worldPosition;
 
-            // Добавляем коллайдер для возможности выделения
-            BoxCollider roomCollider = room.GetComponent<BoxCollider>();
-            if (roomCollider == null)
-            {
-                roomCollider = room.AddComponent<BoxCollider>();
-                // Настраиваем размер коллайдера на всю комнату с учетом поворота
-                float width = rotatedSize.x * gridManager.cellSize;
-                float height = rotatedSize.y * gridManager.cellSize;
-                roomCollider.size = new Vector3(width, 2f, height);
-                roomCollider.center = new Vector3(
-                    (rotatedSize.x - 1) * 0.5f * gridManager.cellSize,
-                    1f,
-                    (rotatedSize.y - 1) * 0.5f * gridManager.cellSize
-                );
-                roomCollider.isTrigger = true; // Триггер чтобы не мешать движению
-            }
+            FileLogger.Log($"DEBUG: RoomBuilder.BuildRoom completed, room created: {room.name} at position: {room.transform.position}");
+
+            // Больше не добавляем компоненты выделения к основному объекту комнаты
+            // Теперь выделение происходит через пол комнаты, который создается в RoomBuilder
         }
         else
         {
@@ -1867,31 +1853,50 @@ public class ShipBuildingSystem : MonoBehaviour
     public void DeleteRoom(GameObject room)
     {
         RoomInfo roomInfo = room.GetComponent<RoomInfo>();
-        if (roomInfo == null) return;
+        if (roomInfo == null)
+        {
+            FileLogger.Log("ERROR: DeleteRoom called on object without RoomInfo component");
+            return;
+        }
+
+        FileLogger.Log($"DEBUG: Starting DeleteRoom for {roomInfo.roomName} at position {roomInfo.gridPosition}, size {roomInfo.roomSize}, rotation {roomInfo.roomRotation}");
 
         // Получаем размер с учетом поворота комнаты
         Vector2Int rotatedSize = GetRotatedRoomSize(roomInfo.roomSize, roomInfo.roomRotation);
+        FileLogger.Log($"DEBUG: Rotated size calculated as {rotatedSize}");
 
         // Освобождаем клетки стен в GridManager
+        FileLogger.Log("DEBUG: Freeing room wall cells");
         FreeRoomWallCells(roomInfo.gridPosition, rotatedSize);
 
         // Освобождаем только периметр комнаты (стены) в GridManager
+        FileLogger.Log("DEBUG: Freeing cell perimeter in GridManager");
         gridManager.FreeCellPerimeter(roomInfo.gridPosition, rotatedSize.x, rotatedSize.y);
 
         // Удаляем стены через RoomBuilder
-        RoomBuilder.Instance.RemoveRoom(roomInfo.gridPosition, rotatedSize);
+        FileLogger.Log("DEBUG: Calling RoomBuilder.RemoveRoom");
+        RoomBuilder.Instance.RemoveRoom(roomInfo.gridPosition, roomInfo.roomSize, roomInfo.roomRotation);
 
         // Удаляем из списка построенных комнат
         if (builtRooms.Contains(room))
         {
+            FileLogger.Log("DEBUG: Removing room from builtRooms list");
             builtRooms.Remove(room);
+        }
+        else
+        {
+            FileLogger.Log("WARNING: Room not found in builtRooms list");
         }
 
         // Уведомляем о удалении
+        FileLogger.Log("DEBUG: Invoking OnRoomDeleted event");
         OnRoomDeleted?.Invoke(room);
 
         // Уничтожаем объект
+        FileLogger.Log("DEBUG: Destroying room GameObject");
         DestroyImmediate(room);
+
+        FileLogger.Log("DEBUG: DeleteRoom completed");
     }
 
     /// <summary>
