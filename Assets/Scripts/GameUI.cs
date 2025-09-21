@@ -676,71 +676,134 @@ public class GameUI : MonoBehaviour
         }
         else
         {
-            // Показываем общую информацию о выделении (только объекты, не персонажи)
-            List<GameObject> nonCharacterObjects = new List<GameObject>();
-            foreach (GameObject obj in currentSelection)
+            // Проверяем, что выделено
+            if (currentSelection.Count == 1)
             {
-                // Исключаем персонажей из списка
-                if (obj.GetComponent<Character>() == null)
-                {
-                    nonCharacterObjects.Add(obj);
-                }
-            }
+                GameObject obj = currentSelection[0];
+                Character character = obj.GetComponent<Character>();
 
-            if (nonCharacterObjects.Count == 1)
-            {
-                // Показываем подробную информацию об одном объекте
-                GameObject obj = nonCharacterObjects[0];
-                LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
-
-                if (objectInfo != null)
+                if (character != null)
                 {
-                    string info = $"ОБЪЕКТ: {objectInfo.objectName}\n";
-                    info += $"Тип: {objectInfo.objectType}\n";
-                    info += $"Прочность: {objectInfo.health:F0}\n";
-                    if (objectInfo.isDestructible)
+                    // Показываем информацию только о вражеских персонажах
+                    // Информация о союзниках отображается в верхней панели с иконками
+                    if (!character.IsPlayerCharacter())
                     {
-                        info += "Можно разрушить: Да\n";
+                        string info = $"ВРАЖЕСКИЙ ПЕРСОНАЖ: {character.GetFullName()}\n";
+                        info += $"Профессия: {character.characterData.profession}\n";
+                        info += $"Уровень: {character.characterData.level}\n";
+                        info += $"Здоровье: {character.characterData.health:F0}/{character.characterData.maxHealth:F0}\n";
+                        info += $"Фракция: {character.characterData.faction}\n";
+
+                        if (!string.IsNullOrEmpty(character.characterData.bio))
+                        {
+                            info += $"\n{character.characterData.bio}";
+                        }
+
+                        info += $"\nПозиция: {obj.transform.position:F1}";
+                        infoText.text = info;
                     }
                     else
                     {
-                        info += "Можно разрушить: Нет\n";
+                        // Для союзников показываем сообщение о том, что информация отображается вверху
+                        infoText.text = "Информация о союзных персонажах\nотображается в верхней панели с иконками";
                     }
-                    if (objectInfo.canBeScavenged)
-                    {
-                        info += "Можно собрать ресурсы: Да\n";
-                    }
-                    info += $"\nПозиция: {obj.transform.position:F1}";
-
-                    infoText.text = info;
                 }
                 else
                 {
-                    infoText.text = $"ОБЪЕКТ: {obj.name}\nПозиция: {obj.transform.position:F1}";
-                }
-            }
-            else if (nonCharacterObjects.Count > 1)
-            {
-                // Показываем список нескольких объектов
-                string info = $"Выделено объектов: {nonCharacterObjects.Count}\n\n";
-                foreach (GameObject obj in nonCharacterObjects)
-                {
+                    // Показываем информацию об обычном объекте
                     LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
+
                     if (objectInfo != null)
                     {
-                        info += $"• {objectInfo.objectName} ({objectInfo.objectType})\n";
+                        string info = $"ОБЪЕКТ: {objectInfo.objectName}\n";
+                        info += $"Тип: {objectInfo.objectType}\n";
+                        info += $"Прочность: {objectInfo.health:F0}\n";
+                        if (objectInfo.isDestructible)
+                        {
+                            info += "Можно разрушить: Да\n";
+                        }
+                        else
+                        {
+                            info += "Можно разрушить: Нет\n";
+                        }
+                        if (objectInfo.canBeScavenged)
+                        {
+                            info += "Можно собрать ресурсы: Да\n";
+                        }
+                        info += $"\nПозиция: {obj.transform.position:F1}";
+
+                        infoText.text = info;
                     }
                     else
                     {
-                        info += $"• {obj.name}\n";
+                        infoText.text = $"ОБЪЕКТ: {obj.name}\nПозиция: {obj.transform.position:F1}";
                     }
                 }
-                infoText.text = info;
             }
-            else
+            else if (currentSelection.Count > 1)
             {
-                // Если выделены только персонажи или ничего
-                infoText.text = "Выберите объект для просмотра информации\n\n(Информация о персонажах отображается в верхней панели)";
+                // Разделяем на союзников и остальные объекты
+                List<Character> enemyCharacters = new List<Character>();
+                List<GameObject> otherObjects = new List<GameObject>();
+
+                foreach (GameObject obj in currentSelection)
+                {
+                    Character character = obj.GetComponent<Character>();
+                    if (character != null)
+                    {
+                        if (!character.IsPlayerCharacter())
+                        {
+                            enemyCharacters.Add(character);
+                        }
+                        // Союзников пропускаем - их информация отображается в верхней панели
+                    }
+                    else
+                    {
+                        otherObjects.Add(obj);
+                    }
+                }
+
+                string info = "";
+
+                // Показываем информацию о вражеских персонажах
+                if (enemyCharacters.Count > 0)
+                {
+                    info += $"Вражеские персонажи: {enemyCharacters.Count}\n";
+                    foreach (Character enemy in enemyCharacters)
+                    {
+                        info += $"• {enemy.GetFullName()} (Lv.{enemy.characterData.level})\n";
+                    }
+                    info += "\n";
+                }
+
+                // Показываем информацию о других объектах
+                if (otherObjects.Count > 0)
+                {
+                    info += $"Объекты: {otherObjects.Count}\n";
+                    foreach (GameObject obj in otherObjects)
+                    {
+                        LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
+                        if (objectInfo != null)
+                        {
+                            info += $"• {objectInfo.objectName} ({objectInfo.objectType})\n";
+                        }
+                        else
+                        {
+                            info += $"• {obj.name}\n";
+                        }
+                    }
+                }
+
+                // Если есть союзники в выделении, добавляем напоминание
+                int totalSelected = currentSelection.Count;
+                int displayedCount = enemyCharacters.Count + otherObjects.Count;
+                if (displayedCount < totalSelected)
+                {
+                    int allyCount = totalSelected - displayedCount;
+                    info += $"\nСоюзники ({allyCount}): информация в верхней панели";
+                }
+
+                infoText.text = info.Trim();
             }
 
             // Скрываем кнопку разрушения

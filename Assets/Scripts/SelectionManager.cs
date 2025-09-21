@@ -55,10 +55,12 @@ public class SelectionManager : MonoBehaviour
     {
         if (playerCamera == null)
             playerCamera = Camera.main;
-            
+
+        Debug.Log($"[SELECTION DEBUG] SelectionManager Start - Layer mask: {selectableLayerMask}, Camera: {(playerCamera != null ? "OK" : "NULL")}");
+
         InitializeUI();
         CreateSelectionIndicatorPrefab();
-        
+
         // Отложенная диагностика (даем время объектам создаться)
         Invoke("DiagnoseSelectableObjects", 1f);
     }
@@ -147,6 +149,7 @@ public class SelectionManager : MonoBehaviour
         // Нажатие ЛКМ - запоминаем позицию
         if (Input.GetMouseButtonDown(0))
         {
+            Debug.Log($"[SELECTION DEBUG] Left mouse button DOWN at: {Input.mousePosition}");
             isMousePressed = true;
             mouseDownPosition = Input.mousePosition;
             boxStartPosition = Input.mousePosition;
@@ -173,8 +176,11 @@ public class SelectionManager : MonoBehaviour
         // Отпускание ЛКМ
         if (Input.GetMouseButtonUp(0) && isMousePressed)
         {
+            Debug.Log($"[SELECTION DEBUG] Mouse button up - isBoxSelecting: {isBoxSelecting}, mouseDownPosition: {mouseDownPosition}");
+
             if (isBoxSelecting)
             {
+                Debug.Log($"[SELECTION DEBUG] Performing box selection");
                 // Выполняем box selection только для юнитов
                 PerformBoxSelection();
                 isBoxSelecting = false;
@@ -182,6 +188,7 @@ public class SelectionManager : MonoBehaviour
             }
             else
             {
+                Debug.Log($"[SELECTION DEBUG] Performing click selection");
                 // Обычное клик-выделение
                 PerformClickSelection(mouseDownPosition);
             }
@@ -235,6 +242,12 @@ public class SelectionManager : MonoBehaviour
 
         foreach (Character character in allCharacters)
         {
+            // Рамкой можно выделять только союзников
+            if (!character.IsPlayerCharacter())
+            {
+                continue;
+            }
+
             Vector3 worldPos = character.transform.position;
             Vector2 screenPos = playerCamera.WorldToScreenPoint(worldPos);
 
@@ -286,11 +299,14 @@ public class SelectionManager : MonoBehaviour
     {
         Ray ray = playerCamera.ScreenPointToRay(mousePosition);
 
+        Debug.Log($"[SELECTION DEBUG] PerformClickSelection at mouse position: {mousePosition}");
+        Debug.Log($"[SELECTION DEBUG] Ray origin: {ray.origin}, direction: {ray.direction}");
         FileLogger.Log($"DEBUG: PerformClickSelection at mouse position: {mousePosition}");
 
         // Используем RaycastAll чтобы получить все объекты на луче, включая триггеры
         RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask, QueryTriggerInteraction.Collide);
 
+        Debug.Log($"[SELECTION DEBUG] Raycast found {hits.Length} hits with layer mask: {selectableLayerMask}");
         FileLogger.Log($"DEBUG: Raycast found {hits.Length} hits with layer mask: {selectableLayerMask}");
 
         if (hits.Length > 0)
@@ -300,6 +316,7 @@ public class SelectionManager : MonoBehaviour
             {
                 GameObject hitObject = rayHit.collider.gameObject;
 
+                Debug.Log($"[SELECTION DEBUG] Hit object: '{hitObject.name}' on layer {hitObject.layer} at distance {rayHit.distance:F2}");
                 FileLogger.Log($"DEBUG: Hit object: {hitObject.name} on layer {hitObject.layer}");
 
                 // Исключаем системные объекты из выделения
@@ -307,22 +324,53 @@ public class SelectionManager : MonoBehaviour
                     hitObject.name.Contains("Location") && !hitObject.name.Contains("Test") ||
                     hitObject.name.Contains("Plane"))
                 {
+                    Debug.Log($"[SELECTION DEBUG] Skipping system object: {hitObject.name}");
                     FileLogger.Log($"DEBUG: Skipping system object: {hitObject.name}");
                     continue;
                 }
 
                 // Проверяем, является ли это персонажом
                 Character character = hitObject.GetComponent<Character>();
+                GameObject characterObject = hitObject;
+
+                if (character == null)
+                {
+                    // Ищем компонент Character в родительских объектах
+                    character = hitObject.GetComponentInParent<Character>();
+                    if (character != null)
+                    {
+                        characterObject = character.gameObject;
+                    }
+                }
+
+                Debug.Log($"[SELECTION DEBUG] Character component check on '{hitObject.name}': " +
+                         $"{(character != null ? $"FOUND ({character.GetFullName()}) on '{characterObject.name}'" : "NOT FOUND")}");
                 if (character != null)
                 {
+                    Debug.Log($"[SELECTION DEBUG] Found Character: '{hitObject.name}' - {character.GetFullName()} (Faction: {character.GetFaction()})");
                     FileLogger.Log($"DEBUG: Found Character: {hitObject.name}");
 
-                    // Для персонажей поддерживаем Ctrl+клик для множественного выделения
-                    if (!Input.GetKey(KeyCode.LeftControl))
+                    // Для персонажей поддерживаем Ctrl+клик для множественного выделения только у союзников
+                    // Врагов можно выделять только по одному для просмотра информации
+                    if (character.IsPlayerCharacter())
                     {
-                        ClearSelection();
+                        Debug.Log($"[SELECTION DEBUG] Player character - checking Ctrl key: {Input.GetKey(KeyCode.LeftControl)}");
+                        // Союзников можно выделять группами
+                        if (!Input.GetKey(KeyCode.LeftControl))
+                        {
+                            ClearSelection();
+                        }
                     }
-                    ToggleSelection(hitObject);
+                    else
+                    {
+                        Debug.Log($"[SELECTION DEBUG] Enemy character - clearing previous selection");
+                        // Врагов всегда выделяем по одному (очищаем предыдущее выделение)
+                        ClearSelection();
+                        FileLogger.Log($"DEBUG: Selecting enemy for info view: {hitObject.name}");
+                    }
+
+                    Debug.Log($"[SELECTION DEBUG] Calling ToggleSelection for: {characterObject.name}");
+                    ToggleSelection(characterObject);
                     return;
                 }
 
@@ -350,12 +398,14 @@ public class SelectionManager : MonoBehaviour
         }
 
         // Если мы дошли до этого места, значит не найдено подходящих объектов
+        Debug.Log($"[SELECTION DEBUG] No selectable objects found in {hits.Length} hits");
         FileLogger.Log($"DEBUG: No selectable objects found. Running room component check...");
 
         // Попробуем исправить компоненты комнат если их не было найдено
         CheckAndFixRoomComponents();
 
         // Это считается кликом в пустое место - всегда очищаем выделение
+        Debug.Log($"[SELECTION DEBUG] Clearing selection - click in empty space");
         ClearSelection();
     }
     
@@ -366,12 +416,16 @@ public class SelectionManager : MonoBehaviour
     /// </summary>
     public void ToggleSelection(GameObject obj)
     {
+        Debug.Log($"[SELECTION DEBUG] ToggleSelection called for: {obj.name}, currently selected: {selectedObjects.Contains(obj)}");
+
         if (selectedObjects.Contains(obj))
         {
+            Debug.Log($"[SELECTION DEBUG] Removing from selection: {obj.name}");
             RemoveFromSelection(obj);
         }
         else
         {
+            Debug.Log($"[SELECTION DEBUG] Adding to selection: {obj.name}");
             AddToSelection(obj);
         }
     }
@@ -595,6 +649,24 @@ public class SelectionManager : MonoBehaviour
     /// </summary>
     void DiagnoseSelectableObjects()
     {
+        Debug.Log($"[SELECTION DEBUG] === DIAGNOSING SELECTABLE OBJECTS ===");
+
+        // Проверяем персонажей
+        Character[] allCharacters = FindObjectsOfType<Character>();
+        Debug.Log($"[SELECTION DEBUG] Found {allCharacters.Length} characters in scene:");
+
+        foreach (Character character in allCharacters)
+        {
+            GameObject obj = character.gameObject;
+            Collider collider = obj.GetComponent<Collider>();
+            bool inMask = (selectableLayerMask & (1 << obj.layer)) != 0;
+
+            Debug.Log($"[SELECTION DEBUG] Character: '{obj.name}' on layer {obj.layer}, " +
+                     $"Faction: {character.GetFaction()}, " +
+                     $"Collider: {(collider != null ? "YES" : "NO")}, " +
+                     $"In LayerMask: {inMask}");
+        }
+
         LocationObjectInfo[] allObjects = FindObjectsOfType<LocationObjectInfo>();
 
         foreach (LocationObjectInfo objectInfo in allObjects)
@@ -615,6 +687,8 @@ public class SelectionManager : MonoBehaviour
 
         // Проверяем комнаты без LocationObjectInfo и добавляем их
         CheckAndFixRoomComponents();
+
+        Debug.Log($"[SELECTION DEBUG] === DIAGNOSIS COMPLETE ===");
     }
 
     /// <summary>

@@ -109,8 +109,9 @@ public class MovementController : MonoBehaviour
             foreach (var obj in selectedObjects)
             {
                 Character character = obj.GetComponent<Character>();
-                if (character != null)
+                if (character != null && character.IsPlayerCharacter())
                 {
+                    // Добавляем только персонажей игрока для управления
                     characters.Add(character);
                 }
             }
@@ -175,7 +176,14 @@ public class MovementController : MonoBehaviour
             var movement = movements[i];
             var targetPos = finalPos;
             movement.OnMovementComplete += (completedMovement) => OnCharacterArrivedAtFinalPosition(completedMovement, targetPos, targetGridPos);
-            
+
+            // Уведомляем AI о том, что движение инициировано игроком
+            var characterAI = movement.GetComponent<CharacterAI>();
+            if (characterAI != null)
+            {
+                characterAI.OnPlayerInitiatedMovement();
+            }
+
             // Отправляем к финальной позиции
             movement.MoveTo(finalWorldPos);
         }

@@ -9,7 +9,10 @@ public class CharacterMovement : MonoBehaviour
 {
     public static readonly float MOVE_SPEED = 5f; // Единая скорость для всех персонажей
     public static readonly float ROTATION_SPEED = 10f; // Скорость поворота персонажа
-    
+
+    [Header("Debug")]
+    public bool debugMovement = true; // Отладка движения
+
     private Vector3 targetPosition;
     private bool isMoving = false;
     private Coroutine movementCoroutine;
@@ -76,13 +79,35 @@ public class CharacterMovement : MonoBehaviour
     /// </summary>
     public void MoveTo(Vector3 worldPosition)
     {
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: MoveTo called. Target: {worldPosition}, Current: {transform.position}, GridManager: {(gridManager != null ? "OK" : "NULL")}");
+        }
+
+        if (gridManager == null)
+        {
+            if (debugMovement)
+                Debug.LogError($"[MOVEMENT DEBUG] {name}: GridManager is NULL in MoveTo!");
+            return;
+        }
+
         targetPosition = worldPosition;
 
         // Сохраняем изначальную цель для мониторинга занятости
         originalTarget = gridManager.WorldToGrid(worldPosition);
 
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: Original target grid pos: {originalTarget}, IsMoving before stop: {isMoving}");
+        }
+
         // ПОЛНОЕ обнуление предыдущего состояния
         StopMovement();
+
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: Movement stopped, starting delay coroutine");
+        }
 
         // Небольшая задержка чтобы корутины точно остановились
         StartCoroutine(StartMovementAfterDelay(worldPosition));
@@ -90,16 +115,30 @@ public class CharacterMovement : MonoBehaviour
     
     IEnumerator StartMovementAfterDelay(Vector3 worldPosition)
     {
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: StartMovementAfterDelay coroutine started");
+        }
+
         yield return null; // Ждем один кадр
-        
+
         targetPosition = worldPosition;
-        
+
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: After delay, starting movement to {targetPosition}");
+        }
+
         // Показываем новый путь
         ShowPathLine();
-        
+
         // Немедленно начинаем новое движение
         movementCoroutine = StartCoroutine(MoveToTarget());
-        
+
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: Movement coroutine started. IsMoving will be set in MoveToTarget");
+        }
     }
     
     /// <summary>
@@ -107,37 +146,72 @@ public class CharacterMovement : MonoBehaviour
     /// </summary>
     IEnumerator MoveToTarget()
     {
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: MoveToTarget coroutine started");
+        }
+
         Vector3 startPosition = transform.position;
-        
+
         // Если уже на месте, выходим
         if (Vector3.Distance(startPosition, targetPosition) < 0.1f)
         {
+            if (debugMovement)
+            {
+                Debug.Log($"[MOVEMENT DEBUG] {name}: Already at target, distance: {Vector3.Distance(startPosition, targetPosition)}");
+            }
             yield break;
         }
-        
+
         isMoving = true;
+
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: IsMoving set to true, distance to target: {Vector3.Distance(startPosition, targetPosition)}");
+        }
         
         // Находим путь с обходом препятствий
         Vector2Int startGrid = gridManager.WorldToGrid(startPosition);
         Vector2Int targetGrid = gridManager.WorldToGrid(targetPosition);
 
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: Start grid: {startGrid}, Target grid: {targetGrid}, Pathfinder: {(pathfinder != null ? "OK" : "NULL")}");
+        }
+
         if (pathfinder == null)
         {
             currentPath = new List<Vector2Int> { targetGrid };
+            if (debugMovement)
+            {
+                Debug.Log($"[MOVEMENT DEBUG] {name}: No pathfinder, using direct path");
+            }
         }
         else
         {
             currentPath = pathfinder.FindPath(startGrid, targetGrid);
+            if (debugMovement)
+            {
+                Debug.Log($"[MOVEMENT DEBUG] {name}: Pathfinder result: {(currentPath != null ? $"{currentPath.Count} waypoints" : "NULL")}");
+            }
         }
         currentPathIndex = 0;
         
         if (currentPath != null && currentPath.Count > 0)
         {
+            if (debugMovement)
+            {
+                Debug.Log($"[MOVEMENT DEBUG] {name}: Moving along path with {currentPath.Count} waypoints");
+            }
             // Движение по найденному пути
             yield return StartCoroutine(MoveAlongPath());
         }
         else
         {
+            if (debugMovement)
+            {
+                Debug.Log($"[MOVEMENT DEBUG] {name}: No valid path found, moving directly");
+            }
             // Прямое движение если путь не найден
             yield return StartCoroutine(MoveDirectly());
         }
@@ -150,7 +224,12 @@ public class CharacterMovement : MonoBehaviour
             movementCoroutine = null;
         }
         currentPath = null;
-        
+
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: Movement completed. Final position: {transform.position}");
+        }
+
         // Скрываем путь
         HidePathLine();
 
@@ -159,6 +238,11 @@ public class CharacterMovement : MonoBehaviour
 
         // Вызываем событие завершения движения
         OnMovementComplete?.Invoke(this);
+
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: OnMovementComplete event fired");
+        }
     }
     
     /// <summary>
@@ -322,6 +406,10 @@ public class CharacterMovement : MonoBehaviour
     /// </summary>
     public bool IsMoving()
     {
+        if (debugMovement && Time.frameCount % 300 == 0) // Лог каждые 5 секунд (при 60 FPS)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: IsMoving check: {isMoving}, Coroutine: {(movementCoroutine != null ? "ACTIVE" : "NULL")}");
+        }
         return isMoving;
     }
     
@@ -330,27 +418,35 @@ public class CharacterMovement : MonoBehaviour
     /// </summary>
     public void StopMovement()
     {
-        
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: StopMovement called. Was moving: {isMoving}, Had coroutine: {(movementCoroutine != null)}");
+        }
+
         // Останавливаем корутину
         if (movementCoroutine != null)
         {
             StopCoroutine(movementCoroutine);
             movementCoroutine = null;
         }
-        
+
         // Останавливаем ВСЕ корутины для надежности
         StopAllCoroutines();
-        
+
         // Полная очистка состояния
         isMoving = false;
         currentPath = null;
         currentPathIndex = 0;
-        
+
         // Очищаем событие
         OnMovementComplete = null;
-        
+
         HidePathLine();
-        
+
+        if (debugMovement)
+        {
+            Debug.Log($"[MOVEMENT DEBUG] {name}: Movement stopped and state cleared");
+        }
     }
     
     /// <summary>

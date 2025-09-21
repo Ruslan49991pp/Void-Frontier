@@ -51,6 +51,8 @@ public class GridManager : MonoBehaviour
     
     [Header("Characters")]
     public int numberOfCharacters = 3;
+    public int numberOfEnemies = 2;
+    public float enemySpawnDistance = 20f; // Расстояние от игроков до врагов
     public GameObject characterPrefab;
     [Tooltip("Префаб модели персонажа (например, SKM_Character)")]
     public GameObject characterModelPrefab;
@@ -623,10 +625,116 @@ public class GridManager : MonoBehaviour
         // Создаем кокпит рядом с персонажами
         SpawnCockpit(startPosition);
 
+        // Создаем врагов на расстоянии
+        SpawnEnemyCharacters(startPosition);
+
         // Логируем статистику имен
         Character.LogNameStatistics();
     }
     
+    /// <summary>
+    /// Создать враждебных персонажей на расстоянии от игроков
+    /// </summary>
+    void SpawnEnemyCharacters(Vector2Int playerStartPosition)
+    {
+        if (numberOfEnemies <= 0) return;
+
+        Debug.Log($"GridManager: Spawning {numberOfEnemies} enemy characters");
+
+        // Найдем позицию для врагов (на расстоянии от игроков)
+        Vector2Int enemyStartPosition = FindEnemySpawnArea(playerStartPosition);
+
+        for (int i = 0; i < numberOfEnemies; i++)
+        {
+            // Размещаем врагов в ряд
+            Vector2Int spawnPosition = new Vector2Int(enemyStartPosition.x + i, enemyStartPosition.y);
+            GridCell cell = GetCell(spawnPosition);
+
+            if (cell != null && !cell.isOccupied)
+            {
+                // Создаем врага
+                GameObject enemy = Instantiate(characterPrefab, cell.worldPosition, Quaternion.identity);
+                enemy.name = $"Enemy_{i + 1}";
+                enemy.SetActive(true);
+
+                // Настраиваем как враждебного персонажа
+                Character enemyScript = enemy.GetComponent<Character>();
+                if (enemyScript != null)
+                {
+                    // Устанавливаем фракцию врага
+                    enemyScript.SetFaction(Faction.Enemy);
+
+                    // Проверяем renderer
+                    if (enemyScript.characterRenderer == null)
+                    {
+                        Renderer enemyRenderer = enemy.GetComponentInChildren<Renderer>();
+                        if (enemyRenderer != null)
+                        {
+                            enemyScript.characterRenderer = enemyRenderer;
+                        }
+                    }
+
+                    // Делаем врагов красными для отличия
+                    if (enemyScript.characterRenderer != null)
+                    {
+                        enemyScript.characterRenderer.material.color = Color.red;
+                    }
+                }
+
+                // Занимаем ячейку
+                OccupyCell(spawnPosition, enemy, "Enemy");
+
+                Debug.Log($"GridManager: Spawned enemy {enemy.name} at {spawnPosition}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Найти область для размещения враждебных персонажей
+    /// </summary>
+    Vector2Int FindEnemySpawnArea(Vector2Int playerPosition)
+    {
+        // Пробуем разные направления для размещения врагов
+        Vector2Int[] directions = {
+            new Vector2Int(1, 0),   // Право
+            new Vector2Int(-1, 0),  // Лево
+            new Vector2Int(0, 1),   // Верх
+            new Vector2Int(0, -1),  // Низ
+            new Vector2Int(1, 1),   // Право-верх
+            new Vector2Int(-1, 1),  // Лево-верх
+            new Vector2Int(1, -1),  // Право-низ
+            new Vector2Int(-1, -1)  // Лево-низ
+        };
+
+        int minDistance = Mathf.RoundToInt(enemySpawnDistance / cellSize);
+
+        foreach (Vector2Int direction in directions)
+        {
+            Vector2Int candidatePosition = playerPosition + direction * minDistance;
+
+            // Проверяем, что есть место для всех врагов
+            bool canSpawnAll = true;
+            for (int i = 0; i < numberOfEnemies; i++)
+            {
+                Vector2Int checkPos = new Vector2Int(candidatePosition.x + i, candidatePosition.y);
+                if (!IsValidGridPosition(checkPos) || !IsCellFree(checkPos))
+                {
+                    canSpawnAll = false;
+                    break;
+                }
+            }
+
+            if (canSpawnAll)
+            {
+                return candidatePosition;
+            }
+        }
+
+        // Если не нашли подходящего места, возвращаем позицию справа от игроков
+        return new Vector2Int(playerPosition.x + minDistance, playerPosition.y);
+    }
+
+
     /// <summary>
     /// Найти подходящую область для размещения персонажей
     /// </summary>
@@ -781,10 +889,12 @@ public class GridManager : MonoBehaviour
                 Vector2Int gridPos = WorldToGrid(character.transform.position);
                 FreeCell(gridPos);
 
-                // Удаляем объект
+                // Удаляем объект (всех персонажей: игроков, врагов, нейтралов)
                 DestroyImmediate(character.gameObject);
             }
         }
+
+        Debug.Log($"GridManager: Removed {existingCharacters.Length} existing characters (all factions)");
     }
 
     /// <summary>

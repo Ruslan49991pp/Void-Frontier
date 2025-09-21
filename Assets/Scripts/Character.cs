@@ -1,5 +1,12 @@
 using UnityEngine;
 
+public enum Faction
+{
+    Player,    // Дружественные юниты игрока
+    Enemy,     // Враждебные юниты
+    Neutral    // Нейтральные юниты
+}
+
 [System.Serializable]
 public class CharacterData
 {
@@ -10,6 +17,7 @@ public class CharacterData
     public float maxHealth;
     public string profession;
     public string bio;
+    public Faction faction = Faction.Player;
 }
 
 public class Character : MonoBehaviour
@@ -20,7 +28,7 @@ public class Character : MonoBehaviour
     [Header("Visual")]
     public Renderer characterRenderer;
     public Color defaultColor = Color.green;
-    public Color selectedColor = Color.red;
+    public Color selectedColor = new Color(1f, 0.5f, 0f, 1f); // Оранжевый цвет
     public Color hoverColor = Color.cyan;
     
     [Header("Stats")]
@@ -248,9 +256,16 @@ public class Character : MonoBehaviour
 
         if (selected)
         {
-            // При выделении убираем hover и устанавливаем красный цвет
+            // При выделении убираем hover и устанавливаем цвет в зависимости от фракции
             isHovered = false;
-            SetColor(selectedColor);
+            if (IsPlayerCharacter())
+            {
+                SetColor(selectedColor); // Оранжевый для союзников
+            }
+            else
+            {
+                SetColor(Color.red); // Красный для врагов (только для просмотра информации)
+            }
         }
         else
         {
@@ -361,6 +376,64 @@ public class Character : MonoBehaviour
         {
             objectInfo.health = characterData.health;
         }
+    }
+
+    /// <summary>
+    /// Получить фракцию персонажа
+    /// </summary>
+    public Faction GetFaction()
+    {
+        return characterData.faction;
+    }
+
+    /// <summary>
+    /// Установить фракцию персонажа
+    /// </summary>
+    public void SetFaction(Faction faction)
+    {
+        characterData.faction = faction;
+    }
+
+    /// <summary>
+    /// Проверить, является ли персонаж игроком
+    /// </summary>
+    public bool IsPlayerCharacter()
+    {
+        return characterData.faction == Faction.Player;
+    }
+
+    /// <summary>
+    /// Проверить, является ли персонаж врагом
+    /// </summary>
+    public bool IsEnemyCharacter()
+    {
+        return characterData.faction == Faction.Enemy;
+    }
+
+    /// <summary>
+    /// Проверить, являются ли два персонажа союзниками
+    /// </summary>
+    public bool IsAllyWith(Character otherCharacter)
+    {
+        if (otherCharacter == null) return false;
+        return characterData.faction == otherCharacter.characterData.faction;
+    }
+
+    /// <summary>
+    /// Проверить, являются ли два персонажа врагами
+    /// </summary>
+    public bool IsEnemyWith(Character otherCharacter)
+    {
+        if (otherCharacter == null) return false;
+
+        // Игроки и враги - враги друг другу
+        if ((characterData.faction == Faction.Player && otherCharacter.characterData.faction == Faction.Enemy) ||
+            (characterData.faction == Faction.Enemy && otherCharacter.characterData.faction == Faction.Player))
+        {
+            return true;
+        }
+
+        return false;
     }
     
     /// <summary>

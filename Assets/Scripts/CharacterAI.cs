@@ -13,12 +13,13 @@ public class CharacterAI : MonoBehaviour
     public float pauseDuration = 2f; // Время остановки в точке
 
     [Header("Debug")]
-    public bool debugMode = false;
+    public bool debugMode = true; // Включаем debug по умолчанию для диагностики
 
     // Состояния ИИ
     public enum AIState
     {
         PlayerControlled,  // Под управлением игрока
+        Move,             // Движение к цели
         Idle              // Свободное блуждание
     }
 
@@ -34,6 +35,7 @@ public class CharacterAI : MonoBehaviour
     private Vector3 idleBasePosition; // Базовая позиция для блуждания
     private Coroutine idleCoroutine;
     private bool isWandering = false;
+    private bool playerInitiatedMovement = false; // Флаг движения, инициированного игроком
 
     void Awake()
     {
@@ -74,6 +76,17 @@ public class CharacterAI : MonoBehaviour
     void UpdateAIState()
     {
         bool isSelected = character.IsSelected();
+        bool isMoving = movement != null && movement.IsMoving();
+        float timeSinceSelection = Time.time - lastSelectionTime;
+
+        if (debugMode && Time.frameCount % 120 == 0) // Лог каждые 2 секунды (при 60 FPS)
+        {
+            Debug.Log($"[AI DEBUG] {character.GetFullName()}: " +
+                     $"Selected={isSelected}, Moving={isMoving}, " +
+                     $"TimeSinceSelection={timeSinceSelection:F1}s, " +
+                     $"CurrentState={currentState}, " +
+                     $"IsWandering={isWandering}");
+        }
 
         if (isSelected)
         {
@@ -82,16 +95,42 @@ public class CharacterAI : MonoBehaviour
 
             if (currentState != AIState.PlayerControlled)
             {
+                if (debugMode)
+                    Debug.Log($"[AI DEBUG] {character.GetFullName()}: Switching to PlayerControlled (was selected)");
                 SwitchToState(AIState.PlayerControlled);
             }
         }
         else
         {
-            // Персонаж не выделен - проверяем timeout
-            float timeSinceSelection = Time.time - lastSelectionTime;
+            // Персонаж не выделен
 
-            if (timeSinceSelection >= idleTimeout && currentState != AIState.Idle)
+            if (isMoving)
             {
+                // Если движение инициировано игроком, переключаемся в Move независимо от текущего состояния
+                if (playerInitiatedMovement)
+                {
+                    if (currentState != AIState.Move)
+                    {
+                        if (debugMode)
+                            Debug.Log($"[AI DEBUG] {character.GetFullName()}: Switching to Move (player initiated movement)");
+                        SwitchToState(AIState.Move);
+                    }
+                    playerInitiatedMovement = false; // Сбрасываем флаг
+                }
+                // Если персонаж движется НЕ в состоянии Idle (автоматическое движение)
+                else if (currentState != AIState.Idle && currentState != AIState.Move)
+                {
+                    if (debugMode)
+                        Debug.Log($"[AI DEBUG] {character.GetFullName()}: Switching to Move (is moving)");
+                    SwitchToState(AIState.Move);
+                }
+                // В состоянии Idle движение является частью блуждания - не переключаемся
+            }
+            else if (timeSinceSelection >= idleTimeout && currentState != AIState.Idle)
+            {
+                // Персонаж не движется и прошло время - состояние Idle
+                if (debugMode)
+                    Debug.Log($"[AI DEBUG] {character.GetFullName()}: Switching to Idle (timeout reached: {timeSinceSelection:F1}s >= {idleTimeout}s)");
                 SwitchToState(AIState.Idle);
             }
         }
@@ -106,6 +145,10 @@ public class CharacterAI : MonoBehaviour
         {
             case AIState.PlayerControlled:
                 // Ничего не делаем - персонаж под управлением игрока
+                break;
+
+            case AIState.Move:
+                // Ничего не делаем - движение обрабатывается CharacterMovement
                 break;
 
             case AIState.Idle:
@@ -143,6 +186,10 @@ public class CharacterAI : MonoBehaviour
     {
         switch (state)
         {
+            case AIState.Move:
+                // При выходе из состояния Move ничего особенного не делаем
+                break;
+
             case AIState.Idle:
                 // Останавливаем блуждание
                 if (idleCoroutine != null)
@@ -173,6 +220,11 @@ public class CharacterAI : MonoBehaviour
                 idleBasePosition = transform.position;
                 break;
 
+            case AIState.Move:
+                // При входе в состояние Move просто позволяем персонажу двигаться
+                // Движение уже обрабатывается CharacterMovement
+                break;
+
             case AIState.Idle:
                 // Устанавливаем базовую позицию для блуждания
                 idleBasePosition = transform.position;
@@ -190,6 +242,11 @@ public class CharacterAI : MonoBehaviour
     {
         isWandering = true;
 
+        if (debugMode)
+        {
+            Debug.Log($"[IDLE DEBUG] {character.GetFullName()}: Starting idle wander behavior. Base position: {idleBasePosition}");
+        }
+
         while (currentState == AIState.Idle && isWandering)
         {
             // Выбираем случайную точку в области 5x5 клеток
@@ -197,40 +254,100 @@ public class CharacterAI : MonoBehaviour
 
             if (debugMode)
             {
-                Debug.Log($"[CharacterAI] {character.GetFullName()}: Moving to wander point {wanderTarget}");
+                Debug.Log($"[IDLE DEBUG] {character.GetFullName()}: " +
+                         $"Target: {wanderTarget}, Current: {transform.position}, " +
+                         $"Movement component: {(movement != null ? "OK" : "NULL")}");
             }
 
             // Двигаемся к цели
             if (movement != null)
             {
-                movement.MoveTo(wanderTarget);
-
-                // Ждем завершения движения
-                while (movement.IsMoving() && currentState == AIState.Idle)
+                bool moveStarted = false;
+                try
                 {
-                    yield return new WaitForSeconds(0.1f);
+                    movement.MoveTo(wanderTarget);
+                    moveStarted = true;
+
+                    if (debugMode)
+                    {
+                        Debug.Log($"[IDLE DEBUG] {character.GetFullName()}: MoveTo called successfully. IsMoving: {movement.IsMoving()}");
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    if (debugMode)
+                    {
+                        Debug.LogError($"[IDLE DEBUG] {character.GetFullName()}: MoveTo failed: {e.Message}");
+                    }
+                }
+
+                if (moveStarted)
+                {
+                    // Ждем завершения движения
+                    float waitTime = 0f;
+                    while (movement.IsMoving() && currentState == AIState.Idle)
+                    {
+                        waitTime += 0.1f;
+                        if (debugMode && waitTime % 2f < 0.1f) // Лог каждые 2 секунды
+                        {
+                            Debug.Log($"[IDLE DEBUG] {character.GetFullName()}: Still moving... ({waitTime:F1}s)");
+                        }
+                        yield return new WaitForSeconds(0.1f);
+                    }
+
+                    if (debugMode)
+                    {
+                        Debug.Log($"[IDLE DEBUG] {character.GetFullName()}: Movement finished after {waitTime:F1}s. CurrentState: {currentState}");
+                    }
+                }
+            }
+            else
+            {
+                if (debugMode)
+                {
+                    Debug.LogError($"[IDLE DEBUG] {character.GetFullName()}: Movement component is NULL!");
                 }
             }
 
             // Проверяем, что мы все еще в состоянии Idle
-            if (currentState != AIState.Idle) break;
+            if (currentState != AIState.Idle)
+            {
+                if (debugMode)
+                    Debug.Log($"[IDLE DEBUG] {character.GetFullName()}: Exiting wander (state changed to {currentState})");
+                break;
+            }
 
             if (debugMode)
             {
-                Debug.Log($"[CharacterAI] {character.GetFullName()}: Arrived at wander point, pausing for {pauseDuration}s");
+                Debug.Log($"[IDLE DEBUG] {character.GetFullName()}: Arrived at wander point, pausing for {pauseDuration}s");
             }
 
             // Пауза в достигнутой точке
             yield return new WaitForSeconds(pauseDuration);
 
             // Проверяем, что мы все еще в состоянии Idle
-            if (currentState != AIState.Idle) break;
+            if (currentState != AIState.Idle)
+            {
+                if (debugMode)
+                    Debug.Log($"[IDLE DEBUG] {character.GetFullName()}: Exiting wander (state changed during pause)");
+                break;
+            }
+
+            if (debugMode)
+            {
+                Debug.Log($"[IDLE DEBUG] {character.GetFullName()}: Waiting {wanderInterval}s before next move");
+            }
 
             // Ждем до следующего перемещения
             yield return new WaitForSeconds(wanderInterval);
         }
 
         isWandering = false;
+
+        if (debugMode)
+        {
+            Debug.Log($"[IDLE DEBUG] {character.GetFullName()}: Idle wander behavior ended. CurrentState: {currentState}");
+        }
     }
 
     /// <summary>
@@ -238,8 +355,21 @@ public class CharacterAI : MonoBehaviour
     /// </summary>
     Vector3 GetRandomWanderPoint()
     {
+        if (gridManager == null)
+        {
+            if (debugMode)
+                Debug.LogError($"[WANDER DEBUG] {character.GetFullName()}: GridManager is NULL!");
+            return idleBasePosition;
+        }
+
         // Конвертируем базовую позицию в координаты сетки
         Vector2Int baseGridPos = gridManager.WorldToGrid(idleBasePosition);
+
+        if (debugMode)
+        {
+            Debug.Log($"[WANDER DEBUG] {character.GetFullName()}: " +
+                     $"Base world pos: {idleBasePosition}, Base grid pos: {baseGridPos}");
+        }
 
         // Случайная позиция в области 5x5 (от -2 до +2 клеток)
         int offsetX = Random.Range(-2, 3);
@@ -254,8 +384,24 @@ public class CharacterAI : MonoBehaviour
             var cell = gridManager.GetCell(targetGridPos);
             if (cell == null || !cell.isOccupied)
             {
-                return gridManager.GridToWorld(targetGridPos);
+                Vector3 worldPos = gridManager.GridToWorld(targetGridPos);
+                if (debugMode)
+                {
+                    Debug.Log($"[WANDER DEBUG] {character.GetFullName()}: " +
+                             $"Found free cell at grid {targetGridPos}, world {worldPos}");
+                }
+                return worldPos;
             }
+            else if (debugMode)
+            {
+                Debug.Log($"[WANDER DEBUG] {character.GetFullName()}: " +
+                         $"Cell {targetGridPos} is occupied, trying alternatives...");
+            }
+        }
+        else if (debugMode)
+        {
+            Debug.Log($"[WANDER DEBUG] {character.GetFullName()}: " +
+                     $"Grid position {targetGridPos} is invalid, trying alternatives...");
         }
 
         // Если не удалось найти свободную клетку, пробуем несколько раз
@@ -270,12 +416,23 @@ public class CharacterAI : MonoBehaviour
                 var cell = gridManager.GetCell(targetGridPos);
                 if (cell == null || !cell.isOccupied)
                 {
-                    return gridManager.GridToWorld(targetGridPos);
+                    Vector3 worldPos = gridManager.GridToWorld(targetGridPos);
+                    if (debugMode)
+                    {
+                        Debug.Log($"[WANDER DEBUG] {character.GetFullName()}: " +
+                                 $"Found free cell at attempt {attempts + 1}: grid {targetGridPos}, world {worldPos}");
+                    }
+                    return worldPos;
                 }
             }
         }
 
         // Если не нашли свободную клетку, возвращаем базовую позицию
+        if (debugMode)
+        {
+            Debug.LogWarning($"[WANDER DEBUG] {character.GetFullName()}: " +
+                           $"Could not find free cell after 10 attempts, returning base position {idleBasePosition}");
+        }
         return idleBasePosition;
     }
 
@@ -315,6 +472,18 @@ public class CharacterAI : MonoBehaviour
     public bool IsWandering()
     {
         return isWandering;
+    }
+
+    /// <summary>
+    /// Уведомить о том, что движение инициировано игроком
+    /// </summary>
+    public void OnPlayerInitiatedMovement()
+    {
+        playerInitiatedMovement = true;
+        if (debugMode)
+        {
+            Debug.Log($"[AI DEBUG] {character.GetFullName()}: Player initiated movement detected");
+        }
     }
 
     void OnDestroy()

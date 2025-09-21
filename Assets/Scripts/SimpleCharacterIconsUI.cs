@@ -499,6 +499,9 @@ public class SimpleCharacterIconsUI : MonoBehaviour
     {
         if (character == null) return false;
 
+        // Показываем иконки только для дружественных персонажей
+        if (!character.IsPlayerCharacter()) return false;
+
         // Исключаем шаблоны персонажей (любые объекты с "Template" в названии)
         if (character.name.Contains("Template"))
         {
