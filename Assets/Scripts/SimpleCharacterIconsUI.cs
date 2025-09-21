@@ -24,7 +24,7 @@ public class SimpleCharacterIconsUI : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("=== SimpleCharacterIconsUI: Starting ===");
+        DebugLogger.Log(DebugLogger.LogCategory.Icons, "SimpleCharacterIconsUI Starting...");
 
         try
         {
@@ -33,30 +33,29 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             if (selectionManager != null)
             {
                 selectionManager.OnSelectionChanged += OnSelectionChanged;
-                Debug.Log("SimpleCharacterIconsUI: Connected to SelectionManager");
+                DebugLogger.Log(DebugLogger.LogCategory.Icons, "Connected to SelectionManager successfully");
             }
             else
             {
-                Debug.LogWarning("SimpleCharacterIconsUI: SelectionManager not found!");
+                DebugLogger.LogError(DebugLogger.LogCategory.Icons, "SelectionManager not found! Icons won't update on selection changes.");
             }
 
             CreateUI();
-            Debug.Log("SimpleCharacterIconsUI: UI creation completed");
+            DebugLogger.Log(DebugLogger.LogCategory.Icons, "UI creation completed");
 
             // Отложенный поиск персонажей - даем время системе загрузиться
-            Debug.Log("SimpleCharacterIconsUI: Scheduling character search in 1 and 3 seconds");
+            DebugLogger.Log(DebugLogger.LogCategory.Icons, "Scheduling character search in 1 and 3 seconds");
             Invoke("FindAndCreateIcons", 1f);
             Invoke("FindAndCreateIcons", 3f);
 
             // Обновляем цвета иконок через 4 секунды после создания
             Invoke("RefreshIconColors", 4f);
 
-            Debug.Log("SimpleCharacterIconsUI: Start() completed successfully");
+            DebugLogger.Log(DebugLogger.LogCategory.Icons, "SimpleCharacterIconsUI Start() completed successfully");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"SimpleCharacterIconsUI: Error in Start(): {e.Message}");
-            Debug.LogError($"SimpleCharacterIconsUI: Stack trace: {e.StackTrace}");
+            DebugLogger.LogError(DebugLogger.LogCategory.Icons, $"Error in Start(): {e.Message}\nStack trace: {e.StackTrace}");
         }
     }
 
@@ -153,13 +152,13 @@ public class SimpleCharacterIconsUI : MonoBehaviour
 
     void FindAndCreateIcons()
     {
-        Debug.Log("=== SimpleCharacterIconsUI: SEARCHING FOR CHARACTERS ===");
+        DebugLogger.Log(DebugLogger.LogCategory.Icons, "=== SEARCHING FOR CHARACTERS ===");
 
         try
         {
             if (iconsContainer == null)
             {
-                Debug.LogError("SimpleCharacterIconsUI: iconsContainer is NULL! Cannot create icons.");
+                DebugLogger.LogError(DebugLogger.LogCategory.Icons, "iconsContainer is NULL! Cannot create icons.");
                 return;
             }
 
@@ -175,11 +174,11 @@ public class SimpleCharacterIconsUI : MonoBehaviour
                 }
             }
 
-            Debug.Log($"SimpleCharacterIconsUI: Found {validCharacterCount} player characters in scene (total: {characters.Length})");
+            DebugLogger.Log(DebugLogger.LogCategory.Icons, $"Found {validCharacterCount} player characters in scene (total: {characters.Length})");
 
             if (characters.Length == 0)
             {
-                Debug.LogWarning("SimpleCharacterIconsUI: NO CHARACTERS FOUND! Maybe they haven't spawned yet?");
+                DebugLogger.LogWarning(DebugLogger.LogCategory.Icons, "NO CHARACTERS FOUND! Maybe they haven't spawned yet?");
 
                 // Попробуем найти объекты с компонентом Character через другие способы
                 GameObject[] allObjects = FindObjectsOfType<GameObject>();
@@ -189,10 +188,10 @@ public class SimpleCharacterIconsUI : MonoBehaviour
                     if (obj.GetComponent<Character>() != null)
                     {
                         charCount++;
-                        Debug.Log($"SimpleCharacterIconsUI: Found Character component on {obj.name}");
+                        DebugLogger.Log(DebugLogger.LogCategory.Icons, $"Found Character component on {obj.name}");
                     }
                 }
-                Debug.Log($"SimpleCharacterIconsUI: Manual search found {charCount} objects with Character component");
+                DebugLogger.Log(DebugLogger.LogCategory.Icons, $"Manual search found {charCount} objects with Character component");
             }
             else
             {

@@ -625,8 +625,8 @@ public class GridManager : MonoBehaviour
         // Создаем кокпит рядом с персонажами
         SpawnCockpit(startPosition);
 
-        // Создаем врагов на расстоянии
-        SpawnEnemyCharacters(startPosition);
+        // Создаем врагов на расстоянии - ОТКЛЮЧЕНО (используем EnemySpawnerTest)
+        // SpawnEnemyCharacters(startPosition);
 
         // Логируем статистику имен
         Character.LogNameStatistics();

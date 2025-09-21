@@ -23,7 +23,8 @@
       "Bash(if exist \"C:\\temp\\unity_compile.log\" type \"C:\\temp\\unity_compile.log\")",
       "Bash(taskkill:*)",
       "Bash(tasklist)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(cmd /c:*)"
     ],
     "deny": [],
     "ask": []

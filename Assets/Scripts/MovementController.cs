@@ -49,11 +49,19 @@ public class MovementController : MonoBehaviour
                 return;
             }
             lastClickTime = Time.time;
+
             // Получаем выделенных персонажей
             List<Character> selectedCharacters = GetSelectedCharacters();
-            
+
             if (selectedCharacters.Count > 0)
             {
+                // Проверяем, есть ли враг под курсором - если да, то не выполняем обычное движение
+                Character enemyUnderMouse = GetEnemyUnderMouse();
+                if (enemyUnderMouse != null)
+                {
+                    Debug.Log($"[MOVEMENT] ПКМ клик на враге {enemyUnderMouse.GetFullName()}, пропускаем обычное движение");
+                    return; // Позволяем EnemyTargetingSystem обработать клик
+                }
                 // Получаем позицию клика на сетке
                 Vector3 clickWorldPos = GetMouseWorldPosition();
                 if (clickWorldPos != Vector3.zero)
@@ -529,5 +537,66 @@ public class MovementController : MonoBehaviour
         {
             movingGroups.Remove(targetPos);
         }
+    }
+
+    /// <summary>
+    /// Получить врага под курсором мыши
+    /// </summary>
+    Character GetEnemyUnderMouse()
+    {
+        Vector3 mouseScreenPos = Input.mousePosition;
+        Camera camera = Camera.main;
+
+        if (camera == null) return null;
+
+        Ray ray = camera.ScreenPointToRay(mouseScreenPos);
+        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity);
+
+        DebugLogger.Log(DebugLogger.LogCategory.Movement, $"[MOVEMENT] Checking for enemies under mouse, found {hits.Length} hits");
+
+        // Сортируем хиты по расстоянию (ближайшие первые)
+        System.Array.Sort(hits, (hit1, hit2) => hit1.distance.CompareTo(hit2.distance));
+
+        foreach (RaycastHit hit in hits)
+        {
+            // Игнорируем Location_Bounds и другие системные объекты
+            if (hit.collider.name.Contains("Location_Bounds") ||
+                hit.collider.name.Contains("Grid") ||
+                hit.collider.name.Contains("Terrain"))
+            {
+                continue;
+            }
+
+            DebugLogger.Log(DebugLogger.LogCategory.Movement, $"[MOVEMENT] Checking hit object: {hit.collider.name}");
+
+            // Сначала проверяем непосредственно в коллайдере
+            Character character = hit.collider.GetComponent<Character>();
+
+            // Если не нашли, ищем в родительских объектах
+            if (character == null)
+            {
+                character = hit.collider.GetComponentInParent<Character>();
+            }
+
+            // Если все еще не нашли, ищем в дочерних объектах
+            if (character == null)
+            {
+                Transform parent = hit.collider.transform;
+                while (parent != null && character == null)
+                {
+                    character = parent.GetComponent<Character>();
+                    parent = parent.parent;
+                }
+            }
+
+            if (character != null && character.IsEnemyCharacter())
+            {
+                DebugLogger.Log(DebugLogger.LogCategory.Movement, $"[MOVEMENT] Found enemy under mouse: {character.GetFullName()}");
+                return character;
+            }
+        }
+
+        DebugLogger.Log(DebugLogger.LogCategory.Movement, "[MOVEMENT] No enemy found under mouse");
+        return null;
     }
 }
