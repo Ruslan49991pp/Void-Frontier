@@ -66,6 +66,7 @@ public class Character : MonoBehaviour
     private bool isHovered = false;
     private Material characterMaterial;
     private Camera mainCamera;
+    private CharacterAI characterAI;
     
     void Awake()
     {
@@ -99,6 +100,13 @@ public class Character : MonoBehaviour
         objectInfo.objectType = "Character";
         objectInfo.objectName = GetFullName();
         objectInfo.health = characterData.health;
+
+        // Добавляем компонент ИИ
+        characterAI = GetComponent<CharacterAI>();
+        if (characterAI == null)
+        {
+            characterAI = gameObject.AddComponent<CharacterAI>();
+        }
     }
 
     void Update()
@@ -306,7 +314,47 @@ public class Character : MonoBehaviour
     public void Heal(float amount)
     {
         characterData.health = Mathf.Min(characterData.maxHealth, characterData.health + amount);
-        
+
+        // Обновляем health в LocationObjectInfo
+        var objectInfo = GetComponent<LocationObjectInfo>();
+        if (objectInfo != null)
+        {
+            objectInfo.health = characterData.health;
+        }
+    }
+
+    /// <summary>
+    /// Получить текущее здоровье
+    /// </summary>
+    public float GetHealth()
+    {
+        return characterData.health;
+    }
+
+    /// <summary>
+    /// Получить максимальное здоровье
+    /// </summary>
+    public float GetMaxHealth()
+    {
+        return characterData.maxHealth;
+    }
+
+    /// <summary>
+    /// Получить процент здоровья (0.0 - 1.0)
+    /// </summary>
+    public float GetHealthPercent()
+    {
+        if (characterData.maxHealth <= 0) return 0f;
+        return characterData.health / characterData.maxHealth;
+    }
+
+    /// <summary>
+    /// Установить здоровье (для тестирования)
+    /// </summary>
+    public void SetHealth(float health)
+    {
+        characterData.health = Mathf.Clamp(health, 0, characterData.maxHealth);
+
         // Обновляем health в LocationObjectInfo
         var objectInfo = GetComponent<LocationObjectInfo>();
         if (objectInfo != null)

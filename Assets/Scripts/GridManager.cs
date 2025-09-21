@@ -52,6 +52,8 @@ public class GridManager : MonoBehaviour
     [Header("Characters")]
     public int numberOfCharacters = 3;
     public GameObject characterPrefab;
+    [Tooltip("Префаб модели персонажа (например, SKM_Character)")]
+    public GameObject characterModelPrefab;
 
     [Header("Cockpit")]
     public GameObject cockpitPrefab;
@@ -548,20 +550,34 @@ public class GridManager : MonoBehaviour
     }
     
     /// <summary>
+    /// Пересоздать персонажей с новой моделью
+    /// </summary>
+    [ContextMenu("Recreate Characters")]
+    public void RecreateCharacters()
+    {
+        SpawnCharacters();
+    }
+
+    /// <summary>
     /// Создать персонажей на сетке
     /// </summary>
     public void SpawnCharacters()
     {
+        // Удаляем существующих персонажей
+        ClearExistingCharacters();
+
+        // Всегда пересоздаем префаб для использования актуальной модели
+        CreateCharacterPrefab();
+
         if (characterPrefab == null)
         {
-            // Создаем префаб персонажа программно
-            CreateCharacterPrefab();
+            Debug.LogError("GridManager: characterPrefab is NULL after CreateCharacterPrefab!");
+            return;
         }
-        
+
         // Очищаем список использованных имен для нового спавна
         Character.ClearUsedNames();
-        
-        
+
         // Найдем область для размещения персонажей рядом друг с другом
         Vector2Int startPosition = FindSpawnAreaForCharacters();
         
@@ -570,27 +586,31 @@ public class GridManager : MonoBehaviour
             // Размещаем персонажей в ряд
             Vector2Int spawnPosition = new Vector2Int(startPosition.x + i, startPosition.y);
             GridCell cell = GetCell(spawnPosition);
-            
+
             if (cell != null && !cell.isOccupied)
             {
                 // Создаем персонажа
                 GameObject character = Instantiate(characterPrefab, cell.worldPosition, Quaternion.identity);
                 character.name = $"Character_{i + 1}";
+                character.SetActive(true); // Активируем персонажа
 
                 // ВАЖНО: Настраиваем characterRenderer для созданного персонажа
                 Character characterScript = character.GetComponent<Character>();
                 if (characterScript != null)
                 {
-                    // Находим renderer в дочерних объектах
-                    Renderer characterRenderer = character.GetComponentInChildren<Renderer>();
-                    if (characterRenderer != null)
+                    // Проверяем, нет ли уже renderer'а установленного
+                    if (characterScript.characterRenderer == null)
                     {
-                        characterScript.characterRenderer = characterRenderer;
-                        Debug.Log($"GridManager: Set characterRenderer for {character.name}");
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"GridManager: No Renderer found for character {character.name}");
+                        // Находим renderer в дочерних объектах
+                        Renderer characterRenderer = character.GetComponentInChildren<Renderer>();
+                        if (characterRenderer != null)
+                        {
+                            characterScript.characterRenderer = characterRenderer;
+                        }
+                        else
+                        {
+                            Debug.LogError($"GridManager: No Renderer found for character {character.name}!");
+                        }
                     }
                 }
 
@@ -747,39 +767,128 @@ public class GridManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Удалить существующих персонажей
+    /// </summary>
+    void ClearExistingCharacters()
+    {
+        Character[] existingCharacters = FindObjectsOfType<Character>();
+
+        foreach (Character character in existingCharacters)
+        {
+            if (character != null && character.gameObject != null)
+            {
+                // Освобождаем клетку сетки
+                Vector2Int gridPos = WorldToGrid(character.transform.position);
+                FreeCell(gridPos);
+
+                // Удаляем объект
+                DestroyImmediate(character.gameObject);
+            }
+        }
+    }
+
+    /// <summary>
     /// Создать префаб персонажа программно
     /// </summary>
     void CreateCharacterPrefab()
     {
-        // Создаем временный объект для создания префаба
-        GameObject tempCharacter = new GameObject("Character_Template");
-
-        // Добавляем компоненты
-        var capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        capsule.transform.SetParent(tempCharacter.transform);
-        capsule.transform.localPosition = Vector3.zero;
-        capsule.name = "CharacterMesh";
-
-        // Настраиваем размер капсулы
-        capsule.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
-
-        // Добавляем скрипт Character
-        var characterScript = tempCharacter.AddComponent<Character>();
-        characterScript.characterRenderer = capsule.GetComponent<Renderer>();
-
-        // Добавляем Collider если его нет
-        if (tempCharacter.GetComponent<Collider>() == null)
+        // Удаляем старый префаб если он существует
+        if (characterPrefab != null)
         {
-            var collider = tempCharacter.AddComponent<CapsuleCollider>();
-            collider.height = 2f;
-            collider.radius = 0.4f;
+            DestroyImmediate(characterPrefab);
+            characterPrefab = null;
         }
 
-        characterPrefab = tempCharacter;
+        // Определяем, какой префаб модели использовать
+        GameObject skmCharacterPrefab = characterModelPrefab;
+
+        // Если префаб не назначен в Inspector, пытаемся загрузить из Resources
+        if (skmCharacterPrefab == null)
+        {
+            skmCharacterPrefab = Resources.Load<GameObject>("Prefabs/SKM_Character");
+        }
+
+        if (skmCharacterPrefab != null)
+        {
+            // Используем готовый префаб SKM_Character
+            Debug.Log($"GridManager: Using SKM_Character prefab: {skmCharacterPrefab.name}");
+
+            // Создаем обертку для добавления компонентов
+            GameObject characterWrapper = new GameObject("Character_Template");
+
+            // Создаем экземпляр SKM_Character как дочерний объект
+            GameObject skmInstance = Instantiate(skmCharacterPrefab, characterWrapper.transform);
+            skmInstance.name = "SKM_Character_Model";
+            skmInstance.transform.localPosition = Vector3.zero;
+            skmInstance.transform.localRotation = Quaternion.identity;
+
+            // Добавляем скрипт Character к родительскому объекту
+            var characterScript = characterWrapper.AddComponent<Character>();
+
+            // Находим renderer в SKM_Character
+            Renderer characterRenderer = skmInstance.GetComponentInChildren<Renderer>();
+            if (characterRenderer != null)
+            {
+                characterScript.characterRenderer = characterRenderer;
+            }
+            else
+            {
+                characterRenderer = skmInstance.GetComponent<Renderer>();
+                if (characterRenderer != null)
+                {
+                    characterScript.characterRenderer = characterRenderer;
+                }
+                else
+                {
+                    Debug.LogError("GridManager: No renderer found in SKM_Character!");
+                }
+            }
+
+            // Добавляем Collider для взаимодействия (если его нет на SKM_Character)
+            if (characterWrapper.GetComponent<Collider>() == null && skmInstance.GetComponent<Collider>() == null)
+            {
+                var collider = characterWrapper.AddComponent<CapsuleCollider>();
+                collider.height = 2f;
+                collider.radius = 0.5f;
+                collider.center = new Vector3(0, 1f, 0); // Поднимаем центр коллайдера
+            }
+
+            characterPrefab = characterWrapper;
+        }
+        else
+        {
+            Debug.LogWarning("GridManager: SKM_Character prefab not found, creating fallback capsule");
+
+            // Fallback: создаем капсулу как раньше
+            GameObject tempCharacter = new GameObject("Character_Template_Fallback");
+
+            // Добавляем компоненты
+            var capsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            capsule.transform.SetParent(tempCharacter.transform);
+            capsule.transform.localPosition = Vector3.zero;
+            capsule.name = "CharacterMesh_Fallback";
+
+            // Настраиваем размер капсулы
+            capsule.transform.localScale = new Vector3(0.8f, 1f, 0.8f);
+
+            // Добавляем скрипт Character
+            var characterScript = tempCharacter.AddComponent<Character>();
+            characterScript.characterRenderer = capsule.GetComponent<Renderer>();
+
+            // Добавляем Collider если его нет
+            if (tempCharacter.GetComponent<Collider>() == null)
+            {
+                var collider = tempCharacter.AddComponent<CapsuleCollider>();
+                collider.height = 2f;
+                collider.radius = 0.4f;
+            }
+
+            characterPrefab = tempCharacter;
+        }
 
         // Скрываем префаб-шаблон: деактивируем и перемещаем далеко от игровой области
-        tempCharacter.SetActive(false);
-        tempCharacter.transform.position = new Vector3(10000, 10000, 10000);
+        characterPrefab.SetActive(false);
+        characterPrefab.transform.position = new Vector3(10000, 10000, 10000);
 
     }
     

@@ -13,7 +13,7 @@ public class SimpleCharacterIconsUI : MonoBehaviour
     public float spacing = 10f;
 
     [Header("Selection Colors")]
-    public Color normalBackgroundColor = new Color(0, 1, 0, 1f);
+    public Color normalBackgroundColor = new Color(0.3f, 0.3f, 0.3f, 1f); // Темно-серый
     public Color selectedBackgroundColor = new Color(1, 0.8f, 0, 1f); // Оранжевый
     public Color selectedBorderColor = new Color(1, 1, 0, 1f); // Желтый
 
@@ -48,6 +48,9 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             Invoke("FindAndCreateIcons", 1f);
             Invoke("FindAndCreateIcons", 3f);
 
+            // Обновляем цвета иконок через 4 секунды после создания
+            Invoke("RefreshIconColors", 4f);
+
             Debug.Log("SimpleCharacterIconsUI: Start() completed successfully");
         }
         catch (System.Exception e)
@@ -64,6 +67,9 @@ public class SimpleCharacterIconsUI : MonoBehaviour
         {
             CheckForNewCharacters();
         }
+
+        // Обновляем HP полоски каждый кадр
+        UpdateHealthBars();
     }
 
     void CreateUI()
@@ -710,6 +716,85 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             Vector3 newCameraPos = new Vector3(characterPos.x, currentCameraPos.y, characterPos.z - 8);
             mainCamera.transform.position = newCameraPos;
             Debug.Log($"SimpleCharacterIconsUI: Camera moved to {newCameraPos} (keeping current rotation)");
+        }
+    }
+
+    /// <summary>
+    /// Обновить полоски здоровья всех персонажей
+    /// </summary>
+    void UpdateHealthBars()
+    {
+        foreach (var kvp in characterIcons)
+        {
+            Character character = kvp.Key;
+            GameObject iconGO = kvp.Value;
+
+            if (character == null || iconGO == null) continue;
+
+            // Находим полоску здоровья
+            Transform healthBarTransform = iconGO.transform.Find("HealthBar");
+            if (healthBarTransform != null)
+            {
+                Image healthBar = healthBarTransform.GetComponent<Image>();
+                if (healthBar != null)
+                {
+                    // Обновляем цвет и ширину полоски здоровья
+                    float healthPercent = character.characterData.health / character.characterData.maxHealth;
+                    healthBar.color = Color.Lerp(Color.red, Color.green, healthPercent);
+
+                    // Обновляем ширину полоски
+                    RectTransform healthRect = healthBarTransform.GetComponent<RectTransform>();
+                    if (healthRect != null)
+                    {
+                        healthRect.anchorMax = new Vector2(0.05f + 0.9f * healthPercent, 0.4f);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Нанести урон персонажу для тестирования
+    /// </summary>
+    [System.Obsolete("Используется только для тестирования")]
+    public void TestDamageCharacter(Character character, float damage)
+    {
+        if (character != null)
+        {
+            character.TakeDamage(damage);
+        }
+    }
+
+    /// <summary>
+    /// Восстановить здоровье персонажу для тестирования
+    /// </summary>
+    [System.Obsolete("Используется только для тестирования")]
+    public void TestHealCharacter(Character character, float amount)
+    {
+        if (character != null)
+        {
+            character.Heal(amount);
+        }
+    }
+
+    /// <summary>
+    /// Принудительно обновить цвета всех иконок
+    /// </summary>
+    public void RefreshIconColors()
+    {
+        if (selectionManager == null) return;
+
+        var selectedObjects = selectionManager.GetSelectedObjects();
+
+        foreach (var kvp in characterIcons)
+        {
+            Character character = kvp.Key;
+            GameObject iconGO = kvp.Value;
+
+            if (character == null || iconGO == null) continue;
+
+            bool isSelected = selectedObjects.Contains(character.gameObject);
+            UpdateIconSelectionVisual(iconGO, isSelected);
         }
     }
 

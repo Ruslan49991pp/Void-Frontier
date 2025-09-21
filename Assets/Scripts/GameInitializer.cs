@@ -47,6 +47,9 @@ public class GameInitializer : MonoBehaviour
         GameObject spawnerGO = new GameObject("CharacterSpawnerTest");
         spawnerGO.AddComponent<CharacterSpawnerTest>();
 
+        // Добавляем UI для тестирования HP
+        EnsureHPTestUI();
+
     }
 
     /// <summary>
@@ -117,6 +120,24 @@ public class GameInitializer : MonoBehaviour
         else
         {
             Debug.Log("GameInitializer: SimpleCharacterIconsUI already exists");
+        }
+    }
+
+    /// <summary>
+    /// Убедиться что HPTestUI существует в сцене
+    /// </summary>
+    void EnsureHPTestUI()
+    {
+        HPTestUI hpTestUI = FindObjectOfType<HPTestUI>();
+        if (hpTestUI == null)
+        {
+            GameObject hpTestUIGO = new GameObject("HPTestUI");
+            hpTestUI = hpTestUIGO.AddComponent<HPTestUI>();
+            Debug.Log("GameInitializer: Created HPTestUI");
+        }
+        else
+        {
+            Debug.Log("GameInitializer: HPTestUI already exists");
         }
     }
 }

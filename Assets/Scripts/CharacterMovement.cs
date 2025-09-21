@@ -8,6 +8,7 @@ using UnityEngine;
 public class CharacterMovement : MonoBehaviour
 {
     public static readonly float MOVE_SPEED = 5f; // Единая скорость для всех персонажей
+    public static readonly float ROTATION_SPEED = 10f; // Скорость поворота персонажа
     
     private Vector3 targetPosition;
     private bool isMoving = false;
@@ -24,6 +25,9 @@ public class CharacterMovement : MonoBehaviour
     
     // События
     public System.Action<CharacterMovement> OnMovementComplete;
+
+    // Поворот персонажа
+    private bool smoothRotation = true;
     
     void Awake()
     {
@@ -242,7 +246,13 @@ public class CharacterMovement : MonoBehaviour
                 Vector3 currentPos = transform.position;
                 Vector3 direction = (nextTarget - currentPos).normalized;
                 float moveThisFrame = MOVE_SPEED * Time.deltaTime;
-                
+
+                // Поворачиваем персонажа в направлении движения
+                if (direction != Vector3.zero)
+                {
+                    RotateTowardsDirection(direction);
+                }
+
                 // Проверяем занятость цели каждые 10 кадров
                 if (frameCount % 10 == 0)
                 {
@@ -286,6 +296,12 @@ public class CharacterMovement : MonoBehaviour
             Vector3 currentPos = transform.position;
             Vector3 direction = (targetPosition - currentPos).normalized;
             float moveThisFrame = MOVE_SPEED * Time.deltaTime;
+
+            // Поворачиваем персонажа в направлении движения
+            if (direction != Vector3.zero)
+            {
+                RotateTowardsDirection(direction);
+            }
             
             if (Vector3.Distance(currentPos, targetPosition) <= moveThisFrame)
             {
@@ -535,6 +551,41 @@ public class CharacterMovement : MonoBehaviour
             // Обновляем отслеживаемую позицию
             lastOccupiedCell = currentCell;
         }
+    }
+
+    /// <summary>
+    /// Поворот персонажа в направлении движения
+    /// </summary>
+    void RotateTowardsDirection(Vector3 direction)
+    {
+        if (direction == Vector3.zero) return;
+
+        // Создаем поворот только по Y-оси (исключаем наклоны по X и Z)
+        Vector3 flatDirection = new Vector3(direction.x, 0, direction.z).normalized;
+
+        if (flatDirection != Vector3.zero)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(flatDirection);
+
+            if (smoothRotation)
+            {
+                // Плавный поворот
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, ROTATION_SPEED * Time.deltaTime);
+            }
+            else
+            {
+                // Мгновенный поворот
+                transform.rotation = targetRotation;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Установить тип поворота (плавный или мгновенный)
+    /// </summary>
+    public void SetSmoothRotation(bool smooth)
+    {
+        smoothRotation = smooth;
     }
 
     void OnDestroy()
