@@ -26,11 +26,11 @@ public class CharacterSpawnerTest : MonoBehaviour
     void CheckAndCreateCharacters()
     {
         Character[] existingCharacters = FindObjectsOfType<Character>();
-        Debug.Log($"CharacterSpawnerTest: Found {existingCharacters.Length} existing characters");
+
 
         if (existingCharacters.Length == 0)
         {
-            Debug.Log("CharacterSpawnerTest: No characters found, creating test characters");
+
             for (int i = 0; i < charactersToSpawn; i++)
             {
                 SpawnTestCharacter();
@@ -40,7 +40,7 @@ public class CharacterSpawnerTest : MonoBehaviour
 
     void SpawnTestCharacter()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, "Creating test character using SKM_Character prefab");
+
 
         // Загружаем префаб SKM_Character из Resources
         GameObject characterPrefab = Resources.Load<GameObject>("Prefabs/SKM_Character");
@@ -49,11 +49,11 @@ public class CharacterSpawnerTest : MonoBehaviour
         if (characterPrefab != null)
         {
             characterGO = Instantiate(characterPrefab);
-            DebugLogger.Log(DebugLogger.LogCategory.Spawning, "Instantiated SKM_Character prefab for player character");
+
         }
         else
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Spawning, "SKM_Character prefab not found! Creating fallback capsule.");
+
             characterGO = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         }
 
@@ -72,7 +72,7 @@ public class CharacterSpawnerTest : MonoBehaviour
         if (character == null)
         {
             character = characterGO.AddComponent<Character>();
-            DebugLogger.Log(DebugLogger.LogCategory.Spawning, "Added Character component to player character");
+
         }
 
         // Генерируем случайного персонажа
@@ -94,11 +94,11 @@ public class CharacterSpawnerTest : MonoBehaviour
 
         if (renderer != null)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Found renderer for {character.GetFullName()}: {renderer.name}");
+
         }
         else
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Spawning, $"No renderer found for {character.GetFullName()}!");
+
         }
 
         // Убеждаемся что есть коллайдер
@@ -109,7 +109,7 @@ public class CharacterSpawnerTest : MonoBehaviour
             if (collider == null)
             {
                 collider = characterGO.AddComponent<CapsuleCollider>();
-                DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Added CapsuleCollider to {character.GetFullName()}");
+
             }
         }
 
@@ -123,7 +123,7 @@ public class CharacterSpawnerTest : MonoBehaviour
         objectInfo.objectName = character.GetFullName();
         objectInfo.health = character.characterData.health;
 
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"✓ Player character {character.GetFullName()} created at {randomPos} - Faction: {character.GetFaction()}, Renderer: {renderer != null}, Collider: {collider != null}");
+
     }
 
     void OnGUI()

@@ -7,7 +7,7 @@ using UnityEngine.UI;
 public class HPTestUI : MonoBehaviour
 {
     [Header("Settings")]
-    public bool enableTestUI = true;
+    public bool enableTestUI = false; // Отключено по умолчанию
 
     private Canvas testCanvas;
     private GameObject testPanel;
@@ -41,7 +41,7 @@ public class HPTestUI : MonoBehaviour
     {
         if (isUICreated) return;
 
-        Debug.Log("HPTestUI: Creating test UI for HP system");
+
 
         // Создаем Canvas
         GameObject canvasGO = new GameObject("HPTestCanvas");
@@ -76,7 +76,7 @@ public class HPTestUI : MonoBehaviour
         CreateTestButtons();
 
         isUICreated = true;
-        Debug.Log("HPTestUI: Test UI created successfully");
+
     }
 
     void CreateInstructionText()
@@ -186,7 +186,7 @@ public class HPTestUI : MonoBehaviour
         {
             character.TakeDamage(damage);
         }
-        Debug.Log($"HPTestUI: Damaged all {characters.Length} characters by {damage} HP");
+
     }
 
     void HealAllCharacters(float amount)
@@ -196,7 +196,7 @@ public class HPTestUI : MonoBehaviour
         {
             character.Heal(amount);
         }
-        Debug.Log($"HPTestUI: Healed all {characters.Length} characters by {amount} HP");
+
     }
 
     void SetRandomHealthAll()
@@ -207,7 +207,7 @@ public class HPTestUI : MonoBehaviour
             float randomHealth = Random.Range(10f, character.GetMaxHealth());
             character.SetHealth(randomHealth);
         }
-        Debug.Log($"HPTestUI: Set random health for all {characters.Length} characters");
+
     }
 
     void FullHealAll()
@@ -217,7 +217,7 @@ public class HPTestUI : MonoBehaviour
         {
             character.SetHealth(character.GetMaxHealth());
         }
-        Debug.Log($"HPTestUI: Fully healed all {characters.Length} characters");
+
     }
 
     void TogglePanel()

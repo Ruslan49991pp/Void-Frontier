@@ -24,7 +24,7 @@ public class RemoveCenterButtons : MonoBehaviour
             // Проверяем название кнопки
             if (button.name.Contains("Center") || button.name.Contains("CENTER") || button.name.Contains("center"))
             {
-                Debug.Log($"Removing Center button: {button.name}");
+
                 DestroyImmediate(button.gameObject);
                 continue;
             }
@@ -36,7 +36,7 @@ public class RemoveCenterButtons : MonoBehaviour
                 string text = buttonText.text.ToLower();
                 if (text.Contains("center") || text.Contains("центр"))
                 {
-                    Debug.Log($"Removing Center button with text '{buttonText.text}': {button.name}");
+
                     DestroyImmediate(button.gameObject);
                     continue;
                 }
@@ -50,7 +50,7 @@ public class RemoveCenterButtons : MonoBehaviour
                     string methodName = button.onClick.GetPersistentMethodName(i);
                     if (methodName == "CenterOnTarget")
                     {
-                        Debug.Log($"Removing button with CenterOnTarget handler: {button.name}");
+
                         DestroyImmediate(button.gameObject);
                         break;
                     }

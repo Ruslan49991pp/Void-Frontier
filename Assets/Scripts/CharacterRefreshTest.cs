@@ -23,17 +23,17 @@ public class CharacterRefreshTest : MonoBehaviour
     /// </summary>
     public void RefreshAllCharacters()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, "=== REFRESHING ALL CHARACTERS ===");
+
 
         // Удаляем всех старых персонажей
         Character[] oldCharacters = FindObjectsOfType<Character>();
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Found {oldCharacters.Length} old characters to remove");
+
 
         foreach (Character character in oldCharacters)
         {
             if (character != null && character.gameObject != null)
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Removing old character: {character.GetFullName()}");
+
                 DestroyImmediate(character.gameObject);
             }
         }
@@ -44,7 +44,7 @@ public class CharacterRefreshTest : MonoBehaviour
 
     void CreateNewCharacters()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, "Creating new characters with SKM_Character prefab");
+
 
         // Создаем игроков
         for (int i = 0; i < playerCharacters; i++)
@@ -58,7 +58,7 @@ public class CharacterRefreshTest : MonoBehaviour
             CreateEnemyCharacter(i);
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, "=== CHARACTER REFRESH COMPLETE ===");
+
     }
 
     void CreatePlayerCharacter(int index)
@@ -66,7 +66,7 @@ public class CharacterRefreshTest : MonoBehaviour
         GameObject characterPrefab = Resources.Load<GameObject>("Prefabs/SKM_Character");
         if (characterPrefab == null)
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Spawning, "SKM_Character prefab not found!");
+
             return;
         }
 
@@ -97,7 +97,7 @@ public class CharacterRefreshTest : MonoBehaviour
         // Добавляем необходимые компоненты
         EnsureCharacterComponents(player, character);
 
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"✓ Created player: {character.GetFullName()} at {playerPos}");
+
     }
 
     void CreateEnemyCharacter(int index)
@@ -105,7 +105,7 @@ public class CharacterRefreshTest : MonoBehaviour
         GameObject characterPrefab = Resources.Load<GameObject>("Prefabs/SKM_Character");
         if (characterPrefab == null)
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Spawning, "SKM_Character prefab not found!");
+
             return;
         }
 
@@ -144,7 +144,7 @@ public class CharacterRefreshTest : MonoBehaviour
         // Добавляем необходимые компоненты
         EnsureCharacterComponents(enemy, character);
 
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"✓ Created enemy: {character.GetFullName()} at {enemyPos}");
+
     }
 
     void SetupCharacterRenderer(Character character, Color defaultColor)
@@ -173,11 +173,11 @@ public class CharacterRefreshTest : MonoBehaviour
             mat.color = defaultColor;
             renderer.material = mat;
 
-            DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Setup renderer for {character.GetFullName()}: {renderer.name}");
+
         }
         else
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Spawning, $"No renderer found for {character.GetFullName()}!");
+
         }
     }
 

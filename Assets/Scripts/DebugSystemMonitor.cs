@@ -8,7 +8,7 @@ using UnityEngine.UI;
 public class DebugSystemMonitor : MonoBehaviour
 {
     [Header("Debug Settings")]
-    public bool showOnStart = true;
+    public bool showOnStart = false; // Отключено по умолчанию
     public KeyCode toggleKey = KeyCode.F12;
     public float updateInterval = 1f;
 
@@ -31,7 +31,7 @@ public class DebugSystemMonitor : MonoBehaviour
 
     void Start()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.UI, "DebugSystemMonitor Starting...");
+
 
         CreateDebugUI();
         FindSystemReferences();
@@ -47,8 +47,8 @@ public class DebugSystemMonitor : MonoBehaviour
             HideDebugPanel();
         }
 
-        DebugLogger.LogSystemInfo();
-        DebugLogger.LogAvailableCategories();
+
+
     }
 
     void Update()
@@ -72,7 +72,7 @@ public class DebugSystemMonitor : MonoBehaviour
     /// </summary>
     void CreateDebugUI()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.UI, "Creating Debug UI...");
+
 
         // Создаем Canvas для дебага
         GameObject canvasGO = new GameObject("DebugCanvas");
@@ -166,13 +166,13 @@ public class DebugSystemMonitor : MonoBehaviour
         titleText.text = $"DEBUG MONITOR (Press {toggleKey} to toggle)";
         titleText.fontStyle = FontStyle.Bold;
 
-        DebugLogger.Log(DebugLogger.LogCategory.UI, "Debug UI created successfully");
+
 
         // Принудительно обновляем информацию сразу после создания
         if (debugText != null)
         {
             debugText.text = "DEBUG MONITOR READY!\nPress F12 to toggle\nInitializing systems...";
-            DebugLogger.Log(DebugLogger.LogCategory.UI, "Debug text initialized with placeholder");
+
         }
     }
 
@@ -181,7 +181,7 @@ public class DebugSystemMonitor : MonoBehaviour
     /// </summary>
     void FindSystemReferences()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.UI, "Finding system references...");
+
 
         selectionManager = FindObjectOfType<SelectionManager>();
         targetingSystem = FindObjectOfType<EnemyTargetingSystem>();
@@ -189,13 +189,6 @@ public class DebugSystemMonitor : MonoBehaviour
         gameInitializer = FindObjectOfType<GameInitializer>();
         characterIcons = FindObjectOfType<SimpleCharacterIconsUI>();
 
-        DebugLogger.Log(DebugLogger.LogCategory.UI,
-            $"System references found: " +
-            $"Selection={selectionManager != null}, " +
-            $"Targeting={targetingSystem != null}, " +
-            $"Movement={movementController != null}, " +
-            $"GameInit={gameInitializer != null}, " +
-            $"Icons={characterIcons != null}");
     }
 
     /// <summary>
@@ -345,7 +338,7 @@ public class DebugSystemMonitor : MonoBehaviour
             debugPanel.SetActive(true);
             isVisible = true;
             UpdateDebugInfo();
-            DebugLogger.Log(DebugLogger.LogCategory.UI, "Debug panel SHOWN");
+
         }
     }
 
@@ -358,7 +351,7 @@ public class DebugSystemMonitor : MonoBehaviour
         {
             debugPanel.SetActive(false);
             isVisible = false;
-            DebugLogger.Log(DebugLogger.LogCategory.UI, "Debug panel HIDDEN");
+
         }
     }
 

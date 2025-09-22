@@ -23,15 +23,15 @@ public static class DebugLogger
     // Настройки логирования
     private static Dictionary<LogCategory, bool> logEnabled = new Dictionary<LogCategory, bool>
     {
-        { LogCategory.General, true },
-        { LogCategory.Selection, true },
-        { LogCategory.Movement, true },
-        { LogCategory.Targeting, true },
-        { LogCategory.AI, true },
-        { LogCategory.UI, true },
-        { LogCategory.Spawning, true },
-        { LogCategory.GameInit, true },
-        { LogCategory.Icons, true }
+        { LogCategory.General, false },
+        { LogCategory.Selection, false },
+        { LogCategory.Movement, false },
+        { LogCategory.Targeting, false },
+        { LogCategory.AI, false },
+        { LogCategory.UI, false },
+        { LogCategory.Spawning, false },
+        { LogCategory.GameInit, false },
+        { LogCategory.Icons, false }
     };
 
     private static Dictionary<LogCategory, Color> logColors = new Dictionary<LogCategory, Color>
@@ -62,9 +62,9 @@ public static class DebugLogger
 #if UNITY_EDITOR
         string colorHex = ColorUtility.ToHtmlStringRGBA(logColors.GetValueOrDefault(category, Color.white));
         string coloredMessage = $"<color=#{colorHex}>{formattedMessage}</color>";
-        Debug.Log(coloredMessage, context);
+
 #else
-        Debug.Log(formattedMessage, context);
+
 #endif
 
         // Дублируем в FileLogger если он доступен
@@ -86,7 +86,7 @@ public static class DebugLogger
         string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
         string formattedMessage = $"[{timestamp}] [ERROR-{category}] {message}";
 
-        Debug.LogError(formattedMessage, context);
+
 
         try
         {
@@ -106,7 +106,7 @@ public static class DebugLogger
         string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
         string formattedMessage = $"[{timestamp}] [WARNING-{category}] {message}";
 
-        Debug.LogWarning(formattedMessage, context);
+
 
         try
         {

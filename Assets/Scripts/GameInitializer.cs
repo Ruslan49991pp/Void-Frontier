@@ -12,101 +12,101 @@ public class GameInitializer : MonoBehaviour
 
     void Awake()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "GameInitializer Awake started");
+
 
         if (autoInitializeBootstrap)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Auto-initializing BootstrapManager");
+
             EnsureBootstrapManager();
         }
         else
         {
-            DebugLogger.Log(DebugLogger.LogCategory.GameInit, "BootstrapManager auto-initialization disabled");
+
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "GameInitializer Awake completed");
+
     }
 
     void Start()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "GameInitializer Start began - initializing all systems");
+
 
         if (autoInitializeResolution)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Initializing ResolutionManager");
+
             EnsureResolutionManager();
         }
 
         if (autoInitializeUI)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Initializing GameUI");
+
             EnsureGameUI();
         }
 
         if (autoInitializeEventSystem)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Initializing EventSystem");
+
             EnsureEventSystem();
         }
 
         if (autoInitializeCharacterIcons)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Initializing Character Icons");
+
             EnsureSimpleCharacterIconsUI();
         }
 
         if (autoInitializeEnemyTargeting)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Initializing Enemy Targeting System");
+
             EnsureEnemyTargetingSystem();
             EnsureTargetingInstructions();
         }
 
         // Создаем простой дебаг дисплей
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Creating Simple Debug Display");
+
         GameObject simpleDebugGO = new GameObject("SimpleDebugDisplay");
         simpleDebugGO.AddComponent<SimpleDebugDisplay>();
 
         // Создаем дебаг монитор
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Creating Debug System Monitor");
+
         GameObject debugMonitorGO = new GameObject("DebugSystemMonitor");
         debugMonitorGO.AddComponent<DebugSystemMonitor>();
 
         // Создаем инструкции по отладке
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Creating Debug Instructions");
+
         GameObject debugInstructionsGO = new GameObject("DebugInstructions");
         debugInstructionsGO.AddComponent<DebugInstructions>();
 
         // Удаляем кнопки Center
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Creating RemoveCenterButtons component");
+
         GameObject removerGO = new GameObject("RemoveCenterButtons");
         removerGO.AddComponent<RemoveCenterButtons>();
 
         // Добавляем тестовый спавнер персонажей
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Creating CharacterSpawnerTest");
+
         GameObject spawnerGO = new GameObject("CharacterSpawnerTest");
         spawnerGO.AddComponent<CharacterSpawnerTest>();
 
         // Добавляем тестовый спавнер врагов
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Creating EnemySpawnerTest");
+
         GameObject enemySpawnerGO = new GameObject("EnemySpawnerTest");
         enemySpawnerGO.AddComponent<EnemySpawnerTest>();
 
         // Добавляем систему обновления персонажей
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Creating CharacterRefreshTest");
+
         GameObject refreshGO = new GameObject("CharacterRefreshTest");
         refreshGO.AddComponent<CharacterRefreshTest>();
 
         // Добавляем отладчик структуры SKM_Character
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Creating SKMCharacterDebugger");
+
         GameObject debuggerGO = new GameObject("SKMCharacterDebugger");
         debuggerGO.AddComponent<SKMCharacterDebugger>();
 
         // Добавляем UI для тестирования HP
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "Initializing HPTestUI");
+
         EnsureHPTestUI();
 
-        DebugLogger.Log(DebugLogger.LogCategory.GameInit, "GameInitializer Start completed - all systems initialized");
+
     }
 
     /// <summary>
@@ -167,22 +167,22 @@ public class GameInitializer : MonoBehaviour
     /// </summary>
     void EnsureSimpleCharacterIconsUI()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Icons, "Ensuring SimpleCharacterIconsUI exists...");
+
 
         SimpleCharacterIconsUI characterIconsUI = FindObjectOfType<SimpleCharacterIconsUI>();
         if (characterIconsUI == null)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.Icons, "SimpleCharacterIconsUI not found, creating new instance");
+
             GameObject characterIconsUIGO = new GameObject("SimpleCharacterIconsUI");
             characterIconsUI = characterIconsUIGO.AddComponent<SimpleCharacterIconsUI>();
 
-            DebugLogger.LogComponentState(DebugLogger.LogCategory.Icons, "SimpleCharacterIconsUI", characterIconsUI);
-            DebugLogger.Log(DebugLogger.LogCategory.Icons, "SimpleCharacterIconsUI created successfully");
+
+
         }
         else
         {
-            DebugLogger.Log(DebugLogger.LogCategory.Icons, "SimpleCharacterIconsUI already exists");
-            DebugLogger.LogComponentState(DebugLogger.LogCategory.Icons, "SimpleCharacterIconsUI", characterIconsUI);
+
+
         }
     }
 
@@ -196,11 +196,11 @@ public class GameInitializer : MonoBehaviour
         {
             GameObject hpTestUIGO = new GameObject("HPTestUI");
             hpTestUI = hpTestUIGO.AddComponent<HPTestUI>();
-            Debug.Log("GameInitializer: Created HPTestUI");
+
         }
         else
         {
-            Debug.Log("GameInitializer: HPTestUI already exists");
+
         }
     }
 
@@ -214,11 +214,11 @@ public class GameInitializer : MonoBehaviour
         {
             GameObject enemyTargetingGO = new GameObject("EnemyTargetingSystem");
             enemyTargetingSystem = enemyTargetingGO.AddComponent<EnemyTargetingSystem>();
-            Debug.Log("GameInitializer: Created EnemyTargetingSystem");
+
         }
         else
         {
-            Debug.Log("GameInitializer: EnemyTargetingSystem already exists");
+
         }
     }
 
@@ -232,11 +232,11 @@ public class GameInitializer : MonoBehaviour
         {
             GameObject instructionsGO = new GameObject("TargetingInstructions");
             targetingInstructions = instructionsGO.AddComponent<TargetingInstructions>();
-            Debug.Log("GameInitializer: Created TargetingInstructions");
+
         }
         else
         {
-            Debug.Log("GameInitializer: TargetingInstructions already exists");
+
         }
     }
 }

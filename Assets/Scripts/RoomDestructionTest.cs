@@ -20,10 +20,10 @@ public class RoomDestructionTest : MonoBehaviour
         selectionManager = FindObjectOfType<SelectionManager>();
         gameUI = FindObjectOfType<GameUI>();
 
-        Debug.Log("RoomDestructionTest: Initialized");
-        Debug.Log($"Building System: {(buildingSystem != null ? "Found" : "Not Found")}");
-        Debug.Log($"Selection Manager: {(selectionManager != null ? "Found" : "Not Found")}");
-        Debug.Log($"Game UI: {(gameUI != null ? "Found" : "Not Found")}");
+
+
+
+
     }
 
     void Update()
@@ -49,11 +49,11 @@ public class RoomDestructionTest : MonoBehaviour
 
     void TestBuildRoom()
     {
-        Debug.Log("Testing room building...");
+
 
         if (buildingSystem == null)
         {
-            Debug.LogError("Building system not found!");
+
             return;
         }
 
@@ -61,16 +61,16 @@ public class RoomDestructionTest : MonoBehaviour
         buildingSystem.SetBuildMode(true);
         buildingSystem.SetSelectedRoomType(0); // Первый тип комнаты
 
-        Debug.Log("Build mode activated. Click to place room.");
+
     }
 
     void TestSelectRoom()
     {
-        Debug.Log("Testing room selection...");
+
 
         if (selectionManager == null)
         {
-            Debug.LogError("Selection manager not found!");
+
             return;
         }
 
@@ -80,7 +80,7 @@ public class RoomDestructionTest : MonoBehaviour
         if (rooms.Length > 0)
         {
             GameObject firstRoom = rooms[0].gameObject;
-            Debug.Log($"Selecting room: {firstRoom.name}");
+
 
             // Очищаем выделение и выделяем комнату
             selectionManager.ClearSelection();
@@ -88,17 +88,17 @@ public class RoomDestructionTest : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("No rooms found in scene!");
+
         }
     }
 
     void TestDestroyRoom()
     {
-        Debug.Log("Testing room destruction...");
+
 
         if (selectionManager == null || buildingSystem == null)
         {
-            Debug.LogError("Required systems not found!");
+
             return;
         }
 
@@ -110,7 +110,7 @@ public class RoomDestructionTest : MonoBehaviour
             RoomInfo roomInfo = obj.GetComponent<RoomInfo>();
             if (roomInfo != null)
             {
-                Debug.Log($"Destroying room: {roomInfo.roomName}");
+
                 buildingSystem.DeleteRoom(obj);
                 break;
             }

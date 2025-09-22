@@ -46,17 +46,17 @@ public class LoggerTest : MonoBehaviour
         yield return new WaitForSeconds(0.2f);
 
         // Тест Unity Debug логов (должны автоматически попасть в файл)
-        Debug.Log("Тест Unity Debug.Log - это сообщение должно попасть в файл автоматически");
-        Debug.LogWarning("Тест Unity Debug.LogWarning - предупреждение в файле");
-        Debug.LogError("Тест Unity Debug.LogError - ошибка в файле");
+
+
+
 
         yield return new WaitForSeconds(0.2f);
 
         // Информация о пути к файлу
         string logPath = FileLogger.GetLogFilePath();
         FileLogger.Log($"Путь к файлу логов: {logPath}");
-        Debug.Log($"LoggerTest: Файл логов создан по пути: {logPath}");
-        Debug.Log($"=== ДЛЯ CLAUDE: Путь к файлу логов: {logPath} ===");
+
+
 
         FileLogger.Log("=== НАЧАЛЬНОЕ ТЕСТИРОВАНИЕ ЗАВЕРШЕНО ===");
     }
@@ -79,7 +79,7 @@ public class LoggerTest : MonoBehaviour
                     FileLogger.Log($"Периодический тест #{testCounter}: Игра работает нормально");
                     break;
                 case 1:
-                    Debug.Log($"Unity Log #{testCounter}: Тестовое сообщение из Update цикла");
+
                     break;
                 case 2:
                     FileLogger.LogWarning($"Тестовое предупреждение #{testCounter}: Внимание, это тест!");
@@ -95,7 +95,7 @@ public class LoggerTest : MonoBehaviour
             {
                 enablePeriodicTests = false;
                 FileLogger.Log("=== ПЕРИОДИЧЕСКИЕ ТЕСТЫ ЗАВЕРШЕНЫ ===");
-                Debug.Log("LoggerTest: Периодические тесты завершены. Проверьте файл логов!");
+
             }
         }
     }
@@ -111,13 +111,13 @@ public class LoggerTest : MonoBehaviour
         FileLogger.LogWarning("Тестовое предупреждение из ручного теста");
         FileLogger.LogError("Тестовая ошибка из ручного теста");
 
-        Debug.Log("Ручной тест Unity Debug.Log");
-        Debug.LogWarning("Ручной тест Unity Debug.LogWarning");
+
+
 
         FileLogger.Log($"Текущее время: {System.DateTime.Now:HH:mm:ss.fff}");
         FileLogger.Log("=== РУЧНОЙ ТЕСТ ЗАВЕРШЕН ===");
 
-        Debug.Log("LoggerTest: Ручной тест выполнен. Проверьте файл логов!");
+
     }
 
     /// <summary>

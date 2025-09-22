@@ -29,7 +29,7 @@ public class BootstrapManager : MonoBehaviour
         if (Screen.width != targetWidth || Screen.height != targetHeight || Screen.fullScreen != targetFullscreen)
         {
             Screen.SetResolution(targetWidth, targetHeight, targetFullscreen);
-            Debug.Log($"[Bootstrap] Resolution set to {targetWidth}x{targetHeight}, Fullscreen: {targetFullscreen}");
+
 
             // Логируем через FileLogger если он доступен
             if (FileLogger.Instance != null)
@@ -39,7 +39,7 @@ public class BootstrapManager : MonoBehaviour
         }
         else
         {
-            Debug.Log($"[Bootstrap] Resolution already correct: {Screen.width}x{Screen.height}");
+
         }
     }
 
@@ -54,7 +54,7 @@ public class BootstrapManager : MonoBehaviour
 
         Screen.SetResolution(targetWidth, targetHeight, targetFullscreen);
 
-        Debug.Log($"[Bootstrap] Target resolution updated to {targetWidth}x{targetHeight}, Fullscreen: {targetFullscreen}");
+
 
         if (FileLogger.Instance != null)
         {
@@ -97,7 +97,7 @@ public class BootstrapManager : MonoBehaviour
     [ContextMenu("Log Current Resolution")]
     void EditorLogResolution()
     {
-        Debug.Log($"Current: {Screen.width}x{Screen.height}, Target: {targetWidth}x{targetHeight}");
+
     }
 #endif
 }

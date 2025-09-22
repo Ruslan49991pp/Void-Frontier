@@ -7,7 +7,7 @@ using UnityEngine.UI;
 public class TargetingInstructions : MonoBehaviour
 {
     [Header("UI Settings")]
-    public bool showInstructions = true;
+    public bool showInstructions = false; // Отключено по умолчанию
     public float displayTime = 10f; // Время показа инструкций
     public Color instructionColor = Color.white;
 

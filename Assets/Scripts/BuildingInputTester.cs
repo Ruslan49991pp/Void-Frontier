@@ -20,9 +20,9 @@ public class BuildingInputTester : MonoBehaviour
         buildingSystem = FindObjectOfType<ShipBuildingSystem>();
         gameUI = FindObjectOfType<GameUI>();
 
-        Debug.Log("BuildingInputTester: Initialized");
-        Debug.Log($"Building System: {(buildingSystem != null ? "Found" : "Not Found")}");
-        Debug.Log($"Game UI: {(gameUI != null ? "Found" : "Not Found")}");
+
+
+
     }
 
     void Update()
@@ -59,7 +59,7 @@ public class BuildingInputTester : MonoBehaviour
         if (buildingSystem == null) return;
 
         buildingSystem.SetBuildMode(true);
-        Debug.Log("Build mode activated");
+
     }
 
     void TestSelectRoom(int roomIndex)
@@ -69,11 +69,11 @@ public class BuildingInputTester : MonoBehaviour
         if (buildingSystem.IsBuildingModeActive())
         {
             buildingSystem.SetSelectedRoomType(roomIndex);
-            Debug.Log($"Room type {roomIndex} selected");
+
         }
         else
         {
-            Debug.Log("Build mode is not active");
+
         }
     }
 
@@ -84,11 +84,11 @@ public class BuildingInputTester : MonoBehaviour
         if (buildingSystem.IsBuildingModeActive())
         {
             buildingSystem.ClearRoomSelection();
-            Debug.Log("Room selection cleared");
+
         }
         else
         {
-            Debug.Log("Build mode is not active");
+
         }
     }
 

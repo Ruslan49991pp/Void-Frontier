@@ -15,7 +15,7 @@ public class UIFixesTester : MonoBehaviour
         // Тест кнопки Center - должна НЕ работать
         if (Input.GetKeyDown(testCenterKey))
         {
-            Debug.Log("F key pressed - Center function should NOT work!");
+
         }
 
         // Логировать найденных персонажей
@@ -34,17 +34,17 @@ public class UIFixesTester : MonoBehaviour
     void LogCharacters()
     {
         Character[] characters = FindObjectsOfType<Character>();
-        Debug.Log($"UIFixesTester: Found {characters.Length} characters in scene:");
+
 
         foreach (Character character in characters)
         {
             if (character.characterData != null)
             {
-                Debug.Log($"- {character.GetFullName()} (Level {character.characterData.level}, Health: {character.characterData.health}/{character.characterData.maxHealth})");
+
             }
             else
             {
-                Debug.Log($"- {character.name} (No character data)");
+
             }
         }
     }
@@ -55,30 +55,30 @@ public class UIFixesTester : MonoBehaviour
         CharacterIconsPanel iconsPanel = FindObjectOfType<CharacterIconsPanel>();
         if (iconsPanel != null)
         {
-            Debug.Log("UIFixesTester: CharacterIconsPanel found!");
+
         }
         else
         {
-            Debug.Log("UIFixesTester: CharacterIconsPanel NOT found!");
+
         }
 
         // Проверяем GameUI
         GameUI gameUI = FindObjectOfType<GameUI>();
         if (gameUI != null)
         {
-            Debug.Log("UIFixesTester: GameUI found!");
+
         }
         else
         {
-            Debug.Log("UIFixesTester: GameUI NOT found!");
+
         }
 
         // Проверяем Canvas'ы
         Canvas[] canvases = FindObjectsOfType<Canvas>();
-        Debug.Log($"UIFixesTester: Found {canvases.Length} canvases:");
+
         foreach (Canvas canvas in canvases)
         {
-            Debug.Log($"- {canvas.name} (Order: {canvas.sortingOrder})");
+
         }
     }
 

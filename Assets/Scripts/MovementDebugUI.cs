@@ -12,7 +12,7 @@ public class MovementDebugUI : MonoBehaviour
     private MovementController movementController;
     private Rect windowRect = new Rect(Screen.width - 400, 10, 380, 500);
     private Vector2 scrollPosition = Vector2.zero;
-    private bool showWindow = false;
+    private bool showWindow = false; // Остается выключенным по умолчанию
     private string debugLog = "";
     
     void Awake()
@@ -55,16 +55,17 @@ public class MovementDebugUI : MonoBehaviour
         
     }
     
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void AutoCreate()
-    {
-        // Автоматически создаем дебаг окно при старте игры
-        if (instance == null)
-        {
-            GameObject debugGO = new GameObject("MovementDebugUI");
-            debugGO.AddComponent<MovementDebugUI>();
-        }
-    }
+    // Отключено автоматическое создание дебаг UI
+    // [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    // static void AutoCreate()
+    // {
+    //     // Автоматически создаем дебаг окно при старте игры
+    //     if (instance == null)
+    //     {
+    //         GameObject debugGO = new GameObject("MovementDebugUI");
+    //         debugGO.AddComponent<MovementDebugUI>();
+    //     }
+    // }
     
     void Update()
     {

@@ -18,8 +18,8 @@ public class LoggingInitializer : MonoBehaviour
         FileLogger.Log("LoggingInitializer: Система логирования запущена");
 
         // Выводим путь в Unity Console
-        Debug.Log($"=== ДЛЯ CLAUDE: Путь к файлу логов: {logPath} ===");
-        Debug.Log($"FileLogger initialized. Log file: {logPath}");
+
+
 
         // Также записываем путь в лог файл
         FileLogger.Log($"Log file location: {logPath}");
@@ -29,7 +29,7 @@ public class LoggingInitializer : MonoBehaviour
     public void ShowLogPath()
     {
         string logPath = FileLogger.GetLogFilePath();
-        Debug.Log($"=== ПУТЬ К ЛОГАМ: {logPath} ===");
+
         FileLogger.Log("Manual log path check triggered");
     }
 
@@ -40,10 +40,10 @@ public class LoggingInitializer : MonoBehaviour
         FileLogger.LogWarning("Тест предупреждения");
         FileLogger.LogError("Тест ошибки");
 
-        Debug.Log("Unity Debug.Log тест");
-        Debug.LogWarning("Unity Debug.LogWarning тест");
-        Debug.LogError("Unity Debug.LogError тест");
 
-        Debug.Log("Тест логирования выполнен - проверь файл логов!");
+
+
+
+
     }
 }

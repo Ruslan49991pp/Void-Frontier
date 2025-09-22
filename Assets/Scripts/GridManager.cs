@@ -573,7 +573,7 @@ public class GridManager : MonoBehaviour
 
         if (characterPrefab == null)
         {
-            Debug.LogError("GridManager: characterPrefab is NULL after CreateCharacterPrefab!");
+
             return;
         }
 
@@ -611,7 +611,7 @@ public class GridManager : MonoBehaviour
                         }
                         else
                         {
-                            Debug.LogError($"GridManager: No Renderer found for character {character.name}!");
+
                         }
                     }
                 }
@@ -639,7 +639,7 @@ public class GridManager : MonoBehaviour
     {
         if (numberOfEnemies <= 0) return;
 
-        Debug.Log($"GridManager: Spawning {numberOfEnemies} enemy characters");
+
 
         // Найдем позицию для врагов (на расстоянии от игроков)
         Vector2Int enemyStartPosition = FindEnemySpawnArea(playerStartPosition);
@@ -684,7 +684,7 @@ public class GridManager : MonoBehaviour
                 // Занимаем ячейку
                 OccupyCell(spawnPosition, enemy, "Enemy");
 
-                Debug.Log($"GridManager: Spawned enemy {enemy.name} at {spawnPosition}");
+
             }
         }
     }
@@ -894,7 +894,7 @@ public class GridManager : MonoBehaviour
             }
         }
 
-        Debug.Log($"GridManager: Removed {existingCharacters.Length} existing characters (all factions)");
+
     }
 
     /// <summary>
@@ -921,7 +921,7 @@ public class GridManager : MonoBehaviour
         if (skmCharacterPrefab != null)
         {
             // Используем готовый префаб SKM_Character
-            Debug.Log($"GridManager: Using SKM_Character prefab: {skmCharacterPrefab.name}");
+
 
             // Создаем обертку для добавления компонентов
             GameObject characterWrapper = new GameObject("Character_Template");
@@ -950,7 +950,7 @@ public class GridManager : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogError("GridManager: No renderer found in SKM_Character!");
+
                 }
             }
 
@@ -967,7 +967,7 @@ public class GridManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("GridManager: SKM_Character prefab not found, creating fallback capsule");
+
 
             // Fallback: создаем капсулу как раньше
             GameObject tempCharacter = new GameObject("Character_Template_Fallback");

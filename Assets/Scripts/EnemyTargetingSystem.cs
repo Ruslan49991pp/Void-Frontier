@@ -8,6 +8,7 @@ using UnityEngine;
 public class EnemyTargetingSystem : MonoBehaviour
 {
     [Header("Targeting Settings")]
+    public bool enableEnemyTargeting = false; // Отключаем систему преследования врагов
     public Color enemyHighlightColor = Color.red;
     public float followDistance = 1.5f; // Расстояние следования (соседняя клетка)
     public float updateInterval = 0.5f; // Частота обновления следования
@@ -38,55 +39,48 @@ public class EnemyTargetingSystem : MonoBehaviour
 
     void Awake()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, "EnemyTargetingSystem Awake started");
+
 
         selectionManager = FindObjectOfType<SelectionManager>();
         movementController = FindObjectOfType<MovementController>();
         gridManager = FindObjectOfType<GridManager>();
         playerCamera = Camera.main;
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting,
-            $"Component references: " +
-            $"SelectionManager={selectionManager != null}, " +
-            $"MovementController={movementController != null}, " +
-            $"GridManager={gridManager != null}, " +
-            $"Camera={playerCamera != null}");
-
+    
         CreateTargetIndicatorPrefab();
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, "EnemyTargetingSystem Awake completed");
+
     }
 
     void Start()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, "EnemyTargetingSystem Start began");
+
 
         // Подписываемся на изменения выделения
         if (selectionManager != null)
         {
             selectionManager.OnSelectionChanged += OnSelectionChanged;
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, "Subscribed to SelectionManager.OnSelectionChanged");
+
         }
         else
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Targeting, "SelectionManager is NULL! Cannot subscribe to selection events.");
+
         }
 
         // Запускаем корутину обновления следования
         InvokeRepeating(nameof(UpdateFollowing), updateInterval, updateInterval);
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Started UpdateFollowing with interval {updateInterval}s");
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, "EnemyTargetingSystem Start completed");
+
+
     }
 
     void Update()
     {
         // Подробное логирование работы системы наведения
-        if (Time.frameCount % 60 == 0) // Каждую секунду при 60 FPS
-        {
-            var selectedAllies = GetSelectedAllies();
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting,
-                $"Update tick: Selected allies: {selectedAllies.Count}, Targeting mode: {isTargetingMode}, Hovered enemy: {hoveredEnemy?.GetFullName() ?? "None"}");
-        }
+        // if (Time.frameCount % 60 == 0) // Каждую секунду при 60 FPS
+        // {
+        //     var selectedAllies = GetSelectedAllies();
+        //         $"Update tick: Selected allies: {selectedAllies.Count}, Targeting mode: {isTargetingMode}, Hovered enemy: {hoveredEnemy?.GetFullName() ?? "None"}");
+        // }
 
         HandleTargetingInput();
         HandleEnemyHover();
@@ -130,6 +124,18 @@ public class EnemyTargetingSystem : MonoBehaviour
     /// </summary>
     void HandleTargetingInput()
     {
+        // Если система преследования отключена, не обрабатываем ввод
+        if (!enableEnemyTargeting)
+        {
+            // Убеждаемся, что режим указания цели выключен
+            if (isTargetingMode)
+            {
+                isTargetingMode = false;
+
+            }
+            return;
+        }
+
         // Проверяем, есть ли выделенные союзники
         var selectedAllies = GetSelectedAllies();
         bool hasSelectedAllies = selectedAllies.Count > 0;
@@ -138,27 +144,25 @@ public class EnemyTargetingSystem : MonoBehaviour
         if (hasSelectedAllies != isTargetingMode)
         {
             isTargetingMode = hasSelectedAllies;
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting,
-                $"Targeting mode {(isTargetingMode ? "ENABLED" : "DISABLED")}. Selected allies: {selectedAllies.Count}");
+            //     $"Targeting mode {(isTargetingMode ? "ENABLED" : "DISABLED")}. Selected allies: {selectedAllies.Count}");
         }
 
         // Обрабатываем клик по врагу только в режиме указания цели
         if (isTargetingMode && (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))) // ЛКМ или ПКМ
         {
             string clickType = Input.GetMouseButtonDown(0) ? "LMB" : "RMB";
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"{clickType} clicked in targeting mode, checking for enemy under mouse...");
+
 
             Character clickedEnemy = GetEnemyUnderMouse();
             if (clickedEnemy != null)
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting,
-                    $"✓ {clickType} clicked on enemy: {clickedEnemy.GetFullName()}, assigning to {selectedAllies.Count} allies");
+                //     $"✓ {clickType} clicked on enemy: {clickedEnemy.GetFullName()}, assigning to {selectedAllies.Count} allies");
 
                 AssignTargetToAllies(selectedAllies, clickedEnemy);
             }
             else
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"✗ {clickType} click in targeting mode but no enemy under mouse");
+
             }
         }
     }
@@ -168,12 +172,13 @@ public class EnemyTargetingSystem : MonoBehaviour
     /// </summary>
     void HandleEnemyHover()
     {
-        if (!isTargetingMode)
+        // Если система преследования отключена, не показываем подсветку
+        if (!enableEnemyTargeting || !isTargetingMode)
         {
             // Если не в режиме указания цели, убираем подсветку
             if (hoveredEnemy != null)
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting, "Targeting mode disabled, removing enemy highlight");
+
                 RemoveEnemyHighlight(hoveredEnemy);
                 hoveredEnemy = null;
             }
@@ -186,20 +191,19 @@ public class EnemyTargetingSystem : MonoBehaviour
         // Логируем только когда что-то меняется
         if (currentEnemy != hoveredEnemy)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting,
-                $"Enemy hover changed: from {hoveredEnemy?.GetFullName() ?? "None"} to {currentEnemy?.GetFullName() ?? "None"}");
+            //     $"Enemy hover changed: from {hoveredEnemy?.GetFullName() ?? "None"} to {currentEnemy?.GetFullName() ?? "None"}");
 
             // Убираем подсветку с предыдущего врага
             if (hoveredEnemy != null)
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Removing highlight from {hoveredEnemy.GetFullName()}");
+
                 RemoveEnemyHighlight(hoveredEnemy);
             }
 
             // Добавляем подсветку новому врагу
             if (currentEnemy != null)
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Adding highlight to {currentEnemy.GetFullName()}");
+
                 AddEnemyHighlight(currentEnemy);
             }
 
@@ -214,14 +218,14 @@ public class EnemyTargetingSystem : MonoBehaviour
     {
         if (playerCamera == null)
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Targeting, "Player camera is NULL!");
+
             return null;
         }
 
         Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity);
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Mouse raycast found {hits.Length} hits at position {Input.mousePosition}");
+
 
         // Сортируем хиты по расстоянию (ближайшие первые)
         System.Array.Sort(hits, (hit1, hit2) => hit1.distance.CompareTo(hit2.distance));
@@ -233,11 +237,11 @@ public class EnemyTargetingSystem : MonoBehaviour
                 hit.collider.name.Contains("Grid") ||
                 hit.collider.name.Contains("Terrain"))
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Skipping system object: {hit.collider.name}");
+
                 continue;
             }
 
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Checking hit object: {hit.collider.name} at distance: {hit.distance:F2}");
+
 
             // Сначала проверяем непосредственно в коллайдере
             Character character = hit.collider.GetComponent<Character>();
@@ -248,12 +252,12 @@ public class EnemyTargetingSystem : MonoBehaviour
                 character = hit.collider.GetComponentInParent<Character>();
                 if (character != null)
                 {
-                    DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Found Character in parent: {character.name}");
+
                 }
             }
             else
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Found Character directly: {character.name}");
+
             }
 
             // Если все еще не нашли, ищем в дочерних объектах
@@ -267,34 +271,32 @@ public class EnemyTargetingSystem : MonoBehaviour
                 }
                 if (character != null)
                 {
-                    DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Found Character in hierarchy: {character.name}");
+
                 }
             }
 
             if (character != null)
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting,
-                    $"Character {character.GetFullName()} - Faction: {character.GetFaction()}, IsEnemy: {character.IsEnemyCharacter()}");
 
                 if (character.IsEnemyCharacter())
                 {
-                    DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"✓ Enemy found under mouse: {character.GetFullName()}");
+
                     return character;
                 }
                 else
                 {
-                    DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"✗ Character {character.GetFullName()} is not an enemy (faction: {character.GetFaction()})");
+
                 }
             }
             else
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"No Character component found on {hit.collider.name}");
+
             }
         }
 
         // Дополнительно попробуем проверить все Character'ы в сцене и их расстояние до луча
         Character[] allCharacters = FindObjectsOfType<Character>();
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Fallback: Checking {allCharacters.Length} characters in scene for proximity to mouse ray");
+
 
         float minDistance = float.MaxValue;
         Character closestEnemy = null;
@@ -314,11 +316,11 @@ public class EnemyTargetingSystem : MonoBehaviour
 
         if (closestEnemy != null)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Fallback found enemy: {closestEnemy.GetFullName()} at distance {minDistance:F2}");
+
             return closestEnemy;
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, "No enemy found under mouse");
+
         return null;
     }
 
@@ -350,26 +352,26 @@ public class EnemyTargetingSystem : MonoBehaviour
     /// </summary>
     void AssignTargetToAllies(List<Character> allies, Character target)
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"=== ASSIGNING TARGET ===");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Target: {target.GetFullName()} (Faction: {target.GetFaction()})");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Allies: {allies.Count}");
+
+
+
 
         if (allies.Count == 0)
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Targeting, "No allies to assign target to!");
+
             return;
         }
 
         foreach (Character ally in allies)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Processing ally: {ally.GetFullName()}");
+
 
             // Останавливаем предыдущее следование
             StopFollowing(ally);
 
             // Назначаем новую цель
             activeTargets[ally] = target;
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"✓ {ally.GetFullName()} assigned to target {target.GetFullName()}");
+
 
             // Создаем индикатор цели
             CreateTargetIndicator(target);
@@ -377,11 +379,11 @@ public class EnemyTargetingSystem : MonoBehaviour
             // Начинаем следование
             StartFollowing(ally, target);
 
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"✓ {ally.GetFullName()} started following {target.GetFullName()}");
+
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"=== TARGET ASSIGNMENT COMPLETE ===");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Active targets count: {activeTargets.Count}");
+
+
     }
 
     /// <summary>
@@ -389,38 +391,38 @@ public class EnemyTargetingSystem : MonoBehaviour
     /// </summary>
     void StartFollowing(Character follower, Character target)
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"StartFollowing: {follower.GetFullName()} -> {target.GetFullName()}");
+
 
         // Находим ближайшую позицию рядом с целью
         Vector3 followPosition = GetFollowPosition(target);
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Follow position calculated: {followPosition}");
+
 
         // Отправляем союзника к цели
         CharacterMovement movement = follower.GetComponent<CharacterMovement>();
         if (movement != null)
         {
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"CharacterMovement found, sending {follower.GetFullName()} to {followPosition}");
+
             movement.MoveTo(followPosition);
 
             // Уведомляем AI о движении, инициированном игроком
             CharacterAI ai = follower.GetComponent<CharacterAI>();
             if (ai != null)
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Notifying AI for {follower.GetFullName()} about player-initiated movement");
+
                 ai.OnPlayerInitiatedMovement();
             }
             else
             {
-                DebugLogger.LogWarning(DebugLogger.LogCategory.Targeting, $"No CharacterAI found on {follower.GetFullName()}");
+
             }
         }
         else
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Targeting, $"No CharacterMovement found on {follower.GetFullName()}! Cannot start following.");
+
 
             // Добавляем компонент движения если его нет
             movement = follower.gameObject.AddComponent<CharacterMovement>();
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Added CharacterMovement to {follower.GetFullName()}, trying again...");
+
             movement.MoveTo(followPosition);
         }
     }
@@ -443,7 +445,7 @@ public class EnemyTargetingSystem : MonoBehaviour
 
             if (debugMode)
             {
-                Debug.Log($"[TARGETING] {follower.GetFullName()} stopped following {oldTarget.GetFullName()}");
+
             }
         }
     }
@@ -502,7 +504,7 @@ public class EnemyTargetingSystem : MonoBehaviour
             return;
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"UpdateFollowing: Processing {activeTargets.Count} active targets");
+
 
         List<Character> followersToRemove = new List<Character>();
 
@@ -514,14 +516,14 @@ public class EnemyTargetingSystem : MonoBehaviour
             // Проверяем, что оба персонажа еще существуют
             if (follower == null || target == null)
             {
-                DebugLogger.LogWarning(DebugLogger.LogCategory.Targeting, $"Removing invalid target: follower={follower?.name}, target={target?.name}");
+
                 followersToRemove.Add(follower);
                 continue;
             }
 
             // Проверяем, не слишком ли далеко союзник от цели
             float distance = Vector3.Distance(follower.transform.position, target.transform.position);
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"{follower.GetFullName()} -> {target.GetFullName()}: distance = {distance:F2}");
+
 
             if (distance > followDistance * 2f) // Если слишком далеко, обновляем позицию
             {
@@ -529,19 +531,19 @@ public class EnemyTargetingSystem : MonoBehaviour
                 if (movement != null)
                 {
                     bool isMoving = movement.IsMoving();
-                    DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"{follower.GetFullName()} is {(isMoving ? "moving" : "stationary")}");
+
 
                     if (!isMoving)
                     {
                         // Союзник не движется и далеко от цели - отправляем его ближе
                         Vector3 newFollowPosition = GetFollowPosition(target);
-                        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Updating follow position for {follower.GetFullName()}: {newFollowPosition}");
+
                         movement.MoveTo(newFollowPosition);
                     }
                 }
                 else
                 {
-                    DebugLogger.LogError(DebugLogger.LogCategory.Targeting, $"No CharacterMovement on {follower.GetFullName()}! Adding component...");
+
                     movement = follower.gameObject.AddComponent<CharacterMovement>();
                     Vector3 newFollowPosition = GetFollowPosition(target);
                     movement.MoveTo(newFollowPosition);
@@ -549,7 +551,7 @@ public class EnemyTargetingSystem : MonoBehaviour
             }
             else if (distance <= followDistance)
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"✓ {follower.GetFullName()} is close enough to {target.GetFullName()}");
+
             }
         }
 
@@ -581,18 +583,18 @@ public class EnemyTargetingSystem : MonoBehaviour
     {
         if (enemy == null) return;
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Adding highlight to {enemy.GetFullName()}");
+
 
         // Получаем все MeshRenderer'ы в объекте и его детях (как в SelectionManager)
         MeshRenderer[] renderers = enemy.GetComponentsInChildren<MeshRenderer>();
 
         if (renderers.Length == 0)
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Targeting, $"No MeshRenderer found for enemy {enemy.GetFullName()}! Cannot highlight.");
+
             return;
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Found {renderers.Length} MeshRenderers for {enemy.GetFullName()}");
+
 
         foreach (MeshRenderer renderer in renderers)
         {
@@ -602,7 +604,7 @@ public class EnemyTargetingSystem : MonoBehaviour
             if (!originalEnemyMaterials.ContainsKey(renderer))
             {
                 originalEnemyMaterials[renderer] = renderer.material;
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Stored original material for {renderer.name}: {renderer.material.name}");
+
             }
 
             // Создаем материал подсветки
@@ -611,15 +613,15 @@ public class EnemyTargetingSystem : MonoBehaviour
                 Material highlightMat = new Material(originalEnemyMaterials[renderer]);
                 highlightMat.color = enemyHighlightColor;
                 highlightMaterials[renderer] = highlightMat;
-                DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Created highlight material for {renderer.name} with color: {enemyHighlightColor}");
+
             }
 
             renderer.material = highlightMaterials[renderer];
             currentHighlightedRenderers.Add(renderer);
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Applied highlight material to {renderer.name}");
+
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"✓ Highlight applied to {enemy.GetFullName()} with {currentHighlightedRenderers.Count} renderers");
+
     }
 
     /// <summary>
@@ -629,7 +631,7 @@ public class EnemyTargetingSystem : MonoBehaviour
     {
         if (enemy == null) return;
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Removing highlight from {enemy.GetFullName()}");
+
 
         // Восстанавливаем материалы всех подсвеченных рендереров
         int restoredCount = 0;
@@ -648,7 +650,7 @@ public class EnemyTargetingSystem : MonoBehaviour
                 if (originalEnemyMaterials.ContainsKey(renderer))
                 {
                     renderer.material = originalEnemyMaterials[renderer];
-                    DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Restored original material for {renderer.name}");
+
                     restoredCount++;
                 }
 
@@ -656,7 +658,7 @@ public class EnemyTargetingSystem : MonoBehaviour
             }
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"✓ Removed highlight from {enemy.GetFullName()}, restored {restoredCount} renderers");
+
     }
 
     /// <summary>
@@ -769,21 +771,21 @@ public class EnemyTargetingSystem : MonoBehaviour
     /// </summary>
     public void LogActiveTargets()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"=== ACTIVE TARGETS DEBUG ===");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Active targets count: {activeTargets.Count}");
+
+
 
         foreach (var kvp in activeTargets)
         {
             Character follower = kvp.Key;
             Character target = kvp.Value;
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"  {follower.GetFullName()} -> {target.GetFullName()}");
+
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Target indicators count: {targetIndicators.Count}");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Original materials count: {originalEnemyMaterials.Count}");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Highlight materials count: {highlightMaterials.Count}");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Currently hovered enemy: {hoveredEnemy?.GetFullName() ?? "None"}");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Targeting mode active: {isTargetingMode}");
+
+
+
+
+
     }
 
     /// <summary>
@@ -791,17 +793,17 @@ public class EnemyTargetingSystem : MonoBehaviour
     /// </summary>
     public void TestTargetingSystem()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, "=== TESTING TARGETING SYSTEM ===");
+
 
         // Проверяем компоненты
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"SelectionManager: {selectionManager != null}");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"MovementController: {movementController != null}");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"GridManager: {gridManager != null}");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Camera: {playerCamera != null}");
+
+
+
+
 
         // Проверяем персонажей в сцене
         Character[] allCharacters = FindObjectsOfType<Character>();
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Total characters: {allCharacters.Length}");
+
 
         int playerCount = 0, enemyCount = 0;
         foreach (var character in allCharacters)
@@ -812,17 +814,17 @@ public class EnemyTargetingSystem : MonoBehaviour
             // Проверяем компоненты каждого персонажа
             bool hasRenderer = character.characterRenderer != null || character.GetComponent<Renderer>() != null;
             bool hasCollider = character.GetComponent<Collider>() != null;
-            DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"  {character.GetFullName()} - Renderer: {hasRenderer}, Collider: {hasCollider}");
+
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Player characters: {playerCount}");
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Enemy characters: {enemyCount}");
+
+
 
         // Проверяем выделение
         var selectedAllies = GetSelectedAllies();
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, $"Currently selected allies: {selectedAllies.Count}");
 
-        DebugLogger.Log(DebugLogger.LogCategory.Targeting, "=== TARGETING SYSTEM TEST COMPLETE ===");
+
+
     }
 
     void OnDestroy()

@@ -7,7 +7,7 @@ public class SimpleDebugDisplay : MonoBehaviour
 {
     [Header("Settings")]
     public KeyCode toggleKey = KeyCode.F1;
-    public bool showOnStart = true;
+    public bool showOnStart = false; // Отключено по умолчанию
     public int fontSize = 12;
 
     private bool isVisible = true;
@@ -18,7 +18,7 @@ public class SimpleDebugDisplay : MonoBehaviour
 
     void Start()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.UI, "SimpleDebugDisplay Starting...");
+
 
         isVisible = showOnStart;
 
@@ -30,7 +30,7 @@ public class SimpleDebugDisplay : MonoBehaviour
 
         UpdateDebugInfo();
 
-        DebugLogger.Log(DebugLogger.LogCategory.UI, $"SimpleDebugDisplay initialized. Visible: {isVisible}");
+
     }
 
     void Update()
@@ -39,7 +39,7 @@ public class SimpleDebugDisplay : MonoBehaviour
         if (Input.GetKeyDown(toggleKey))
         {
             isVisible = !isVisible;
-            DebugLogger.Log(DebugLogger.LogCategory.UI, $"SimpleDebugDisplay toggled: {isVisible}");
+
         }
 
         // Обновление информации

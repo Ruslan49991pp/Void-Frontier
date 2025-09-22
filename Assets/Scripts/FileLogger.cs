@@ -86,9 +86,9 @@ public class FileLogger : MonoBehaviour
                 File.Delete(logFilePath);
             }
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            Debug.LogError($"FileLogger: Не удалось очистить старые логи: {e.Message}");
+            // Silently ignore file deletion errors
         }
     }
 
@@ -126,10 +126,9 @@ public class FileLogger : MonoBehaviour
             // Записываем в файл (append mode)
             File.AppendAllText(logFilePath, finalMessage);
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            // Используем Debug.LogError только для критических ошибок логгера
-            Debug.LogError($"FileLogger: Ошибка записи в файл: {e.Message}");
+            // Silently ignore file writing errors
         }
     }
 

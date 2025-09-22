@@ -24,7 +24,7 @@ public class SimpleCharacterIconsUI : MonoBehaviour
 
     void Start()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Icons, "SimpleCharacterIconsUI Starting...");
+
 
         try
         {
@@ -33,29 +33,29 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             if (selectionManager != null)
             {
                 selectionManager.OnSelectionChanged += OnSelectionChanged;
-                DebugLogger.Log(DebugLogger.LogCategory.Icons, "Connected to SelectionManager successfully");
+
             }
             else
             {
-                DebugLogger.LogError(DebugLogger.LogCategory.Icons, "SelectionManager not found! Icons won't update on selection changes.");
+
             }
 
             CreateUI();
-            DebugLogger.Log(DebugLogger.LogCategory.Icons, "UI creation completed");
+
 
             // Отложенный поиск персонажей - даем время системе загрузиться
-            DebugLogger.Log(DebugLogger.LogCategory.Icons, "Scheduling character search in 1 and 3 seconds");
+
             Invoke("FindAndCreateIcons", 1f);
             Invoke("FindAndCreateIcons", 3f);
 
             // Обновляем цвета иконок через 4 секунды после создания
             Invoke("RefreshIconColors", 4f);
 
-            DebugLogger.Log(DebugLogger.LogCategory.Icons, "SimpleCharacterIconsUI Start() completed successfully");
+
         }
-        catch (System.Exception e)
+        catch (System.Exception)
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Icons, $"Error in Start(): {e.Message}\nStack trace: {e.StackTrace}");
+
         }
     }
 
@@ -73,27 +73,27 @@ public class SimpleCharacterIconsUI : MonoBehaviour
 
     void CreateUI()
     {
-        Debug.Log("SimpleCharacterIconsUI: Creating UI");
+
 
         try
         {
             // Создаем Canvas
-            Debug.Log("SimpleCharacterIconsUI: Creating Canvas");
+
             GameObject canvasGO = new GameObject("SimpleCharacterIconsCanvas");
             canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 100; // Снижаем приоритет
-            Debug.Log($"SimpleCharacterIconsUI: Canvas created with sorting order {canvas.sortingOrder}");
+
 
             CanvasScaler scaler = canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
 
             canvasGO.AddComponent<GraphicRaycaster>();
-            Debug.Log("SimpleCharacterIconsUI: Canvas components added");
+
 
             // Создаем контейнер для иконок
-            Debug.Log("SimpleCharacterIconsUI: Creating icons container");
+
             iconsContainer = new GameObject("IconsContainer");
             iconsContainer.transform.SetParent(canvas.transform, false);
 
@@ -103,36 +103,36 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             containerRect.pivot = new Vector2(0.5f, 1);
             containerRect.anchoredPosition = new Vector2(0, -10);
             containerRect.sizeDelta = new Vector2(0, 60); // Горизонтальная панель вверху
-            Debug.Log($"SimpleCharacterIconsUI: Container positioned at {containerRect.anchoredPosition} with size {containerRect.sizeDelta}");
+
 
             // Добавляем прозрачный фон для контейнера (убираем красный)
             Image containerBg = iconsContainer.AddComponent<Image>();
             containerBg.color = new Color(0, 0, 0, 0.3f); // Полупрозрачный темный фон
-            Debug.Log("SimpleCharacterIconsUI: Container background added");
+
 
             // VerticalLayoutGroup мешает - отключаем и делаем ручное позиционирование
             // VerticalLayoutGroup layout = iconsContainer.AddComponent<VerticalLayoutGroup>();
-            Debug.Log("SimpleCharacterIconsUI: Using manual positioning instead of LayoutGroup");
+
 
             // ContentSizeFitter может мешать - пока отключаем
             // ContentSizeFitter fitter = iconsContainer.AddComponent<ContentSizeFitter>();
             // fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            Debug.Log("SimpleCharacterIconsUI: UI created successfully");
+
 
             // Добавляем тестовую метку чтобы убедиться что контейнер виден
             CreateTestLabel();
         }
-        catch (System.Exception e)
+        catch (System.Exception)
         {
-            Debug.LogError($"SimpleCharacterIconsUI: Error in CreateUI(): {e.Message}");
-            Debug.LogError($"SimpleCharacterIconsUI: Stack trace: {e.StackTrace}");
+
+
         }
     }
 
     void CreateTestLabel()
     {
-        Debug.Log("SimpleCharacterIconsUI: Creating test label");
+
 
         GameObject testLabelGO = new GameObject("TestLabel");
         testLabelGO.transform.SetParent(iconsContainer.transform, false);
@@ -147,18 +147,18 @@ public class SimpleCharacterIconsUI : MonoBehaviour
         RectTransform testRect = testLabelGO.GetComponent<RectTransform>();
         testRect.sizeDelta = new Vector2(iconWidth, 30);
 
-        Debug.Log("SimpleCharacterIconsUI: Test label created - panel should be visible now");
+
     }
 
     void FindAndCreateIcons()
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Icons, "=== SEARCHING FOR CHARACTERS ===");
+
 
         try
         {
             if (iconsContainer == null)
             {
-                DebugLogger.LogError(DebugLogger.LogCategory.Icons, "iconsContainer is NULL! Cannot create icons.");
+
                 return;
             }
 
@@ -174,11 +174,11 @@ public class SimpleCharacterIconsUI : MonoBehaviour
                 }
             }
 
-            DebugLogger.Log(DebugLogger.LogCategory.Icons, $"Found {validCharacterCount} player characters in scene (total: {characters.Length})");
+
 
             if (characters.Length == 0)
             {
-                DebugLogger.LogWarning(DebugLogger.LogCategory.Icons, "NO CHARACTERS FOUND! Maybe they haven't spawned yet?");
+
 
                 // Попробуем найти объекты с компонентом Character через другие способы
                 GameObject[] allObjects = FindObjectsOfType<GameObject>();
@@ -188,45 +188,45 @@ public class SimpleCharacterIconsUI : MonoBehaviour
                     if (obj.GetComponent<Character>() != null)
                     {
                         charCount++;
-                        DebugLogger.Log(DebugLogger.LogCategory.Icons, $"Found Character component on {obj.name}");
+
                     }
                 }
-                DebugLogger.Log(DebugLogger.LogCategory.Icons, $"Manual search found {charCount} objects with Character component");
+
             }
             else
             {
-                Debug.Log("SimpleCharacterIconsUI: Processing found characters:");
+
                 for (int i = 0; i < characters.Length; i++)
                 {
                     Character character = characters[i];
-                    Debug.Log($"SimpleCharacterIconsUI: [{i}] {character.name} - Active: {character.gameObject.activeInHierarchy}");
+
 
                     // Фильтруем персонажей: исключаем шаблоны и NPC
                     if (ShouldShowCharacterIcon(character))
                     {
                         if (!characterIcons.ContainsKey(character))
                         {
-                            Debug.Log($"SimpleCharacterIconsUI: Creating new icon for {character.name}");
+
                             CreateCharacterIcon(character);
                         }
                         else
                         {
-                            Debug.Log($"SimpleCharacterIconsUI: Icon already exists for {character.name}");
+
                         }
                     }
                     else
                     {
-                        Debug.Log($"SimpleCharacterIconsUI: Skipping {character.name} - not a player character");
+
                     }
                 }
             }
 
-            Debug.Log($"SimpleCharacterIconsUI: Total icons created so far: {characterIcons.Count}");
+
         }
-        catch (System.Exception e)
+        catch (System.Exception)
         {
-            Debug.LogError($"SimpleCharacterIconsUI: Error in FindAndCreateIcons(): {e.Message}");
-            Debug.LogError($"SimpleCharacterIconsUI: Stack trace: {e.StackTrace}");
+
+
         }
     }
 
@@ -237,7 +237,7 @@ public class SimpleCharacterIconsUI : MonoBehaviour
         {
             if (!characterIcons.ContainsKey(character) && character != null && ShouldShowCharacterIcon(character))
             {
-                Debug.Log($"SimpleCharacterIconsUI: Found new character {character.name}");
+
                 CreateCharacterIcon(character);
             }
         }
@@ -264,32 +264,32 @@ public class SimpleCharacterIconsUI : MonoBehaviour
 
     void CreateCharacterIcon(Character character)
     {
-        Debug.Log($"=== SimpleCharacterIconsUI: CREATING ICON FOR {character?.name} ===");
+
 
         try
         {
             if (character == null)
             {
-                Debug.LogError("SimpleCharacterIconsUI: Character is NULL!");
+
                 return;
             }
 
             if (iconsContainer == null)
             {
-                Debug.LogError("SimpleCharacterIconsUI: iconsContainer is NULL!");
+
                 return;
             }
 
-            Debug.Log($"SimpleCharacterIconsUI: Character data check - Name: {character.name}, CharacterData: {(character.characterData != null ? "OK" : "NULL")}");
+
 
             if (character.characterData == null)
             {
-                Debug.LogWarning($"SimpleCharacterIconsUI: Character {character.name} has no characterData - generating...");
+
                 character.GenerateRandomCharacter();
             }
 
             // Основной объект иконки
-            Debug.Log("SimpleCharacterIconsUI: Creating icon GameObject");
+
             GameObject iconGO = new GameObject($"CharacterIcon_{character.name}");
             iconGO.transform.SetParent(iconsContainer.transform, false);
 
@@ -311,12 +311,12 @@ public class SimpleCharacterIconsUI : MonoBehaviour
 
             iconRect.anchoredPosition = new Vector2(10 + (existingIconsCount * (iconWidth + spacing)), -5); // Размещаем горизонтально
 
-            Debug.Log($"SimpleCharacterIconsUI: Icon size: {iconRect.sizeDelta}, position: {iconRect.anchoredPosition}");
+
 
             // Фон иконки
             Image iconBg = iconGO.AddComponent<Image>();
             iconBg.color = normalBackgroundColor;
-            Debug.Log("SimpleCharacterIconsUI: Icon background added");
+
 
             // Создаем рамку для выделения (изначально невидимая)
             GameObject borderGO = new GameObject("SelectionBorder");
@@ -333,7 +333,7 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             borderRect.SetAsFirstSibling(); // Рамка сзади
 
             borderGO.SetActive(false); // Изначально скрыта
-            Debug.Log("SimpleCharacterIconsUI: Selection border added");
+
 
             // Кнопка для выделения (основной клик) - НЕ перехватывает все события
             Button iconButton = iconGO.AddComponent<Button>();
@@ -350,7 +350,7 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             iconComponent.Initialize(character, iconWidth, iconHeight);
 
             // Создаем содержимое иконки СНАЧАЛА
-            Debug.Log("SimpleCharacterIconsUI: Creating icon content");
+
             CreateIconContent(iconGO, character);
 
             // Добавляем кнопку для раскрытия ПОСЛЕ содержимого, чтобы она была поверх
@@ -412,7 +412,7 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             iconComponent.SetExpandButtonText(expandText);
 
             expandButton.onClick.AddListener(() => {
-                Debug.Log($"SimpleCharacterIconsUI: Expand button clicked for {character.name}!");
+
                 iconComponent.ToggleExpanded();
             });
 
@@ -428,12 +428,12 @@ public class SimpleCharacterIconsUI : MonoBehaviour
 
             characterIcons[character] = iconGO;
 
-            Debug.Log($"SimpleCharacterIconsUI: ✅ Icon created successfully for {character.name}! Total icons: {characterIcons.Count}");
+
         }
-        catch (System.Exception e)
+        catch (System.Exception)
         {
-            Debug.LogError($"SimpleCharacterIconsUI: ERROR creating icon: {e.Message}");
-            Debug.LogError($"SimpleCharacterIconsUI: Stack trace: {e.StackTrace}");
+
+
 
             // ВАЖНО: Даже при ошибке добавляем персонажа в словарь, чтобы избежать бесконечных попыток
             characterIcons[character] = null;
@@ -546,7 +546,7 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             return; // Выделение не изменилось, пропускаем обновление
         }
 
-        Debug.Log($"SimpleCharacterIconsUI: Selection changed, {selectedObjects.Count} objects selected");
+
 
         // Сохраняем текущее выделение
         lastSelectedObjects = new List<GameObject>(selectedObjects);
@@ -616,7 +616,7 @@ public class SimpleCharacterIconsUI : MonoBehaviour
             borderTransform.gameObject.SetActive(isSelected);
         }
 
-        Debug.Log($"SimpleCharacterIconsUI: Updated icon visual for {iconGO.name}, selected: {isSelected}");
+
     }
 
     private float lastClickTime = 0f;
@@ -632,18 +632,18 @@ public class SimpleCharacterIconsUI : MonoBehaviour
         float currentTime = Time.time;
         bool isDoubleClick = (currentTime - lastClickTime < 0.5f && lastClickedCharacter == character);
 
-        Debug.Log($"SimpleCharacterIconsUI: Icon clicked for {character.name}, doubleClick: {isDoubleClick}");
+
 
         if (isDoubleClick)
         {
             // Двойной клик - фокусируем камеру на персонаже
-            Debug.Log($"SimpleCharacterIconsUI: Double click detected - focusing camera");
+
             FocusCameraOnCharacter(character);
         }
         else
         {
             // Одинарный клик - выделение с задержкой чтобы избежать конфликтов
-            Debug.Log($"SimpleCharacterIconsUI: Single click detected - handling selection");
+
             StartCoroutine(HandleSingleClickDelayed(character));
         }
 
@@ -667,18 +667,18 @@ public class SimpleCharacterIconsUI : MonoBehaviour
     {
         // Проверяем, выделен ли уже этот персонаж
         bool isCurrentlySelected = selectionManager.IsSelected(character.gameObject);
-        Debug.Log($"SimpleCharacterIconsUI: Character {character.name} currently selected: {isCurrentlySelected}");
+
 
         if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
         {
             // Ctrl + клик - переключаем выделение
-            Debug.Log($"SimpleCharacterIconsUI: Ctrl+Click - toggling selection for {character.name}");
+
             selectionManager.ToggleSelection(character.gameObject);
         }
         else
         {
             // Обычный клик - очищаем все выделение и выделяем только этого персонажа
-            Debug.Log($"SimpleCharacterIconsUI: Normal click - selecting only {character.name}");
+
             selectionManager.ClearSelection();
             selectionManager.AddToSelection(character.gameObject);
         }
@@ -689,21 +689,21 @@ public class SimpleCharacterIconsUI : MonoBehaviour
     /// </summary>
     void FocusCameraOnCharacter(Character character)
     {
-        Debug.Log($"SimpleCharacterIconsUI: Focusing camera on {character.name}");
+
 
         // Ищем CameraController первым - он лучше управляет камерой
         CameraController cameraController = FindObjectOfType<CameraController>();
         if (cameraController != null)
         {
-            Debug.Log("SimpleCharacterIconsUI: Found CameraController, using it to focus");
+
 
             // Устанавливаем персонажа как цель для фокуса
             cameraController.SetFocusTarget(character.transform);
-            Debug.Log($"SimpleCharacterIconsUI: Set focus target to {character.name}");
+
 
             // Центрируем камеру на персонаже плавно
             cameraController.CenterOnTarget();
-            Debug.Log($"SimpleCharacterIconsUI: Camera focused on {character.name} using CameraController");
+
             return;
         }
 
@@ -711,13 +711,13 @@ public class SimpleCharacterIconsUI : MonoBehaviour
         Camera mainCamera = Camera.main;
         if (mainCamera != null)
         {
-            Debug.Log("SimpleCharacterIconsUI: Using main camera directly");
+
             // Плавно перемещаем камеру к персонажу без изменения поворота
             Vector3 characterPos = character.transform.position;
             Vector3 currentCameraPos = mainCamera.transform.position;
             Vector3 newCameraPos = new Vector3(characterPos.x, currentCameraPos.y, characterPos.z - 8);
             mainCamera.transform.position = newCameraPos;
-            Debug.Log($"SimpleCharacterIconsUI: Camera moved to {newCameraPos} (keeping current rotation)");
+
         }
     }
 
@@ -839,7 +839,7 @@ public class SimpleCharacterIcon : MonoBehaviour
 
     public void ToggleExpanded()
     {
-        Debug.Log($"=== SimpleCharacterIcon: TOGGLE CLICKED for {character?.name} ===");
+
 
         isExpanded = !isExpanded;
 
@@ -849,7 +849,7 @@ public class SimpleCharacterIcon : MonoBehaviour
         if (isExpanded)
         {
             // Раскрываем
-            Debug.Log($"SimpleCharacterIcon: Expanding {character.name}");
+
             rect.sizeDelta = new Vector2(rect.sizeDelta.x, expandedHeight);
             bg.color = new Color(0.2f, 0.2f, 0.8f, 0.95f); // Темно-синий когда раскрыт
             CreateExpandedContent();
@@ -863,12 +863,12 @@ public class SimpleCharacterIcon : MonoBehaviour
             // Переместим иконку на передний план чтобы она была поверх других
             transform.SetAsLastSibling();
 
-            Debug.Log($"SimpleCharacterIcon: {character.name} expanded to size {rect.sizeDelta}");
+
         }
         else
         {
             // Сворачиваем
-            Debug.Log($"SimpleCharacterIcon: Collapsing {character.name}");
+
             rect.sizeDelta = new Vector2(rect.sizeDelta.x, normalHeight);
             bg.color = new Color(0, 1, 0, 1f); // Зеленый когда свернут
             DestroyExpandedContent();
@@ -879,7 +879,7 @@ public class SimpleCharacterIcon : MonoBehaviour
                 expandButtonText.text = "i";
             }
 
-            Debug.Log($"SimpleCharacterIcon: {character.name} collapsed to size {rect.sizeDelta}");
+
         }
     }
 

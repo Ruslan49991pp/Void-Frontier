@@ -42,20 +42,20 @@ public class ResolutionTester : MonoBehaviour
     void SetResolution(int width, int height)
     {
         Screen.SetResolution(width, height, Screen.fullScreen);
-        Debug.Log($"Resolution changed to {width}x{height}");
+
         FileLogger.Log($"Resolution changed to {width}x{height}");
     }
 
     void ToggleFullscreen()
     {
         Screen.fullScreen = !Screen.fullScreen;
-        Debug.Log($"Fullscreen toggled to: {Screen.fullScreen}");
+
         FileLogger.Log($"Fullscreen toggled to: {Screen.fullScreen}");
     }
 
     void LogCurrentResolution()
     {
-        Debug.Log($"Current resolution: {Screen.width}x{Screen.height}, Fullscreen: {Screen.fullScreen}");
+
         FileLogger.Log($"Current resolution: {Screen.width}x{Screen.height}, Fullscreen: {Screen.fullScreen}");
     }
 

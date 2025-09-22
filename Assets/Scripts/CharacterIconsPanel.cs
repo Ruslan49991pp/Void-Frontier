@@ -29,10 +29,10 @@ public class CharacterIconsPanel : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("CharacterIconsPanel: Starting initialization");
+
         InitializePanel();
         FindAndTrackCharacters();
-        Debug.Log("CharacterIconsPanel: Initialization complete");
+
     }
 
     void Update()
@@ -46,12 +46,12 @@ public class CharacterIconsPanel : MonoBehaviour
     /// </summary>
     void InitializePanel()
     {
-        Debug.Log("CharacterIconsPanel: Initializing panel");
+
 
         // Создаем главный Canvas если его нет
         if (mainCanvas == null)
         {
-            Debug.Log("CharacterIconsPanel: Creating new canvas");
+
             GameObject canvasGO = new GameObject("CharacterIconsCanvas");
             mainCanvas = canvasGO.AddComponent<Canvas>();
             mainCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -59,7 +59,7 @@ public class CharacterIconsPanel : MonoBehaviour
 
             canvasGO.AddComponent<CanvasScaler>();
             canvasGO.AddComponent<GraphicRaycaster>();
-            Debug.Log("CharacterIconsPanel: Canvas created");
+
         }
 
         // Создаем панель для иконок
@@ -93,11 +93,11 @@ public class CharacterIconsPanel : MonoBehaviour
     void FindAndTrackCharacters()
     {
         Character[] allCharacters = FindObjectsOfType<Character>();
-        Debug.Log($"CharacterIconsPanel: Found {allCharacters.Length} characters in scene");
+
 
         foreach (Character character in allCharacters)
         {
-            Debug.Log($"CharacterIconsPanel: Adding character {character.name}");
+
             AddCharacter(character);
         }
     }
@@ -145,7 +145,7 @@ public class CharacterIconsPanel : MonoBehaviour
 
         characterIcons[character] = icon;
 
-        Debug.Log($"Added character icon for: {character.name}");
+
     }
 
     /// <summary>

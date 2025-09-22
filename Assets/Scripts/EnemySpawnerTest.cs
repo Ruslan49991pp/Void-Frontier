@@ -11,7 +11,7 @@ public class EnemySpawnerTest : MonoBehaviour
     public Vector3 spawnCenter = new Vector3(5, 0, 5);
 
     [Header("Enemy Prefab Settings")]
-    public Material enemyMaterial;
+    public Material enemyMaterial; // Если не установлен, будет загружен M_Enemy из Resources
     public Color enemyColor = Color.red;
 
     private GridManager gridManager;
@@ -29,7 +29,7 @@ public class EnemySpawnerTest : MonoBehaviour
     /// </summary>
     public void SpawnEnemies()
     {
-        Debug.Log($"[ENEMY SPAWNER] Creating {enemyCount} test enemies");
+
 
         for (int i = 0; i < enemyCount; i++)
         {
@@ -39,7 +39,7 @@ public class EnemySpawnerTest : MonoBehaviour
             Vector3 spawnPosition = GetRandomSpawnPosition();
             enemy.transform.position = spawnPosition;
 
-            Debug.Log($"[ENEMY SPAWNER] Created enemy: {enemy.name} at position {spawnPosition}");
+
         }
     }
 
@@ -48,7 +48,7 @@ public class EnemySpawnerTest : MonoBehaviour
     /// </summary>
     GameObject CreateEnemyCharacter(string enemyName)
     {
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Creating enemy character: {enemyName}");
+
 
         GameObject enemy;
 
@@ -56,7 +56,6 @@ public class EnemySpawnerTest : MonoBehaviour
         GameObject characterPrefab = Resources.Load<GameObject>("Prefabs/SKM_Character");
         if (characterPrefab == null)
         {
-            DebugLogger.LogError(DebugLogger.LogCategory.Spawning, "SKM_Character prefab not found in Resources/Prefabs! Creating fallback capsule.");
 
             // Fallback к капсуле если префаб не найден
             enemy = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -68,7 +67,7 @@ public class EnemySpawnerTest : MonoBehaviour
             // Создаем врага из префаба SKM_Character
             enemy = Instantiate(characterPrefab);
             enemy.name = enemyName;
-            DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Instantiated SKM_Character prefab for {enemyName}");
+
         }
 
         SetupEnemyCharacter(enemy, enemyName);
@@ -85,7 +84,7 @@ public class EnemySpawnerTest : MonoBehaviour
         if (character == null)
         {
             character = enemy.AddComponent<Character>();
-            DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Added Character component to {enemyName}");
+
         }
 
         // Настраиваем как врага
@@ -113,19 +112,18 @@ public class EnemySpawnerTest : MonoBehaviour
         MeshRenderer[] allRenderers = enemy.GetComponentsInChildren<MeshRenderer>();
         Renderer primaryRenderer = null;
 
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Found {allRenderers.Length} MeshRenderers for {enemyName}");
+
 
         if (allRenderers.Length > 0)
         {
-            // Создаем единый материал для всех рендереров
+            // Приоритет: 1) enemyMaterial из Inspector'а, 2) GhostRed из Resources, 3) создание на лету
             Material enemyMat = enemyMaterial != null ? enemyMaterial : CreateEnemyMaterial();
 
             foreach (MeshRenderer renderer in allRenderers)
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Setting material for renderer: {renderer.name}, current material: {renderer.material?.name ?? "NULL"}");
+
 
                 renderer.material = enemyMat;
-                DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"✓ Applied material to {renderer.name}: {renderer.material.name}");
 
                 if (primaryRenderer == null)
                 {
@@ -135,13 +133,13 @@ public class EnemySpawnerTest : MonoBehaviour
 
             // Устанавливаем основной рендерер для Character
             character.characterRenderer = primaryRenderer;
-            DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Set primary renderer for {enemyName}: {primaryRenderer.name}");
+
         }
         else
         {
             // Попробуем найти любые другие рендереры
             Renderer[] anyRenderers = enemy.GetComponentsInChildren<Renderer>();
-            DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"No MeshRenderers found, checking all Renderers: {anyRenderers.Length}");
+
 
             if (anyRenderers.Length > 0)
             {
@@ -149,7 +147,7 @@ public class EnemySpawnerTest : MonoBehaviour
 
                 foreach (Renderer renderer in anyRenderers)
                 {
-                    DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Setting material for Renderer: {renderer.name}, type: {renderer.GetType().Name}");
+
                     renderer.material = enemyMat;
 
                     if (primaryRenderer == null)
@@ -162,7 +160,7 @@ public class EnemySpawnerTest : MonoBehaviour
             }
             else
             {
-                DebugLogger.LogError(DebugLogger.LogCategory.Spawning, $"No renderers found for {enemyName}! Enemy highlighting will not work.");
+
             }
         }
 
@@ -174,7 +172,7 @@ public class EnemySpawnerTest : MonoBehaviour
             if (collider == null)
             {
                 collider = enemy.AddComponent<CapsuleCollider>();
-                DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Added CapsuleCollider to {enemyName}");
+
             }
         }
 
@@ -199,7 +197,7 @@ public class EnemySpawnerTest : MonoBehaviour
         // Устанавливаем правильный слой для взаимодействия с SelectionManager
         enemy.layer = LayerMask.NameToLayer("Default");
 
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"✓ Enemy {enemyName} setup complete - Faction: {character.GetFaction()}, Renderer: {primaryRenderer != null}, Collider: {collider != null}");
+
     }
 
     /// <summary>
@@ -207,6 +205,15 @@ public class EnemySpawnerTest : MonoBehaviour
     /// </summary>
     Material CreateEnemyMaterial()
     {
+        // Сначала пытаемся загрузить готовый красный материал для врагов
+        Material enemyMat = Resources.Load<Material>("Materials/M_Enemy");
+        if (enemyMat != null)
+        {
+
+            return enemyMat;
+        }
+
+
         Material mat = null;
 
         // Пробуем различные шейдеры в порядке предпочтения
@@ -226,7 +233,7 @@ public class EnemySpawnerTest : MonoBehaviour
             if (shader != null && shader.name != "Hidden/InternalErrorShader")
             {
                 mat = new Material(shader);
-                DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"Successfully created material with shader: {shaderName}");
+
                 break;
             }
         }
@@ -235,7 +242,6 @@ public class EnemySpawnerTest : MonoBehaviour
         if (mat == null)
         {
             mat = new Material(Shader.Find("Standard") ?? Shader.Find("Legacy Shaders/Diffuse"));
-            DebugLogger.LogWarning(DebugLogger.LogCategory.Spawning, "Created material with fallback shader");
         }
 
         // Настраиваем материал
@@ -252,7 +258,7 @@ public class EnemySpawnerTest : MonoBehaviour
             mat.SetColor("_BaseColor", enemyColor);
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.Spawning, $"✓ Created enemy material: {mat.name}, shader: {mat.shader?.name ?? "NULL"}, color: {mat.color}");
+
         return mat;
     }
 
@@ -296,7 +302,7 @@ public class EnemySpawnerTest : MonoBehaviour
         Vector3 spawnPosition = GetRandomSpawnPosition();
         enemy.transform.position = spawnPosition;
 
-        Debug.Log($"[ENEMY SPAWNER] Created additional enemy: {enemy.name} at position {spawnPosition}");
+
     }
 
     void OnDrawGizmosSelected()

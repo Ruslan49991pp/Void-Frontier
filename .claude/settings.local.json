@@ -24,7 +24,10 @@
       "Bash(taskkill:*)",
       "Bash(tasklist)",
       "Bash(findstr:*)",
-      "Bash(cmd /c:*)"
+      "Bash(cmd /c:*)",
+      "Bash(grep:*)",
+      "Bash(IDLE)",
+      "Bash(WANDER)"
     ],
     "deny": [],
     "ask": []

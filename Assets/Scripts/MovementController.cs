@@ -59,7 +59,7 @@ public class MovementController : MonoBehaviour
                 Character enemyUnderMouse = GetEnemyUnderMouse();
                 if (enemyUnderMouse != null)
                 {
-                    Debug.Log($"[MOVEMENT] ПКМ клик на враге {enemyUnderMouse.GetFullName()}, пропускаем обычное движение");
+
                     return; // Позволяем EnemyTargetingSystem обработать клик
                 }
                 // Получаем позицию клика на сетке
@@ -552,7 +552,7 @@ public class MovementController : MonoBehaviour
         Ray ray = camera.ScreenPointToRay(mouseScreenPos);
         RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity);
 
-        DebugLogger.Log(DebugLogger.LogCategory.Movement, $"[MOVEMENT] Checking for enemies under mouse, found {hits.Length} hits");
+
 
         // Сортируем хиты по расстоянию (ближайшие первые)
         System.Array.Sort(hits, (hit1, hit2) => hit1.distance.CompareTo(hit2.distance));
@@ -567,7 +567,7 @@ public class MovementController : MonoBehaviour
                 continue;
             }
 
-            DebugLogger.Log(DebugLogger.LogCategory.Movement, $"[MOVEMENT] Checking hit object: {hit.collider.name}");
+
 
             // Сначала проверяем непосредственно в коллайдере
             Character character = hit.collider.GetComponent<Character>();
@@ -591,12 +591,12 @@ public class MovementController : MonoBehaviour
 
             if (character != null && character.IsEnemyCharacter())
             {
-                DebugLogger.Log(DebugLogger.LogCategory.Movement, $"[MOVEMENT] Found enemy under mouse: {character.GetFullName()}");
+
                 return character;
             }
         }
 
-        DebugLogger.Log(DebugLogger.LogCategory.Movement, "[MOVEMENT] No enemy found under mouse");
+
         return null;
     }
 }
