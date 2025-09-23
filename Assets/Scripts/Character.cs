@@ -75,6 +75,7 @@ public class Character : MonoBehaviour
     private Material characterMaterial;
     private Camera mainCamera;
     private CharacterAI characterAI;
+    private Inventory characterInventory;
     
     void Awake()
     {
@@ -114,6 +115,16 @@ public class Character : MonoBehaviour
         if (characterAI == null)
         {
             characterAI = gameObject.AddComponent<CharacterAI>();
+        }
+
+        // Добавляем компонент инвентаря
+        characterInventory = GetComponent<Inventory>();
+        if (characterInventory == null)
+        {
+            characterInventory = gameObject.AddComponent<Inventory>();
+
+            // Настраиваем инвентарь в зависимости от фракции
+            SetupInventoryForFaction();
         }
     }
 
@@ -320,6 +331,8 @@ public class Character : MonoBehaviour
         
         if (characterData.health <= 0)
         {
+            // Выбрасываем добычу при смерти
+            DropLootOnDeath();
         }
     }
     
@@ -481,10 +494,226 @@ public class Character : MonoBehaviour
         }
     }
     
+    /// <summary>
+    /// Настроить инвентарь в зависимости от фракции
+    /// </summary>
+    void SetupInventoryForFaction()
+    {
+        if (characterInventory == null) return;
+
+        switch (characterData.faction)
+        {
+            case Faction.Player:
+                // Союзники имеют больший инвентарь
+                characterInventory.maxSlots = 20;
+                characterInventory.maxWeight = 100f;
+                characterInventory.autoPickupEnabled = true;
+                characterInventory.autoPickupRange = 1.5f;
+                break;
+
+            case Faction.Enemy:
+                // Враги имеют ограниченный инвентарь
+                characterInventory.maxSlots = 10;
+                characterInventory.maxWeight = 50f;
+                characterInventory.autoPickupEnabled = false;
+
+                // Генерируем случайные предметы для врагов
+                GenerateEnemyLoot();
+                break;
+
+            case Faction.Neutral:
+                // Нейтральные персонажи имеют средний инвентарь
+                characterInventory.maxSlots = 15;
+                characterInventory.maxWeight = 75f;
+                characterInventory.autoPickupEnabled = false;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Генерировать добычу для врагов
+    /// </summary>
+    void GenerateEnemyLoot()
+    {
+        if (characterInventory == null || characterData.faction != Faction.Enemy)
+            return;
+
+        // Создаем простые предметы для врагов
+        int lootCount = staticRandom.Next(1, 4); // 1-3 предмета
+
+        for (int i = 0; i < lootCount; i++)
+        {
+            ItemData lootItem = CreateRandomLoot();
+            if (lootItem != null)
+            {
+                characterInventory.AddItem(lootItem, 1);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Создать случайный предмет для добычи
+    /// </summary>
+    ItemData CreateRandomLoot()
+    {
+        ItemData item = new ItemData();
+
+        // Случайный тип предмета
+        ItemType[] availableTypes = { ItemType.Weapon, ItemType.Medical, ItemType.Resource, ItemType.Tool };
+        item.itemType = availableTypes[staticRandom.Next(0, availableTypes.Length)];
+
+        // Настраиваем предмет в зависимости от типа
+        switch (item.itemType)
+        {
+            case ItemType.Weapon:
+                item.itemName = "Basic Weapon";
+                item.description = "Simple weapon found on enemy";
+                item.damage = staticRandom.Next(5, 15);
+                item.value = staticRandom.Next(10, 50);
+                item.weight = 2f;
+                item.rarity = ItemRarity.Common;
+                break;
+
+            case ItemType.Medical:
+                item.itemName = "Medkit";
+                item.description = "Basic medical supplies";
+                item.healing = staticRandom.Next(10, 30);
+                item.value = staticRandom.Next(15, 40);
+                item.weight = 0.5f;
+                item.maxStackSize = 5;
+                item.rarity = ItemRarity.Common;
+                break;
+
+            case ItemType.Resource:
+                item.itemName = "Metal Scraps";
+                item.description = "Useful crafting material";
+                item.value = staticRandom.Next(5, 15);
+                item.weight = 0.3f;
+                item.maxStackSize = 10;
+                item.rarity = ItemRarity.Common;
+                break;
+
+            case ItemType.Tool:
+                item.itemName = "Basic Tool";
+                item.description = "Simple maintenance tool";
+                item.value = staticRandom.Next(8, 25);
+                item.weight = 1f;
+                item.rarity = ItemRarity.Common;
+                break;
+        }
+
+        return item;
+    }
+
+    /// <summary>
+    /// Получить инвентарь персонажа
+    /// </summary>
+    public Inventory GetInventory()
+    {
+        return characterInventory;
+    }
+
+    /// <summary>
+    /// Добавить предмет в инвентарь персонажа
+    /// </summary>
+    public bool AddItemToInventory(ItemData item, int quantity = 1)
+    {
+        if (characterInventory != null)
+        {
+            return characterInventory.AddItem(item, quantity);
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Удалить предмет из инвентаря персонажа
+    /// </summary>
+    public bool RemoveItemFromInventory(ItemData item, int quantity = 1)
+    {
+        if (characterInventory != null)
+        {
+            return characterInventory.RemoveItem(item, quantity);
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Проверить, есть ли предмет в инвентаре
+    /// </summary>
+    public bool HasItemInInventory(ItemData item, int quantity = 1)
+    {
+        if (characterInventory != null)
+        {
+            return characterInventory.HasItem(item, quantity);
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Выбросить предметы при смерти
+    /// </summary>
+    void DropLootOnDeath()
+    {
+        if (characterInventory == null) return;
+
+        var usedSlots = characterInventory.GetUsedSlotsList();
+        foreach (var slot in usedSlots)
+        {
+            if (!slot.IsEmpty())
+            {
+                // Создаем предмет в мире рядом с персонажем
+                Vector3 dropPosition = transform.position +
+                    new Vector3(
+                        UnityEngine.Random.Range(-1f, 1f),
+                        0.5f,
+                        UnityEngine.Random.Range(-1f, 1f)
+                    );
+
+                Item.CreateWorldItem(slot.itemData, dropPosition);
+            }
+        }
+
+        // Очищаем инвентарь
+        characterInventory.ClearInventory();
+    }
+
+    /// <summary>
+    /// Обновленный метод получения информации о персонаже (включая инвентарь)
+    /// </summary>
+    public string GetDetailedCharacterInfo()
+    {
+        string info = GetCharacterInfo();
+
+        if (characterInventory != null)
+        {
+            info += $"\n\nInventory: {characterInventory.GetUsedSlots()}/{characterInventory.maxSlots} slots";
+            info += $"\nWeight: {characterInventory.GetCurrentWeight():F1}/{characterInventory.maxWeight}";
+
+            var usedSlots = characterInventory.GetUsedSlotsList();
+            if (usedSlots.Count > 0)
+            {
+                info += "\nItems:";
+                foreach (var slot in usedSlots)
+                {
+                    info += $"\n- {slot.itemData.itemName} x{slot.quantity}";
+                }
+            }
+        }
+
+        return info;
+    }
+
     void OnDrawGizmosSelected()
     {
         // Показываем информацию о персонаже в Scene view
         Gizmos.color = isSelected ? selectedColor : defaultColor;
         Gizmos.DrawWireSphere(transform.position + Vector3.up * 2.5f, 0.5f);
+
+        // Показываем радиус автоподбора для союзников
+        if (characterInventory != null && IsPlayerCharacter() && characterInventory.autoPickupEnabled)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(transform.position, characterInventory.autoPickupRange);
+        }
     }
 }

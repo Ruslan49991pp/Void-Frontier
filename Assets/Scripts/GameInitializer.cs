@@ -9,6 +9,7 @@ public class GameInitializer : MonoBehaviour
     public bool autoInitializeResolution = true;
     public bool autoInitializeCharacterIcons = true;
     public bool autoInitializeEnemyTargeting = true;
+    public bool autoInitializeInventory = true;
 
     void Awake()
     {
@@ -60,6 +61,12 @@ public class GameInitializer : MonoBehaviour
 
             EnsureEnemyTargetingSystem();
             EnsureTargetingInstructions();
+        }
+
+        if (autoInitializeInventory)
+        {
+
+            EnsureInventoryManager();
         }
 
         // Создаем простой дебаг дисплей
@@ -237,6 +244,19 @@ public class GameInitializer : MonoBehaviour
         else
         {
 
+        }
+    }
+
+    /// <summary>
+    /// Убедиться что InventoryManager существует в сцене
+    /// </summary>
+    void EnsureInventoryManager()
+    {
+        InventoryManager inventoryManager = FindObjectOfType<InventoryManager>();
+        if (inventoryManager == null)
+        {
+            GameObject inventoryManagerGO = new GameObject("InventoryManager");
+            inventoryManager = inventoryManagerGO.AddComponent<InventoryManager>();
         }
     }
 }
