@@ -188,42 +188,12 @@ public class InventoryUI : MonoBehaviour
 
         Debug.Log($"[InventoryUI] Main panel created with rect: {inventoryPanel.rect}, anchors: {inventoryPanel.anchorMin} - {inventoryPanel.anchorMax}");
 
-        // Фон панели с изображением человека
+        // Фон панели (полупрозрачный темный)
         Image panelBg = panelGO.AddComponent<Image>();
         panelBg.color = new Color(0.1f, 0.1f, 0.15f, 0.95f);
 
-        // Загружаем изображение человека
-        Debug.Log("[InventoryUI] Trying to load I_man sprite from Resources...");
-        Sprite humanSprite = Resources.Load<Sprite>("I_man");
-
-        // Пробуем альтернативные пути
-        if (humanSprite == null)
-        {
-            Debug.Log("[InventoryUI] Trying alternative path: Resources/I_man...");
-            humanSprite = Resources.Load<Sprite>("Resources/I_man");
-        }
-
-        if (humanSprite != null)
-        {
-            Debug.Log($"[InventoryUI] Successfully loaded I_man sprite: {humanSprite.name}, size: {humanSprite.rect}");
-            panelBg.sprite = humanSprite;
-            panelBg.type = Image.Type.Simple;
-            panelBg.preserveAspect = true;
-            panelBg.color = new Color(1f, 1f, 1f, 0.6f);
-            Debug.Log("[InventoryUI] Applied I_man sprite to background");
-        }
-        else
-        {
-            Debug.LogError("[InventoryUI] Failed to load I_man sprite from Resources!");
-
-            // Проверяем что есть в ресурсах
-            Sprite[] allSprites = Resources.LoadAll<Sprite>("");
-            Debug.LogError($"[InventoryUI] Found {allSprites.Length} sprites in Resources");
-            for (int i = 0; i < allSprites.Length; i++)
-            {
-                Debug.LogError($"[InventoryUI] Sprite {i}: {allSprites[i].name}");
-            }
-        }
+        // Создаем отдельный контейнер для изображения человека (справа)
+        CreateHumanImageContainer(panelGO);
 
         // Добавляем CanvasGroup для блокировки рейкастов
         CanvasGroup canvasGroup = panelGO.AddComponent<CanvasGroup>();
@@ -233,11 +203,11 @@ public class InventoryUI : MonoBehaviour
         // Заголовок
         CreateInventoryHeader(panelGO);
 
-        // Контейнер для экипировки
-        CreateEquipmentContainer(panelGO);
-
-        // Контейнер для слотов инвентаря
+        // Контейнер для слотов инвентаря (слева)
         CreateSlotsContainer(panelGO);
+
+        // Контейнер для экипировки (справа, поверх изображения человека)
+        CreateEquipmentContainer(panelGO);
 
         // Панель информации о предмете
         CreateItemInfoPanel(panelGO);
@@ -272,7 +242,59 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Создание контейнера для экипировки
+    /// Создание контейнера с изображением человека (справа)
+    /// </summary>
+    void CreateHumanImageContainer(GameObject parent)
+    {
+        Debug.Log("[InventoryUI] Creating human image container...");
+        GameObject humanContainerGO = new GameObject("HumanImageContainer");
+        humanContainerGO.transform.SetParent(parent.transform, false);
+
+        RectTransform humanContainer = humanContainerGO.AddComponent<RectTransform>();
+        humanContainer.anchorMin = new Vector2(0.6f, 0.15f);  // Справа
+        humanContainer.anchorMax = new Vector2(0.95f, 0.85f);
+        humanContainer.offsetMin = Vector2.zero;
+        humanContainer.offsetMax = Vector2.zero;
+
+        Debug.Log($"[InventoryUI] Human image container rect: {humanContainer.rect}");
+
+        // Загружаем изображение человека
+        Debug.Log("[InventoryUI] Trying to load I_man sprite from Resources...");
+        Sprite humanSprite = Resources.Load<Sprite>("I_man");
+
+        // Пробуем альтернативные пути
+        if (humanSprite == null)
+        {
+            Debug.Log("[InventoryUI] Trying alternative path: Resources/I_man...");
+            humanSprite = Resources.Load<Sprite>("Resources/I_man");
+        }
+
+        if (humanSprite != null)
+        {
+            Debug.Log($"[InventoryUI] Successfully loaded I_man sprite: {humanSprite.name}, size: {humanSprite.rect}");
+            Image humanImage = humanContainerGO.AddComponent<Image>();
+            humanImage.sprite = humanSprite;
+            humanImage.type = Image.Type.Simple;
+            humanImage.preserveAspect = true;
+            humanImage.color = new Color(1f, 1f, 1f, 0.8f);
+            Debug.Log("[InventoryUI] Applied I_man sprite to human container");
+        }
+        else
+        {
+            Debug.LogError("[InventoryUI] Failed to load I_man sprite from Resources!");
+
+            // Проверяем что есть в ресурсах
+            Sprite[] allSprites = Resources.LoadAll<Sprite>("");
+            Debug.LogError($"[InventoryUI] Found {allSprites.Length} sprites in Resources");
+            for (int i = 0; i < allSprites.Length; i++)
+            {
+                Debug.LogError($"[InventoryUI] Sprite {i}: {allSprites[i].name}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Создание контейнера для экипировки (поверх изображения человека)
     /// </summary>
     void CreateEquipmentContainer(GameObject parent)
     {
@@ -281,8 +303,8 @@ public class InventoryUI : MonoBehaviour
         containerGO.transform.SetParent(parent.transform, false);
 
         equipmentContainer = containerGO.AddComponent<RectTransform>();
-        equipmentContainer.anchorMin = new Vector2(0.25f, 0.25f);  // Немного расширяем контейнер
-        equipmentContainer.anchorMax = new Vector2(0.75f, 0.85f);
+        equipmentContainer.anchorMin = new Vector2(0.6f, 0.15f);  // Справа, поверх изображения человека
+        equipmentContainer.anchorMax = new Vector2(0.95f, 0.85f);
         equipmentContainer.offsetMin = Vector2.zero;
         equipmentContainer.offsetMax = Vector2.zero;
 
@@ -359,8 +381,8 @@ public class InventoryUI : MonoBehaviour
         containerGO.transform.SetParent(parent.transform, false);
 
         slotsContainer = containerGO.AddComponent<RectTransform>();
-        slotsContainer.anchorMin = new Vector2(0.05f, 0.05f);
-        slotsContainer.anchorMax = new Vector2(0.95f, 0.2f);  // Меньше высота для слотов
+        slotsContainer.anchorMin = new Vector2(0.05f, 0.15f);  // Слева, занимает большую часть экрана
+        slotsContainer.anchorMax = new Vector2(0.55f, 0.85f);  // До изображения человека
         slotsContainer.offsetMin = Vector2.zero;
         slotsContainer.offsetMax = Vector2.zero;
 
@@ -372,10 +394,10 @@ public class InventoryUI : MonoBehaviour
 
         // Сетка для слотов
         GridLayoutGroup gridLayout = containerGO.AddComponent<GridLayoutGroup>();
-        gridLayout.cellSize = new Vector2(50, 50); // Меньше размер ячеек
-        gridLayout.spacing = new Vector2(3, 3); // Меньше отступы
+        gridLayout.cellSize = new Vector2(60, 60); // Увеличиваем размер ячеек
+        gridLayout.spacing = new Vector2(5, 5); // Больше отступы для лучшего вида
         gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        gridLayout.constraintCount = 8; // Больше колонок чтобы поместились
+        gridLayout.constraintCount = 5; // 5 колонок для классического размещения 5x4
         gridLayout.childAlignment = TextAnchor.UpperLeft;
         gridLayout.padding = new RectOffset(5, 5, 5, 5);
 
