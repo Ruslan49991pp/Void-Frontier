@@ -67,10 +67,15 @@ public class SelectionManager : MonoBehaviour
     
     void Update()
     {
-        HandleMouseInput();
-        UpdateSelectionBox();
+        // Блокируем ввод если открыт инвентарь
+        if (!InventoryUI.IsAnyInventoryOpen)
+        {
+            HandleMouseInput();
+            UpdateSelectionBox();
+            HandleHover();
+        }
+
         UpdateSelectionIndicatorPositions();
-        HandleHover();
     }
     
     /// <summary>

@@ -33,7 +33,11 @@ public class MovementController : MonoBehaviour
     
     void Update()
     {
-        HandleMovementInput();
+        // Блокируем ввод если открыт инвентарь
+        if (!InventoryUI.IsAnyInventoryOpen)
+        {
+            HandleMovementInput();
+        }
     }
     
     /// <summary>

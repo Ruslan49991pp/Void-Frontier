@@ -20,11 +20,18 @@ public class InventorySlotUI : MonoBehaviour
     // События
     public System.Action<int> OnSlotClicked;
     public System.Action<int> OnSlotRightClicked;
+    public System.Action<int> OnSlotDoubleClicked;
 
     // Внутренние переменные
     private int slotIndex = -1;
     private bool isSelected = false;
     private InventorySlot currentSlot;
+    private EquipmentSlot equipmentSlot = EquipmentSlot.None;
+    private bool isEquipmentSlot = false;
+
+    // Для обработки двойного клика
+    private float lastClickTime = 0f;
+    private const float doubleClickTimeLimit = 0.5f;
 
     /// <summary>
     /// Инициализация компонентов слота
@@ -233,7 +240,20 @@ public class InventorySlotUI : MonoBehaviour
     /// </summary>
     void OnSlotClick()
     {
-        OnSlotClicked?.Invoke(slotIndex);
+        float timeSinceLastClick = Time.time - lastClickTime;
+
+        if (timeSinceLastClick <= doubleClickTimeLimit)
+        {
+            // Двойной клик
+            OnSlotDoubleClicked?.Invoke(slotIndex);
+        }
+        else
+        {
+            // Одиночный клик
+            OnSlotClicked?.Invoke(slotIndex);
+        }
+
+        lastClickTime = Time.time;
     }
 
     /// <summary>
@@ -257,10 +277,36 @@ public class InventorySlotUI : MonoBehaviour
         return $"Slot {slotIndex}: {currentSlot.itemData.itemName} x{currentSlot.quantity}";
     }
 
+    /// <summary>
+    /// Установить слот как слот экипировки
+    /// </summary>
+    public void SetEquipmentSlot(EquipmentSlot slot)
+    {
+        equipmentSlot = slot;
+        isEquipmentSlot = true;
+    }
+
+    /// <summary>
+    /// Проверить, является ли это слотом экипировки
+    /// </summary>
+    public bool IsEquipmentSlot()
+    {
+        return isEquipmentSlot;
+    }
+
+    /// <summary>
+    /// Получить тип слота экипировки
+    /// </summary>
+    public EquipmentSlot GetEquipmentSlot()
+    {
+        return equipmentSlot;
+    }
+
     void OnDestroy()
     {
         // Очищаем события
         OnSlotClicked = null;
         OnSlotRightClicked = null;
+        OnSlotDoubleClicked = null;
     }
 }

@@ -120,9 +120,13 @@ public class Inventory : MonoBehaviour
     public System.Action<ItemData, int> OnItemAdded;
     public System.Action<ItemData, int> OnItemRemoved;
     public System.Action OnInventoryChanged;
+    public System.Action OnEquipmentChanged;
 
     // Слоты инвентаря
     private List<InventorySlot> slots;
+
+    // Слоты экипировки
+    private Dictionary<EquipmentSlot, InventorySlot> equipmentSlots;
 
     void Awake()
     {
@@ -132,6 +136,15 @@ public class Inventory : MonoBehaviour
         {
             slots.Add(new InventorySlot());
         }
+
+        // Инициализируем слоты экипировки
+        equipmentSlots = new Dictionary<EquipmentSlot, InventorySlot>();
+        equipmentSlots[EquipmentSlot.LeftHand] = new InventorySlot();
+        equipmentSlots[EquipmentSlot.RightHand] = new InventorySlot();
+        equipmentSlots[EquipmentSlot.Head] = new InventorySlot();
+        equipmentSlots[EquipmentSlot.Chest] = new InventorySlot();
+        equipmentSlots[EquipmentSlot.Legs] = new InventorySlot();
+        equipmentSlots[EquipmentSlot.Feet] = new InventorySlot();
     }
 
     void Update()
@@ -491,6 +504,81 @@ public class Inventory : MonoBehaviour
         }
 
         return info;
+    }
+
+    // === СИСТЕМА ЭКИПИРОВКИ ===
+
+    /// <summary>
+    /// Экипировать предмет
+    /// </summary>
+    public bool EquipItem(ItemData item)
+    {
+        if (item == null || !item.CanBeEquipped())
+            return false;
+
+        EquipmentSlot slot = item.equipmentSlot;
+        if (!equipmentSlots.ContainsKey(slot))
+            return false;
+
+        // Если слот занят, снимаем предыдущий предмет
+        if (!equipmentSlots[slot].IsEmpty())
+        {
+            UnequipItem(slot);
+        }
+
+        // Экипируем новый предмет
+        equipmentSlots[slot] = new InventorySlot(item, 1);
+        OnEquipmentChanged?.Invoke();
+        return true;
+    }
+
+    /// <summary>
+    /// Снять экипировку с слота
+    /// </summary>
+    public bool UnequipItem(EquipmentSlot slot)
+    {
+        if (!equipmentSlots.ContainsKey(slot) || equipmentSlots[slot].IsEmpty())
+            return false;
+
+        ItemData item = equipmentSlots[slot].itemData;
+
+        // Пытаемся добавить предмет в обычный инвентарь
+        if (AddItem(item, 1))
+        {
+            equipmentSlots[slot].Clear();
+            OnEquipmentChanged?.Invoke();
+            return true;
+        }
+
+        return false; // Не хватает места в инвентаре
+    }
+
+    /// <summary>
+    /// Получить экипированный предмет из слота
+    /// </summary>
+    public ItemData GetEquippedItem(EquipmentSlot slot)
+    {
+        if (equipmentSlots.ContainsKey(slot) && !equipmentSlots[slot].IsEmpty())
+        {
+            return equipmentSlots[slot].itemData;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Получить все слоты экипировки
+    /// </summary>
+    public Dictionary<EquipmentSlot, InventorySlot> GetAllEquipmentSlots()
+    {
+        return equipmentSlots;
+    }
+
+    /// <summary>
+    /// Проверить, экипирован ли предмет в указанном слоте
+    /// </summary>
+    public bool IsEquipped(EquipmentSlot slot)
+    {
+        return equipmentSlots.ContainsKey(slot) && !equipmentSlots[slot].IsEmpty();
     }
 
     void OnDrawGizmosSelected()

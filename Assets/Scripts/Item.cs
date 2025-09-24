@@ -27,6 +27,20 @@ public enum ItemRarity
 }
 
 /// <summary>
+/// Слоты экипировки
+/// </summary>
+public enum EquipmentSlot
+{
+    None,        // Не экипируется
+    LeftHand,    // Левая рука
+    RightHand,   // Правая рука
+    Head,        // Голова
+    Chest,       // Грудь
+    Legs,        // Ноги
+    Feet         // Ступни
+}
+
+/// <summary>
 /// Данные предмета
 /// </summary>
 [System.Serializable]
@@ -42,6 +56,7 @@ public class ItemData
     public int maxStackSize = 1;  // Максимальное количество в стеке
     public float weight = 1f;     // Вес предмета
     public int value = 0;         // Ценность
+    public EquipmentSlot equipmentSlot = EquipmentSlot.None; // Слот экипировки
 
     [Header("Visual")]
     public Sprite icon;           // Иконка для UI
@@ -82,10 +97,38 @@ public class ItemData
         if (healing > 0)
             fullDesc += $"\nЛечение: {healing}";
 
+        if (equipmentSlot != EquipmentSlot.None)
+            fullDesc += $"\nСлот: {GetEquipmentSlotName()}";
+
         fullDesc += $"\nВес: {weight}";
         fullDesc += $"\nЦенность: {value}";
 
         return fullDesc;
+    }
+
+    /// <summary>
+    /// Получить название слота экипировки
+    /// </summary>
+    public string GetEquipmentSlotName()
+    {
+        switch (equipmentSlot)
+        {
+            case EquipmentSlot.LeftHand: return "Левая рука";
+            case EquipmentSlot.RightHand: return "Правая рука";
+            case EquipmentSlot.Head: return "Голова";
+            case EquipmentSlot.Chest: return "Грудь";
+            case EquipmentSlot.Legs: return "Ноги";
+            case EquipmentSlot.Feet: return "Ступни";
+            default: return "Не экипируется";
+        }
+    }
+
+    /// <summary>
+    /// Можно ли экипировать предмет
+    /// </summary>
+    public bool CanBeEquipped()
+    {
+        return equipmentSlot != EquipmentSlot.None;
     }
 }
 

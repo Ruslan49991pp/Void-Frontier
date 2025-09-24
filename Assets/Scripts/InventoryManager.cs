@@ -119,6 +119,7 @@ public class InventoryManager : MonoBehaviour
                 item.damage = Random.Range(10, 30);
                 item.weight = 2.5f;
                 item.value = Random.Range(50, 150);
+                item.equipmentSlot = (index % 2 == 0) ? EquipmentSlot.LeftHand : EquipmentSlot.RightHand;
                 break;
 
             case ItemType.Armor:
@@ -127,6 +128,7 @@ public class InventoryManager : MonoBehaviour
                 item.armor = Random.Range(5, 20);
                 item.weight = 3f;
                 item.value = Random.Range(40, 120);
+                item.equipmentSlot = EquipmentSlot.Chest;
                 break;
 
             case ItemType.Medical:

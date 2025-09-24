@@ -66,7 +66,11 @@ public class CameraController : MonoBehaviour
         if (buildingSystem == null)
             TryFindBuildingSystem();
 
-        HandleInput();
+        // Блокируем ввод если открыт инвентарь
+        if (!InventoryUI.IsAnyInventoryOpen)
+        {
+            HandleInput();
+        }
 
         // if (Input.GetKeyDown(focusKey))
         //     CenterOnTarget(); // ������ ������ Center
@@ -74,8 +78,12 @@ public class CameraController : MonoBehaviour
 
     void LateUpdate()
     {
-        // Обрабатываем зум после того, как ShipBuildingSystem обработал ввод
-        HandleZoom();
+        // Блокируем зум если открыт инвентарь
+        if (!InventoryUI.IsAnyInventoryOpen)
+        {
+            // Обрабатываем зум после того, как ShipBuildingSystem обработал ввод
+            HandleZoom();
+        }
 
         // ������ ���������� ������ � ������� ������� (используем unscaledDeltaTime для работы во время паузы)
         transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime, Mathf.Infinity, Time.unscaledDeltaTime);

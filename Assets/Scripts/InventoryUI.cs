@@ -18,6 +18,10 @@ public class InventoryUI : MonoBehaviour
     public Text itemInfoText;
     public Text inventoryStatsText;
 
+    [Header("Equipment Display")]
+    public RectTransform equipmentContainer;
+    public Dictionary<EquipmentSlot, InventorySlotUI> equipmentSlotUIs;
+
     [Header("Settings")]
     public bool showInventoryOnStart = false;
     public KeyCode toggleKey = KeyCode.I;
@@ -32,11 +36,15 @@ public class InventoryUI : MonoBehaviour
     private SelectionManager selectionManager;
     private InventorySlotUI selectedSlotUI;
 
+    // Статическое свойство для проверки открытого инвентаря
+    public static bool IsAnyInventoryOpen { get; private set; } = false;
+
     // Префабы для создания UI элементов
     private GameObject slotPrefab;
 
     void Awake()
     {
+        equipmentSlotUIs = new Dictionary<EquipmentSlot, InventorySlotUI>();
         FindSelectionManager();
         CreateSlotPrefab();
         InitializeUI();
@@ -168,23 +176,67 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     void CreateInventoryPanel()
     {
+        Debug.Log("[InventoryUI] Creating main inventory panel...");
         GameObject panelGO = new GameObject("InventoryPanel");
         panelGO.transform.SetParent(mainCanvas.transform, false);
 
         inventoryPanel = panelGO.AddComponent<RectTransform>();
-        inventoryPanel.anchorMin = new Vector2(0.2f, 0.2f);
-        inventoryPanel.anchorMax = new Vector2(0.8f, 0.8f);
+        inventoryPanel.anchorMin = new Vector2(0.1f, 0.1f);  // Увеличиваем размер панели
+        inventoryPanel.anchorMax = new Vector2(0.9f, 0.9f);
         inventoryPanel.offsetMin = Vector2.zero;
         inventoryPanel.offsetMax = Vector2.zero;
 
-        // Фон панели
+        Debug.Log($"[InventoryUI] Main panel created with rect: {inventoryPanel.rect}, anchors: {inventoryPanel.anchorMin} - {inventoryPanel.anchorMax}");
+
+        // Фон панели с изображением человека
         Image panelBg = panelGO.AddComponent<Image>();
         panelBg.color = new Color(0.1f, 0.1f, 0.15f, 0.95f);
+
+        // Загружаем изображение человека
+        Debug.Log("[InventoryUI] Trying to load I_man sprite from Resources...");
+        Sprite humanSprite = Resources.Load<Sprite>("I_man");
+
+        // Пробуем альтернативные пути
+        if (humanSprite == null)
+        {
+            Debug.Log("[InventoryUI] Trying alternative path: Resources/I_man...");
+            humanSprite = Resources.Load<Sprite>("Resources/I_man");
+        }
+
+        if (humanSprite != null)
+        {
+            Debug.Log($"[InventoryUI] Successfully loaded I_man sprite: {humanSprite.name}, size: {humanSprite.rect}");
+            panelBg.sprite = humanSprite;
+            panelBg.type = Image.Type.Simple;
+            panelBg.preserveAspect = true;
+            panelBg.color = new Color(1f, 1f, 1f, 0.6f);
+            Debug.Log("[InventoryUI] Applied I_man sprite to background");
+        }
+        else
+        {
+            Debug.LogError("[InventoryUI] Failed to load I_man sprite from Resources!");
+
+            // Проверяем что есть в ресурсах
+            Sprite[] allSprites = Resources.LoadAll<Sprite>("");
+            Debug.LogError($"[InventoryUI] Found {allSprites.Length} sprites in Resources");
+            for (int i = 0; i < allSprites.Length; i++)
+            {
+                Debug.LogError($"[InventoryUI] Sprite {i}: {allSprites[i].name}");
+            }
+        }
+
+        // Добавляем CanvasGroup для блокировки рейкастов
+        CanvasGroup canvasGroup = panelGO.AddComponent<CanvasGroup>();
+        canvasGroup.blocksRaycasts = true;
+        canvasGroup.interactable = true;
 
         // Заголовок
         CreateInventoryHeader(panelGO);
 
-        // Контейнер для слотов
+        // Контейнер для экипировки
+        CreateEquipmentContainer(panelGO);
+
+        // Контейнер для слотов инвентаря
         CreateSlotsContainer(panelGO);
 
         // Панель информации о предмете
@@ -220,18 +272,99 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Создание контейнера для слотов
+    /// Создание контейнера для экипировки
+    /// </summary>
+    void CreateEquipmentContainer(GameObject parent)
+    {
+        Debug.Log("[InventoryUI] Creating equipment container...");
+        GameObject containerGO = new GameObject("EquipmentContainer");
+        containerGO.transform.SetParent(parent.transform, false);
+
+        equipmentContainer = containerGO.AddComponent<RectTransform>();
+        equipmentContainer.anchorMin = new Vector2(0.25f, 0.25f);  // Немного расширяем контейнер
+        equipmentContainer.anchorMax = new Vector2(0.75f, 0.85f);
+        equipmentContainer.offsetMin = Vector2.zero;
+        equipmentContainer.offsetMax = Vector2.zero;
+
+        Debug.Log($"[InventoryUI] Equipment container rect: {equipmentContainer.rect}");
+
+        // Создаем слоты экипировки в позициях частей тела человека
+        CreateEquipmentSlot(containerGO, EquipmentSlot.LeftHand, new Vector2(0.15f, 0.55f)); // Левая рука
+        CreateEquipmentSlot(containerGO, EquipmentSlot.RightHand, new Vector2(0.85f, 0.55f)); // Правая рука
+        CreateEquipmentSlot(containerGO, EquipmentSlot.Head, new Vector2(0.5f, 0.9f)); // Голова
+        CreateEquipmentSlot(containerGO, EquipmentSlot.Chest, new Vector2(0.5f, 0.7f)); // Грудь
+        CreateEquipmentSlot(containerGO, EquipmentSlot.Legs, new Vector2(0.5f, 0.45f)); // Ноги
+        CreateEquipmentSlot(containerGO, EquipmentSlot.Feet, new Vector2(0.5f, 0.15f)); // Ступни
+
+        Debug.Log("[InventoryUI] Equipment container created with 6 slots");
+    }
+
+    /// <summary>
+    /// Создание слота экипировки
+    /// </summary>
+    void CreateEquipmentSlot(GameObject parent, EquipmentSlot slot, Vector2 normalizedPosition)
+    {
+        Debug.Log($"[InventoryUI] Creating equipment slot {slot} at position {normalizedPosition}");
+
+        GameObject slotGO = Instantiate(slotPrefab, parent.transform);
+        slotGO.SetActive(true);
+        slotGO.name = $"EquipmentSlot_{slot}";
+
+        RectTransform slotRect = slotGO.GetComponent<RectTransform>();
+
+        // Сначала устанавливаем pivot для корректной привязки
+        slotRect.pivot = new Vector2(0.5f, 0.5f);
+
+        // Устанавливаем якорные точки
+        slotRect.anchorMin = normalizedPosition;
+        slotRect.anchorMax = normalizedPosition;
+
+        // Обнуляем позицию и устанавливаем размер
+        slotRect.anchoredPosition = Vector2.zero;
+        slotRect.sizeDelta = new Vector2(60, 60);
+
+        // Принудительно обновляем layout
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log($"[InventoryUI] Equipment slot {slot} - anchorMin: {slotRect.anchorMin}, anchorMax: {slotRect.anchorMax}");
+        Debug.Log($"[InventoryUI] Equipment slot {slot} - anchoredPosition: {slotRect.anchoredPosition}, sizeDelta: {slotRect.sizeDelta}");
+        Debug.Log($"[InventoryUI] Equipment slot {slot} - final rect: {slotRect.rect}");
+
+        InventorySlotUI slotUI = slotGO.GetComponent<InventorySlotUI>();
+        if (slotUI != null)
+        {
+            slotUI.SetEquipmentSlot(slot);
+            slotUI.SetSlotIndex((int)slot); // Используем индекс слота экипировки
+            slotUI.OnSlotClicked += OnEquipmentSlotClicked;
+            slotUI.OnSlotRightClicked += OnEquipmentSlotRightClicked;
+            equipmentSlotUIs[slot] = slotUI;
+
+            // Меняем цвет фона для слотов экипировки
+            slotUI.GetComponent<Image>().color = new Color(0.3f, 0.3f, 0.4f, 0.9f);
+            Debug.Log($"[InventoryUI] Equipment slot {slot} configured successfully");
+        }
+        else
+        {
+            Debug.LogError($"[InventoryUI] Failed to get InventorySlotUI component for slot {slot}");
+        }
+    }
+
+    /// <summary>
+    /// Создание контейнера для слотов инвентаря
     /// </summary>
     void CreateSlotsContainer(GameObject parent)
     {
+        Debug.Log("[InventoryUI] Creating slots container...");
         GameObject containerGO = new GameObject("SlotsContainer");
         containerGO.transform.SetParent(parent.transform, false);
 
         slotsContainer = containerGO.AddComponent<RectTransform>();
-        slotsContainer.anchorMin = new Vector2(0.05f, 0.3f);
-        slotsContainer.anchorMax = new Vector2(0.65f, 0.85f);
+        slotsContainer.anchorMin = new Vector2(0.05f, 0.05f);
+        slotsContainer.anchorMax = new Vector2(0.95f, 0.2f);  // Меньше высота для слотов
         slotsContainer.offsetMin = Vector2.zero;
         slotsContainer.offsetMax = Vector2.zero;
+
+        Debug.Log($"[InventoryUI] Slots container rect: {slotsContainer.rect}");
 
         // Фон контейнера
         Image containerBg = containerGO.AddComponent<Image>();
@@ -239,12 +372,14 @@ public class InventoryUI : MonoBehaviour
 
         // Сетка для слотов
         GridLayoutGroup gridLayout = containerGO.AddComponent<GridLayoutGroup>();
-        gridLayout.cellSize = slotSize;
-        gridLayout.spacing = slotSpacing;
+        gridLayout.cellSize = new Vector2(50, 50); // Меньше размер ячеек
+        gridLayout.spacing = new Vector2(3, 3); // Меньше отступы
         gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        gridLayout.constraintCount = slotsPerRow;
+        gridLayout.constraintCount = 8; // Больше колонок чтобы поместились
         gridLayout.childAlignment = TextAnchor.UpperLeft;
-        gridLayout.padding = new RectOffset(10, 10, 10, 10);
+        gridLayout.padding = new RectOffset(5, 5, 5, 5);
+
+        Debug.Log($"[InventoryUI] Grid layout configured: cellSize={gridLayout.cellSize}, spacing={gridLayout.spacing}, columns={gridLayout.constraintCount}");
     }
 
     /// <summary>
@@ -256,7 +391,7 @@ public class InventoryUI : MonoBehaviour
         infoPanelGO.transform.SetParent(parent.transform, false);
 
         itemInfoPanel = infoPanelGO.AddComponent<RectTransform>();
-        itemInfoPanel.anchorMin = new Vector2(0.7f, 0.3f);
+        itemInfoPanel.anchorMin = new Vector2(0.75f, 0.25f);  // Справа от фигуры человека
         itemInfoPanel.anchorMax = new Vector2(0.95f, 0.85f);
         itemInfoPanel.offsetMin = Vector2.zero;
         itemInfoPanel.offsetMax = Vector2.zero;
@@ -426,6 +561,7 @@ public class InventoryUI : MonoBehaviour
         if (currentInventory != null)
         {
             currentInventory.OnInventoryChanged -= UpdateInventoryDisplay;
+            currentInventory.OnEquipmentChanged -= UpdateEquipmentDisplay;
         }
 
         currentInventory = inventory;
@@ -434,7 +570,9 @@ public class InventoryUI : MonoBehaviour
         if (currentInventory != null)
         {
             currentInventory.OnInventoryChanged += UpdateInventoryDisplay;
+            currentInventory.OnEquipmentChanged += UpdateEquipmentDisplay;
             UpdateInventoryDisplay();
+            UpdateEquipmentDisplay();
         }
         else
         {
@@ -465,6 +603,7 @@ public class InventoryUI : MonoBehaviour
                 slotUI.SetSlotIndex(i);
                 slotUI.OnSlotClicked += OnSlotClicked;
                 slotUI.OnSlotRightClicked += OnSlotRightClicked;
+                slotUI.OnSlotDoubleClicked += OnSlotDoubleClicked;
                 slotUIElements.Add(slotUI);
             }
         }
@@ -481,6 +620,7 @@ public class InventoryUI : MonoBehaviour
             {
                 slotUI.OnSlotClicked -= OnSlotClicked;
                 slotUI.OnSlotRightClicked -= OnSlotRightClicked;
+                slotUI.OnSlotDoubleClicked -= OnSlotDoubleClicked;
                 DestroyImmediate(slotUI.gameObject);
             }
         }
@@ -515,6 +655,27 @@ public class InventoryUI : MonoBehaviour
 
         // Обновляем статистику
         UpdateInventoryStats();
+    }
+
+    /// <summary>
+    /// Обновить отображение экипировки
+    /// </summary>
+    void UpdateEquipmentDisplay()
+    {
+        if (currentInventory == null) return;
+
+        var equipmentSlots = currentInventory.GetAllEquipmentSlots();
+        foreach (var kvp in equipmentSlotUIs)
+        {
+            EquipmentSlot slotType = kvp.Key;
+            InventorySlotUI slotUI = kvp.Value;
+
+            if (equipmentSlots.ContainsKey(slotType))
+            {
+                InventorySlot slot = equipmentSlots[slotType];
+                slotUI.UpdateSlot(slot);
+            }
+        }
     }
 
     /// <summary>
@@ -587,6 +748,61 @@ public class InventoryUI : MonoBehaviour
         {
             // Выбрасываем один предмет
             currentInventory.DropItem(slotIndex, 1);
+        }
+    }
+
+    /// <summary>
+    /// Обработчик клика по слоту экипировки
+    /// </summary>
+    void OnEquipmentSlotClicked(int slotIndex)
+    {
+        // Для слотов экипировки используем slotIndex как тип EquipmentSlot
+        EquipmentSlot equipSlot = (EquipmentSlot)slotIndex;
+
+        if (currentInventory == null) return;
+
+        ItemData equippedItem = currentInventory.GetEquippedItem(equipSlot);
+        if (equippedItem != null)
+        {
+            ShowItemInfo(equippedItem);
+        }
+    }
+
+    /// <summary>
+    /// Обработчик правого клика по слоту экипировки (снятие экипировки)
+    /// </summary>
+    void OnEquipmentSlotRightClicked(int slotIndex)
+    {
+        EquipmentSlot equipSlot = (EquipmentSlot)slotIndex;
+
+        if (currentInventory == null) return;
+
+        // Снимаем экипировку
+        currentInventory.UnequipItem(equipSlot);
+    }
+
+    /// <summary>
+    /// Обработчик двойного клика по слоту (экипировка предмета)
+    /// </summary>
+    void OnSlotDoubleClicked(int slotIndex)
+    {
+        if (currentInventory == null) return;
+
+        InventorySlot slot = currentInventory.GetSlot(slotIndex);
+        if (slot != null && !slot.IsEmpty())
+        {
+            ItemData item = slot.itemData;
+
+            // Проверяем, можно ли экипировать предмет
+            if (item.CanBeEquipped())
+            {
+                // Экипируем предмет
+                if (currentInventory.EquipItem(item))
+                {
+                    // Удаляем предмет из обычного инвентаря
+                    currentInventory.RemoveItem(item, 1);
+                }
+            }
         }
     }
 
@@ -692,6 +908,7 @@ public class InventoryUI : MonoBehaviour
         {
             inventoryPanel.gameObject.SetActive(true);
             isInventoryVisible = true;
+            IsAnyInventoryOpen = true;
 
             // Обновляем отображение
             UpdateInventoryDisplay();
@@ -711,6 +928,7 @@ public class InventoryUI : MonoBehaviour
         {
             inventoryPanel.gameObject.SetActive(false);
             isInventoryVisible = false;
+            IsAnyInventoryOpen = false;
 
             // Снимаем выделение
             ClearSlotSelection();
