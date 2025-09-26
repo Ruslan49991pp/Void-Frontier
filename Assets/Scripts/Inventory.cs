@@ -523,7 +523,13 @@ public class Inventory : MonoBehaviour
         // Если слот занят, снимаем предыдущий предмет
         if (!equipmentSlots[slot].IsEmpty())
         {
-            UnequipItem(slot);
+            // Если не удалось снять предмет (нет места в инвентаре), не экипируем новый
+            if (!UnequipItem(slot))
+            {
+                if (debugMode)
+                    Debug.Log($"Cannot equip {item.itemName}: slot {slot} is occupied and cannot be cleared (inventory full)");
+                return false;
+            }
         }
 
         // Экипируем новый предмет
@@ -579,6 +585,45 @@ public class Inventory : MonoBehaviour
     public bool IsEquipped(EquipmentSlot slot)
     {
         return equipmentSlots.ContainsKey(slot) && !equipmentSlots[slot].IsEmpty();
+    }
+
+    /// <summary>
+    /// Проверить, есть ли оружие в руках
+    /// </summary>
+    public bool HasWeaponEquipped()
+    {
+        return (GetEquippedItem(EquipmentSlot.LeftHand) != null && GetEquippedItem(EquipmentSlot.LeftHand).itemType == ItemType.Weapon) ||
+               (GetEquippedItem(EquipmentSlot.RightHand) != null && GetEquippedItem(EquipmentSlot.RightHand).itemType == ItemType.Weapon);
+    }
+
+    /// <summary>
+    /// Получить слот, в котором экипировано оружие (если есть)
+    /// </summary>
+    public EquipmentSlot GetWeaponSlot()
+    {
+        if (GetEquippedItem(EquipmentSlot.LeftHand) != null && GetEquippedItem(EquipmentSlot.LeftHand).itemType == ItemType.Weapon)
+            return EquipmentSlot.LeftHand;
+        if (GetEquippedItem(EquipmentSlot.RightHand) != null && GetEquippedItem(EquipmentSlot.RightHand).itemType == ItemType.Weapon)
+            return EquipmentSlot.RightHand;
+        return EquipmentSlot.None;
+    }
+
+    /// <summary>
+    /// Проверить, заблокирован ли слот экипировки (например, вторая рука когда оружие экипировано)
+    /// </summary>
+    public bool IsEquipmentSlotBlocked(EquipmentSlot slot)
+    {
+        // Если это слот руки и у нас уже есть оружие в другой руке
+        if (slot == EquipmentSlot.LeftHand || slot == EquipmentSlot.RightHand)
+        {
+            if (HasWeaponEquipped())
+            {
+                EquipmentSlot weaponSlot = GetWeaponSlot();
+                // Блокируем противоположную руку
+                return weaponSlot != slot;
+            }
+        }
+        return false;
     }
 
     void OnDrawGizmosSelected()

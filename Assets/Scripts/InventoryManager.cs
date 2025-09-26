@@ -81,24 +81,124 @@ public class InventoryManager : MonoBehaviour
     {
         if (!enableInventorySystem) return;
 
-        Debug.Log($"Creating {testItemsCount} test items...");
+        Debug.Log("Creating complete test item set...");
 
-        for (int i = 0; i < testItemsCount; i++)
-        {
-            ItemData testItem = CreateTestItem(i);
-            Vector3 position = new Vector3(
-                Random.Range(-5f, 5f),
-                0.5f,
-                Random.Range(-5f, 5f)
-            );
+        // Создаем полный набор тестовых предметов для проверки всех слотов
+        CreateTestItemSet();
+    }
 
-            GameObject worldItem = Item.CreateWorldItem(testItem, position);
-            Debug.Log($"Created test item: {testItem.itemName} at {position}");
-        }
+    void CreateTestItemSet()
+    {
+        int itemIndex = 1;
+
+        // 1. Weapon
+        ItemData weapon = CreateSpecificTestItem(ItemType.Weapon, EquipmentSlot.RightHand, itemIndex++);
+        CreateWorldTestItem(weapon);
+
+        // 2-5. All armor types
+        CreateWorldTestItem(CreateSpecificTestItem(ItemType.Armor, EquipmentSlot.Head, itemIndex++));
+        CreateWorldTestItem(CreateSpecificTestItem(ItemType.Armor, EquipmentSlot.Chest, itemIndex++));
+        CreateWorldTestItem(CreateSpecificTestItem(ItemType.Armor, EquipmentSlot.Legs, itemIndex++));
+        CreateWorldTestItem(CreateSpecificTestItem(ItemType.Armor, EquipmentSlot.Feet, itemIndex++));
+
+        // 6. Medical
+        CreateWorldTestItem(CreateSpecificTestItem(ItemType.Medical, EquipmentSlot.None, itemIndex++));
+
+        // 7. Tool
+        CreateWorldTestItem(CreateSpecificTestItem(ItemType.Tool, EquipmentSlot.None, itemIndex++));
+
+        // 8. Resource
+        CreateWorldTestItem(CreateSpecificTestItem(ItemType.Resource, EquipmentSlot.None, itemIndex++));
+    }
+
+    void CreateWorldTestItem(ItemData item)
+    {
+        Vector3 position = new Vector3(
+            Random.Range(-5f, 5f),
+            0.5f,
+            Random.Range(-5f, 5f)
+        );
+
+        GameObject worldItem = Item.CreateWorldItem(item, position);
+        Debug.Log($"Created test item: {item.itemName} at {position}");
     }
 
     /// <summary>
-    /// Создать тестовый предмет
+    /// Создать конкретный тестовый предмет
+    /// </summary>
+    ItemData CreateSpecificTestItem(ItemType itemType, EquipmentSlot equipSlot, int index)
+    {
+        ItemData item = new ItemData();
+        item.itemType = itemType;
+        item.rarity = ItemRarity.Common; // Для простоты тестирования используем обычную редкость
+
+        switch (itemType)
+        {
+            case ItemType.Weapon:
+                item.itemName = $"Test Weapon {index}";
+                item.description = "A test weapon for combat";
+                item.damage = Random.Range(10, 30);
+                item.weight = 2.5f;
+                item.value = Random.Range(50, 150);
+                item.equipmentSlot = equipSlot; // RightHand
+                break;
+
+            case ItemType.Armor:
+                switch (equipSlot)
+                {
+                    case EquipmentSlot.Head:
+                        item.itemName = $"Test Helmet {index}";
+                        item.description = "Protective helmet for head";
+                        break;
+                    case EquipmentSlot.Chest:
+                        item.itemName = $"Test Armor {index}";
+                        item.description = "Protective chest armor";
+                        break;
+                    case EquipmentSlot.Legs:
+                        item.itemName = $"Test Pants {index}";
+                        item.description = "Protective leg armor";
+                        break;
+                    case EquipmentSlot.Feet:
+                        item.itemName = $"Test Boots {index}";
+                        item.description = "Protective footwear";
+                        break;
+                }
+                item.armor = Random.Range(5, 20);
+                item.weight = 3f;
+                item.value = Random.Range(40, 120);
+                item.equipmentSlot = equipSlot;
+                break;
+
+            case ItemType.Medical:
+                item.itemName = $"Medkit {index}";
+                item.description = "Medical supplies for healing";
+                item.healing = Random.Range(15, 40);
+                item.weight = 0.5f;
+                item.value = Random.Range(25, 60);
+                item.maxStackSize = 5;
+                break;
+
+            case ItemType.Tool:
+                item.itemName = $"Tool {index}";
+                item.description = "Useful tool for various tasks";
+                item.weight = 1.5f;
+                item.value = Random.Range(20, 80);
+                break;
+
+            case ItemType.Resource:
+                item.itemName = $"Resource {index}";
+                item.description = "Valuable crafting material";
+                item.weight = 0.3f;
+                item.value = Random.Range(10, 30);
+                item.maxStackSize = 10;
+                break;
+        }
+
+        return item;
+    }
+
+    /// <summary>
+    /// Создать тестовый предмет (старый метод)
     /// </summary>
     ItemData CreateTestItem(int index)
     {
@@ -119,16 +219,39 @@ public class InventoryManager : MonoBehaviour
                 item.damage = Random.Range(10, 30);
                 item.weight = 2.5f;
                 item.value = Random.Range(50, 150);
-                item.equipmentSlot = (index % 2 == 0) ? EquipmentSlot.LeftHand : EquipmentSlot.RightHand;
+                // Weapon can be equipped in any hand - will be handled by equip logic
+                item.equipmentSlot = EquipmentSlot.RightHand; // Default, but can be placed in either hand
                 break;
 
             case ItemType.Armor:
-                item.itemName = $"Test Armor {index + 1}";
-                item.description = "Protective gear for combat";
+                // Create different armor types based on index
+                EquipmentSlot[] armorSlots = { EquipmentSlot.Head, EquipmentSlot.Chest, EquipmentSlot.Legs, EquipmentSlot.Feet };
+                EquipmentSlot armorSlot = armorSlots[index % armorSlots.Length];
+
+                switch (armorSlot)
+                {
+                    case EquipmentSlot.Head:
+                        item.itemName = $"Test Helmet {index + 1}";
+                        item.description = "Protective helmet for head";
+                        break;
+                    case EquipmentSlot.Chest:
+                        item.itemName = $"Test Armor {index + 1}";
+                        item.description = "Protective chest armor";
+                        break;
+                    case EquipmentSlot.Legs:
+                        item.itemName = $"Test Pants {index + 1}";
+                        item.description = "Protective leg armor";
+                        break;
+                    case EquipmentSlot.Feet:
+                        item.itemName = $"Test Boots {index + 1}";
+                        item.description = "Protective footwear";
+                        break;
+                }
+
                 item.armor = Random.Range(5, 20);
                 item.weight = 3f;
                 item.value = Random.Range(40, 120);
-                item.equipmentSlot = EquipmentSlot.Chest;
+                item.equipmentSlot = armorSlot;
                 break;
 
             case ItemType.Medical:

@@ -1,10 +1,11 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// UI элемент для отображения слота инвентаря
 /// </summary>
-public class InventorySlotUI : MonoBehaviour
+public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
 {
     [Header("UI Components")]
     public Image backgroundImage;
@@ -21,6 +22,7 @@ public class InventorySlotUI : MonoBehaviour
     public System.Action<int> OnSlotClicked;
     public System.Action<int> OnSlotRightClicked;
     public System.Action<int> OnSlotDoubleClicked;
+    public System.Action<int, int> OnSlotDragAndDrop; // from, to
 
     // Внутренние переменные
     private int slotIndex = -1;
@@ -33,6 +35,12 @@ public class InventorySlotUI : MonoBehaviour
     private float lastClickTime = 0f;
     private const float doubleClickTimeLimit = 0.5f;
 
+    // Для drag and drop
+    private GameObject dragIcon;
+    private Canvas dragCanvas;
+    private static InventorySlotUI draggedSlot;
+    private CanvasGroup canvasGroup;
+
     /// <summary>
     /// Инициализация компонентов слота
     /// </summary>
@@ -42,6 +50,13 @@ public class InventorySlotUI : MonoBehaviour
         itemIcon = icon;
         quantityText = quantity;
         slotButton = button;
+
+        // Добавляем CanvasGroup для управления прозрачностью во время перетаскивания
+        canvasGroup = gameObject.GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+        {
+            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+        }
 
         // Настраиваем обработчики событий
         if (slotButton != null)
@@ -67,6 +82,13 @@ public class InventorySlotUI : MonoBehaviour
         });
         eventTrigger.triggers.Add(rightClickEntry);
 
+        // Ищем Canvas для drag операций
+        dragCanvas = GetComponentInParent<Canvas>();
+        if (dragCanvas == null)
+        {
+            dragCanvas = FindObjectOfType<Canvas>();
+        }
+
         // Изначально пустой слот
         UpdateSlot(null);
     }
@@ -77,6 +99,14 @@ public class InventorySlotUI : MonoBehaviour
     public void SetSlotIndex(int index)
     {
         slotIndex = index;
+    }
+
+    /// <summary>
+    /// Получить индекс слота
+    /// </summary>
+    public int GetSlotIndex()
+    {
+        return slotIndex;
     }
 
     /// <summary>
@@ -241,15 +271,18 @@ public class InventorySlotUI : MonoBehaviour
     void OnSlotClick()
     {
         float timeSinceLastClick = Time.time - lastClickTime;
+        Debug.Log($"[SlotUI] Click on slot {slotIndex}, time since last: {timeSinceLastClick:F3}s");
 
         if (timeSinceLastClick <= doubleClickTimeLimit)
         {
             // Двойной клик
+            Debug.Log($"[SlotUI] Double click detected on slot {slotIndex}");
             OnSlotDoubleClicked?.Invoke(slotIndex);
         }
         else
         {
             // Одиночный клик
+            Debug.Log($"[SlotUI] Single click on slot {slotIndex}");
             OnSlotClicked?.Invoke(slotIndex);
         }
 
@@ -302,11 +335,216 @@ public class InventorySlotUI : MonoBehaviour
         return equipmentSlot;
     }
 
+    /// <summary>
+    /// Получить уникальный идентификатор слота для drag and drop
+    /// Для обычных слотов: slotIndex (0-19)
+    /// Для слотов экипировки: 1000 + equipmentSlot (1001-1006)
+    /// </summary>
+    public int GetDragDropId()
+    {
+        if (isEquipmentSlot)
+        {
+            return 1000 + (int)equipmentSlot;
+        }
+        return slotIndex;
+    }
+
+    #region Drag and Drop Implementation
+
+    /// <summary>
+    /// Начало перетаскивания
+    /// </summary>
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        // Можем перетаскивать только непустые слоты
+        if (currentSlot == null || currentSlot.IsEmpty())
+            return;
+
+        draggedSlot = this;
+
+        Debug.Log($"[DragDrop] Begin drag from slot {GetDragDropId()} (equipment: {isEquipmentSlot}, item: {currentSlot.itemData.itemName})");
+
+        // Скрываем tooltip во время перетаскивания
+        TooltipSystem.Instance.HideTooltip();
+
+        // Создаем иконку для перетаскивания
+        CreateDragIcon();
+
+        // Делаем исходный слот полупрозрачным
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 0.6f;
+            canvasGroup.blocksRaycasts = false;
+        }
+    }
+
+    /// <summary>
+    /// Процесс перетаскивания
+    /// </summary>
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (dragIcon != null && draggedSlot == this)
+        {
+            // Перемещаем иконку за курсором
+            Vector2 localPoint;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                dragCanvas.transform as RectTransform,
+                eventData.position,
+                dragCanvas.worldCamera,
+                out localPoint
+            );
+
+            dragIcon.transform.localPosition = localPoint;
+        }
+    }
+
+    /// <summary>
+    /// Конец перетаскивания
+    /// </summary>
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        // Восстанавливаем исходный слот
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = 1f;
+            canvasGroup.blocksRaycasts = true;
+        }
+
+        // Уничтожаем иконку перетаскивания
+        if (dragIcon != null)
+        {
+            Destroy(dragIcon);
+            dragIcon = null;
+        }
+
+        draggedSlot = null;
+    }
+
+    /// <summary>
+    /// Сброс предмета на слот
+    /// </summary>
+    public void OnDrop(PointerEventData eventData)
+    {
+        if (draggedSlot != null && draggedSlot != this)
+        {
+            // Вызываем событие перестановки предметов используя drag-drop ID
+            OnSlotDragAndDrop?.Invoke(draggedSlot.GetDragDropId(), this.GetDragDropId());
+        }
+    }
+
+    /// <summary>
+    /// Создать иконку для перетаскивания
+    /// </summary>
+    void CreateDragIcon()
+    {
+        if (dragCanvas == null || currentSlot == null || currentSlot.IsEmpty())
+            return;
+
+        // Создаем объект для иконки
+        dragIcon = new GameObject("DragIcon");
+        dragIcon.transform.SetParent(dragCanvas.transform, false);
+
+        // Добавляем Image компонент
+        Image dragImage = dragIcon.AddComponent<Image>();
+
+        // Копируем иконку из текущего слота
+        if (itemIcon != null && itemIcon.sprite != null)
+        {
+            dragImage.sprite = itemIcon.sprite;
+            dragImage.color = itemIcon.color;
+        }
+
+        // Настраиваем размер и позицию
+        RectTransform dragRect = dragIcon.GetComponent<RectTransform>();
+        dragRect.sizeDelta = new Vector2(60, 60);
+
+        // Делаем иконку полупрозрачной
+        CanvasGroup dragCanvasGroup = dragIcon.AddComponent<CanvasGroup>();
+        dragCanvasGroup.alpha = 0.8f;
+        dragCanvasGroup.blocksRaycasts = false;
+
+        // Перемещаем на передний план
+        dragIcon.transform.SetAsLastSibling();
+    }
+
+    #endregion
+
+    #region Tooltip Implementation
+
+    /// <summary>
+    /// Курсор входит в область слота
+    /// </summary>
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        // Показываем tooltip только если в слоте есть предмет
+        if (currentSlot != null && !currentSlot.IsEmpty() && currentSlot.itemData != null)
+        {
+            string tooltipText = TooltipSystem.CreateItemTooltip(currentSlot.itemData);
+            TooltipSystem.Instance.ShowTooltip(tooltipText);
+        }
+    }
+
+    /// <summary>
+    /// Курсор покидает область слота
+    /// </summary>
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        // Скрываем tooltip
+        TooltipSystem.Instance.HideTooltip();
+    }
+
+    #endregion
+
+    #region IPointerClickHandler Implementation
+
+    /// <summary>
+    /// Обработчик кликов мыши (альтернативный способ обнаружения двойного клика)
+    /// </summary>
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        // Обрабатываем только левую кнопку мыши
+        if (eventData.button == PointerEventData.InputButton.Left)
+        {
+            float timeSinceLastClick = Time.time - lastClickTime;
+            Debug.Log($"[SlotUI] OnPointerClick on slot {slotIndex}, time since last: {timeSinceLastClick:F3}s");
+
+            if (timeSinceLastClick <= doubleClickTimeLimit && timeSinceLastClick > 0.05f) // Минимальная задержка для избежания одного клика
+            {
+                // Двойной клик
+                Debug.Log($"[SlotUI] Double click detected via OnPointerClick on slot {slotIndex}");
+                OnSlotDoubleClicked?.Invoke(slotIndex);
+                lastClickTime = 0f; // Сбрасываем для избежания тройного клика
+            }
+            else
+            {
+                // Одиночный клик или первый клик в серии
+                Debug.Log($"[SlotUI] Single click via OnPointerClick on slot {slotIndex}");
+                OnSlotClicked?.Invoke(slotIndex);
+                lastClickTime = Time.time;
+            }
+        }
+    }
+
+    #endregion
+
     void OnDestroy()
     {
+        // Скрываем tooltip если слот уничтожается
+        if (TooltipSystem.Instance != null)
+        {
+            TooltipSystem.Instance.HideTooltip();
+        }
+
         // Очищаем события
         OnSlotClicked = null;
         OnSlotRightClicked = null;
         OnSlotDoubleClicked = null;
+        OnSlotDragAndDrop = null;
+
+        // Уничтожаем иконку перетаскивания если осталась
+        if (dragIcon != null)
+        {
+            Destroy(dragIcon);
+        }
     }
 }

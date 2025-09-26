@@ -27,7 +27,8 @@
       "Bash(cmd /c:*)",
       "Bash(grep:*)",
       "Bash(IDLE)",
-      "Bash(WANDER)"
+      "Bash(WANDER)",
+      "Read(//c/temp/**)"
     ],
     "deny": [],
     "ask": []
