@@ -28,7 +28,17 @@
       "Bash(grep:*)",
       "Bash(IDLE)",
       "Bash(WANDER)",
-      "Read(//c/temp/**)"
+      "Read(//c/temp/**)",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_compile_test.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_hp_test.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_fix_test.log\")",
+      "Bash(if exist \"C:\\temp\\unity_fix_test.log\" type \"C:\\temp\\unity_fix_test.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_final_test.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_ui_fix.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_debug_text.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_text_fix_final.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_separate_text.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_text_under_hp.log\")"
     ],
     "deny": [],
     "ask": []

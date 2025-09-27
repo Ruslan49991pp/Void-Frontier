@@ -8,7 +8,7 @@ using UnityEngine;
 public class EnemyTargetingSystem : MonoBehaviour
 {
     [Header("Targeting Settings")]
-    public bool enableEnemyTargeting = false; // Отключаем систему преследования врагов
+    public bool enableEnemyTargeting = true; // Включаем систему атаки врагов
     public Color enemyHighlightColor = Color.red;
     public float followDistance = 1.5f; // Расстояние следования (соседняя клетка)
     public float updateInterval = 0.5f; // Частота обновления следования
@@ -25,6 +25,7 @@ public class EnemyTargetingSystem : MonoBehaviour
     private MovementController movementController;
     private GridManager gridManager;
     private Camera playerCamera;
+    private CombatSystem combatSystem;
 
     // Состояние системы
     private bool isTargetingMode = false;
@@ -45,8 +46,15 @@ public class EnemyTargetingSystem : MonoBehaviour
         movementController = FindObjectOfType<MovementController>();
         gridManager = FindObjectOfType<GridManager>();
         playerCamera = Camera.main;
+        combatSystem = FindObjectOfType<CombatSystem>();
 
-    
+        // Создаем CombatSystem если его нет
+        if (combatSystem == null)
+        {
+            GameObject combatSystemGO = new GameObject("CombatSystem");
+            combatSystem = combatSystemGO.AddComponent<CombatSystem>();
+        }
+
         CreateTargetIndicatorPrefab();
 
     }
@@ -147,22 +155,15 @@ public class EnemyTargetingSystem : MonoBehaviour
             //     $"Targeting mode {(isTargetingMode ? "ENABLED" : "DISABLED")}. Selected allies: {selectedAllies.Count}");
         }
 
-        // Обрабатываем клик по врагу только в режиме указания цели
-        if (isTargetingMode && (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))) // ЛКМ или ПКМ
+        // Обрабатываем ПКМ по врагу для атаки
+        if (isTargetingMode && Input.GetMouseButtonDown(1)) // Только ПКМ для атаки
         {
-            string clickType = Input.GetMouseButtonDown(0) ? "LMB" : "RMB";
-
-
             Character clickedEnemy = GetEnemyUnderMouse();
             if (clickedEnemy != null)
             {
-                //     $"✓ {clickType} clicked on enemy: {clickedEnemy.GetFullName()}, assigning to {selectedAllies.Count} allies");
+                Debug.Log($"[EnemyTargeting] RMB clicked on enemy: {clickedEnemy.GetFullName()}, assigning attack to {selectedAllies.Count} allies");
 
-                AssignTargetToAllies(selectedAllies, clickedEnemy);
-            }
-            else
-            {
-
+                AssignAttackToAllies(selectedAllies, clickedEnemy);
             }
         }
     }
@@ -348,42 +349,40 @@ public class EnemyTargetingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Назначить цель союзникам
+    /// Назначить атаку союзникам (новый метод)
     /// </summary>
-    void AssignTargetToAllies(List<Character> allies, Character target)
+    void AssignAttackToAllies(List<Character> allies, Character target)
     {
-
-
-
-
-        if (allies.Count == 0)
+        if (allies.Count == 0 || target == null || combatSystem == null)
         {
-
+            Debug.LogWarning("[EnemyTargeting] Cannot assign attack - missing components or empty allies list");
             return;
         }
 
+        Debug.Log($"[EnemyTargeting] Assigning attack target '{target.GetFullName()}' to {allies.Count} allies");
+
         foreach (Character ally in allies)
         {
-
-
-            // Останавливаем предыдущее следование
+            // Останавливаем старое следование если есть
             StopFollowing(ally);
 
-            // Назначаем новую цель
-            activeTargets[ally] = target;
+            // Назначаем боевую цель через CombatSystem
+            combatSystem.AssignCombatTarget(ally, target);
 
-
-            // Создаем индикатор цели
-            CreateTargetIndicator(target);
-
-            // Начинаем следование
-            StartFollowing(ally, target);
-
-
+            Debug.Log($"[EnemyTargeting] {ally.GetFullName()} assigned to attack {target.GetFullName()}");
         }
 
+        // Создаем визуальный индикатор цели
+        CreateTargetIndicator(target);
+    }
 
-
+    /// <summary>
+    /// Назначить цель союзникам (старый метод для совместимости)
+    /// </summary>
+    void AssignTargetToAllies(List<Character> allies, Character target)
+    {
+        // Используем новый метод атаки
+        AssignAttackToAllies(allies, target);
     }
 
     /// <summary>

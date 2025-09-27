@@ -24,10 +24,17 @@ public class GameUI : MonoBehaviour
     
     // Внутренние компоненты
     private Text infoText;
+    private Text enemyInfoText; // Отдельный текст для информации о врагах
     private SelectionManager selectionManager;
     private List<Button> buildingButtons = new List<Button>();
     private Button buildModeButton;
     private Button destroyRoomButton;
+
+    // HP бар для врагов
+    private GameObject enemyHealthBarContainer;
+    private GameObject healthBarBG;
+    private GameObject healthBarFill;
+    private Text healthBarText;
     
     // Текущее выделение
     private List<GameObject> currentSelection = new List<GameObject>();
@@ -45,13 +52,28 @@ public class GameUI : MonoBehaviour
     
     void Start()
     {
+        Debug.Log("[GameUI] GameUI Start() called");
+
         if (selectionManager != null)
         {
             selectionManager.OnSelectionChanged += OnSelectionChanged;
+            Debug.Log("[GameUI] Successfully subscribed to SelectionManager events");
+        }
+        else
+        {
+            Debug.LogError("[GameUI] SelectionManager is null!");
         }
 
         InitializeBuildingSystem();
         SyncBuildingDataWithShipBuildingSystem();
+
+        Debug.Log($"[GameUI] GameUI initialization complete. InfoText null: {infoText == null}, HealthBar null: {enemyHealthBarContainer == null}");
+    }
+
+    void Update()
+    {
+        // Обновляем HP бар в реальном времени для выделенного врага
+        UpdateSelectedEnemyHealthBar();
     }
     
     /// <summary>
@@ -169,7 +191,7 @@ public class GameUI : MonoBehaviour
 
         infoText = textGO.AddComponent<Text>();
         infoText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        infoText.fontSize = 12;
+        infoText.fontSize = 14; // Увеличиваем размер шрифта для лучшей видимости
         infoText.color = Color.white;
         infoText.text = "Выберите объект для просмотра информации";
         infoText.alignment = TextAnchor.UpperLeft;
@@ -177,11 +199,17 @@ public class GameUI : MonoBehaviour
         RectTransform textRect = textGO.GetComponent<RectTransform>();
         textRect.anchorMin = Vector2.zero;
         textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = new Vector2(10, 50); // Оставляем место внизу для кнопки
+        textRect.offsetMin = new Vector2(10, 90); // Увеличиваем отступ снизу для HP бара (45) + кнопки (25) + отступ (20)
         textRect.offsetMax = new Vector2(-10, -10);
 
         // Создаем кнопку разрушения комнаты в области информации
         CreateDestroyRoomButton(infoAreaGO);
+
+        // Создаем HP бар для врагов
+        CreateEnemyHealthBar(infoAreaGO);
+
+        // Создаем отдельный текст для информации о врагах
+        CreateEnemyInfoText(infoAreaGO);
     }
     
     /// <summary>
@@ -374,6 +402,239 @@ public class GameUI : MonoBehaviour
 
         // Изначально скрываем кнопку
         destroyRoomButton.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Создание HP бара для врагов в области информации
+    /// </summary>
+    void CreateEnemyHealthBar(GameObject parent)
+    {
+        try
+        {
+            // Контейнер для HP бара
+            GameObject containerGO = new GameObject("EnemyHealthBarContainer");
+            containerGO.transform.SetParent(parent.transform, false);
+
+            enemyHealthBarContainer = containerGO;
+
+            RectTransform containerRect = containerGO.AddComponent<RectTransform>();
+            containerRect.anchorMin = new Vector2(0.05f, 0);
+            containerRect.anchorMax = new Vector2(0.95f, 0);
+            containerRect.pivot = new Vector2(0.5f, 0);
+            containerRect.anchoredPosition = new Vector2(0, 45); // Над кнопкой разрушения
+            containerRect.sizeDelta = new Vector2(0, 25);
+
+            // Фон HP бара
+            GameObject backgroundGO = new GameObject("HealthBarBG");
+            backgroundGO.transform.SetParent(containerGO.transform, false);
+
+            healthBarBG = backgroundGO;
+            Image bgImage = backgroundGO.AddComponent<Image>();
+            bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.9f);
+
+            RectTransform bgRect = backgroundGO.GetComponent<RectTransform>();
+            bgRect.anchorMin = new Vector2(0, 0.4f);
+            bgRect.anchorMax = new Vector2(1, 1f); // 60% высоты для самого бара
+            bgRect.offsetMin = Vector2.zero;
+            bgRect.offsetMax = Vector2.zero;
+
+            // Заливка HP бара
+            GameObject fillGO = new GameObject("HealthBarFill");
+            fillGO.transform.SetParent(backgroundGO.transform, false);
+
+            healthBarFill = fillGO;
+            Image fillImage = fillGO.AddComponent<Image>();
+            fillImage.color = new Color(0.8f, 0.2f, 0.2f, 1f); // Красный цвет для врагов
+            fillImage.type = Image.Type.Filled;
+            fillImage.fillMethod = Image.FillMethod.Horizontal;
+
+            RectTransform fillRect = fillGO.GetComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.offsetMin = Vector2.zero;
+            fillRect.offsetMax = Vector2.zero;
+
+            // Текст HP
+            GameObject textGO = new GameObject("HealthBarText");
+            textGO.transform.SetParent(containerGO.transform, false);
+
+            healthBarText = textGO.AddComponent<Text>();
+            healthBarText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            healthBarText.fontSize = 10;
+            healthBarText.color = Color.white;
+            healthBarText.text = "";
+            healthBarText.alignment = TextAnchor.MiddleCenter;
+
+            RectTransform textRect = textGO.GetComponent<RectTransform>();
+            textRect.anchorMin = new Vector2(0, 0f);
+            textRect.anchorMax = new Vector2(1, 0.4f); // 40% высоты для текста
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+
+            // Изначально скрываем HP бар
+            enemyHealthBarContainer.SetActive(false);
+
+            Debug.Log("[GameUI] Successfully created enemy health bar");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[GameUI] Error creating enemy health bar: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Создание отдельного текста для информации о врагах
+    /// </summary>
+    void CreateEnemyInfoText(GameObject parent)
+    {
+        try
+        {
+            // Создаем отдельный Canvas для текста врагов НА УРОВНЕ ГЛАВНОГО CANVAS
+            GameObject enemyTextGO = new GameObject("EnemyInfoText");
+            enemyTextGO.transform.SetParent(mainCanvas.transform, false); // Привязываем к главному Canvas
+
+            // Добавляем Canvas для высокого приоритета отображения
+            Canvas enemyCanvas = enemyTextGO.AddComponent<Canvas>();
+            enemyCanvas.overrideSorting = true;
+            enemyCanvas.sortingOrder = 500; // Очень высокий приоритет, выше всех UI элементов
+
+            // Добавляем GraphicRaycaster
+            enemyTextGO.AddComponent<GraphicRaycaster>();
+
+            // Создаем сам текстовый компонент
+            enemyInfoText = enemyTextGO.AddComponent<Text>();
+            enemyInfoText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            enemyInfoText.fontSize = 12; // Меньший размер для компактности
+            enemyInfoText.color = Color.white; // Белый цвет на темной плашке
+            enemyInfoText.text = "";
+            enemyInfoText.alignment = TextAnchor.UpperLeft;
+
+            // Настраиваем позиционирование ТОЛЬКО в области под HP баром
+            RectTransform enemyTextRect = enemyTextGO.GetComponent<RectTransform>();
+            enemyTextRect.anchorMin = new Vector2(0, 0);
+            enemyTextRect.anchorMax = new Vector2(0.3f, 0); // Левые 30% экрана, привязка к низу
+            enemyTextRect.anchoredPosition = Vector2.zero;
+            enemyTextRect.offsetMin = new Vector2(15, 10); // Небольшой отступ от низа панели
+            enemyTextRect.offsetMax = new Vector2(-15, 40); // Заканчиваем где-то под HP баром
+
+            // Изначально скрываем
+            enemyTextGO.SetActive(false);
+
+            Debug.Log("[GameUI] Successfully created enemy info text positioned under HP bar");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[GameUI] Error creating enemy info text: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Обновление HP бара врага
+    /// </summary>
+    void UpdateEnemyHealthBar(Character enemy)
+    {
+        Debug.Log($"[GameUI] UpdateEnemyHealthBar called. Enemy: {enemy?.GetFullName() ?? "null"}");
+        Debug.Log($"[GameUI] HP Bar components - Container: {enemyHealthBarContainer != null}, Fill: {healthBarFill != null}, Text: {healthBarText != null}");
+
+        if (enemyHealthBarContainer == null || healthBarFill == null || healthBarText == null)
+        {
+            Debug.LogError("[GameUI] HP Bar components are null! Cannot update health bar.");
+            return;
+        }
+
+        if (enemy == null || enemy.IsPlayerCharacter())
+        {
+            Debug.Log("[GameUI] Hiding HP bar - no enemy or player character");
+            // Скрываем HP бар если нет врага или выбран союзник
+            if (enemyHealthBarContainer.activeSelf)
+            {
+                enemyHealthBarContainer.SetActive(false);
+                Debug.Log("[GameUI] HP bar hidden");
+            }
+            return;
+        }
+
+        Debug.Log("[GameUI] Showing HP bar for enemy");
+        // Показываем HP бар
+        if (!enemyHealthBarContainer.activeSelf)
+        {
+            enemyHealthBarContainer.SetActive(true);
+            Debug.Log("[GameUI] HP bar container activated");
+        }
+
+        // Вычисляем процент здоровья
+        float healthPercent = enemy.GetHealthPercent();
+        float currentHealth = enemy.GetHealth();
+        float maxHealth = enemy.GetMaxHealth();
+
+        Debug.Log($"[GameUI] Enemy health: {currentHealth}/{maxHealth} ({healthPercent * 100:F1}%)");
+
+        // Обновляем заливку бара
+        Image fillImage = healthBarFill.GetComponent<Image>();
+        if (fillImage != null)
+        {
+            fillImage.fillAmount = healthPercent;
+
+            // Меняем цвет в зависимости от уровня здоровья
+            if (healthPercent > 0.6f)
+                fillImage.color = new Color(0.2f, 0.8f, 0.2f, 1f); // Зеленый
+            else if (healthPercent > 0.3f)
+                fillImage.color = new Color(0.8f, 0.8f, 0.2f, 1f); // Желтый
+            else
+                fillImage.color = new Color(0.8f, 0.2f, 0.2f, 1f); // Красный
+
+            Debug.Log($"[GameUI] HP bar fill updated: {healthPercent * 100:F1}%");
+        }
+        else
+        {
+            Debug.LogError("[GameUI] HP bar fill Image component is null!");
+        }
+
+        // Обновляем текст HP
+        if (healthBarText != null)
+        {
+            string hpText = $"HP: {currentHealth:F0}/{maxHealth:F0}";
+            healthBarText.text = hpText;
+            Debug.Log($"[GameUI] HP text updated: {hpText}");
+        }
+        else
+        {
+            Debug.LogError("[GameUI] HP bar text component is null!");
+        }
+    }
+
+    /// <summary>
+    /// Обновление HP бара для текущего выделенного врага (вызывается в Update)
+    /// </summary>
+    void UpdateSelectedEnemyHealthBar()
+    {
+        // Проверяем, активен ли HP бар
+        if (enemyHealthBarContainer == null || !enemyHealthBarContainer.activeSelf)
+            return;
+
+        // Ищем выделенного вражеского персонажа
+        Character selectedEnemy = GetSelectedEnemy();
+        if (selectedEnemy != null)
+        {
+            UpdateEnemyHealthBar(selectedEnemy);
+        }
+    }
+
+    /// <summary>
+    /// Получить выделенного вражеского персонажа
+    /// </summary>
+    Character GetSelectedEnemy()
+    {
+        if (currentSelection.Count == 1)
+        {
+            GameObject obj = currentSelection[0];
+            Character character = obj.GetComponent<Character>();
+            if (character != null && !character.IsPlayerCharacter())
+            {
+                return character;
+            }
+        }
+        return null;
     }
 
     /// <summary>
@@ -613,6 +874,16 @@ public class GameUI : MonoBehaviour
     void FindSelectionManager()
     {
         selectionManager = FindObjectOfType<SelectionManager>();
+        Debug.Log($"[GameUI] FindSelectionManager result: {selectionManager != null}");
+
+        if (selectionManager == null)
+        {
+            Debug.LogError("[GameUI] SelectionManager not found in scene!");
+        }
+        else
+        {
+            Debug.Log($"[GameUI] Found SelectionManager: {selectionManager.gameObject.name}");
+        }
     }
     
     /// <summary>
@@ -620,6 +891,25 @@ public class GameUI : MonoBehaviour
     /// </summary>
     void OnSelectionChanged(List<GameObject> selectedObjects)
     {
+        Debug.Log($"[GameUI] OnSelectionChanged called with {selectedObjects?.Count ?? 0} objects");
+
+        // Проверяем, что GameUI полностью инициализирован
+        if (infoText == null || !gameObject.activeInHierarchy)
+        {
+            Debug.LogWarning("[GameUI] OnSelectionChanged called before GameUI is fully initialized or object inactive. Ignoring selection change.");
+            return;
+        }
+
+        if (selectedObjects != null && selectedObjects.Count > 0)
+        {
+            for (int i = 0; i < selectedObjects.Count; i++)
+            {
+                GameObject obj = selectedObjects[i];
+                Character character = obj?.GetComponent<Character>();
+                Debug.Log($"[GameUI] Selected object {i}: {obj?.name}, Has Character: {character != null}, Is Enemy: {character != null && !character.IsPlayerCharacter()}");
+            }
+        }
+
         currentSelection = selectedObjects;
         UpdateInfoArea();
     }
@@ -629,19 +919,41 @@ public class GameUI : MonoBehaviour
     /// </summary>
     void UpdateInfoArea()
     {
-        if (infoText == null) return;
+        Debug.Log($"[GameUI] UpdateInfoArea called. InfoText null: {infoText == null}, BuildMode: {buildModeActive}, Selection count: {currentSelection?.Count ?? 0}");
+
+        if (infoText == null || !gameObject.activeInHierarchy)
+        {
+            Debug.LogWarning("[GameUI] infoText is null or GameUI inactive! May not be fully initialized yet.");
+            return;
+        }
 
         // Не обновляем информацию если активен режим строительства
-        if (buildModeActive) return;
+        if (buildModeActive)
+        {
+            Debug.Log("[GameUI] Build mode active, skipping info update");
+            return;
+        }
 
         if (currentSelection.Count == 0)
         {
+            Debug.Log("[GameUI] No selection, showing default text");
             infoText.text = "Выберите объект для просмотра информации";
+            infoText.color = Color.white; // Возвращаем белый цвет для обычного текста
+            infoText.fontSize = 14; // Обычный размер
+
+            // Скрываем текст врагов
+            if (enemyInfoText != null)
+            {
+                enemyInfoText.gameObject.SetActive(false);
+            }
+
             // Скрываем кнопку разрушения
             if (destroyRoomButton != null)
             {
                 destroyRoomButton.gameObject.SetActive(false);
             }
+            // Скрываем HP бар
+            UpdateEnemyHealthBar(null);
             return;
         }
 
@@ -649,6 +961,8 @@ public class GameUI : MonoBehaviour
         // Проверяем, есть ли среди выделенных объектов комната
         GameObject selectedRoom = GetSelectedRoom();
         bool hasRoom = selectedRoom != null;
+
+        Debug.Log($"[GameUI] Found room: {hasRoom}");
 
         if (hasRoom)
         {
@@ -668,26 +982,42 @@ public class GameUI : MonoBehaviour
 
             infoText.text = info;
 
+            // Скрываем текст врагов для комнат
+            if (enemyInfoText != null)
+            {
+                enemyInfoText.gameObject.SetActive(false);
+            }
+
             // Показываем кнопку разрушения
             if (destroyRoomButton != null)
             {
                 destroyRoomButton.gameObject.SetActive(true);
             }
+            // Скрываем HP бар для комнат
+            UpdateEnemyHealthBar(null);
         }
         else
         {
+            Debug.Log("[GameUI] No room found, checking other objects");
+
             // Проверяем, что выделено
             if (currentSelection.Count == 1)
             {
                 GameObject obj = currentSelection[0];
                 Character character = obj.GetComponent<Character>();
 
+                Debug.Log($"[GameUI] Single selection: {obj?.name}, Character component: {character != null}");
+
                 if (character != null)
                 {
+                    Debug.Log($"[GameUI] Character found: {character.GetFullName()}, IsPlayer: {character.IsPlayerCharacter()}, Faction: {character.characterData?.faction}");
+
                     // Показываем информацию только о вражеских персонажах
                     // Информация о союзниках отображается в верхней панели с иконками
                     if (!character.IsPlayerCharacter())
                     {
+                        Debug.Log("[GameUI] Displaying enemy character info");
+
                         string info = $"ВРАЖЕСКИЙ ПЕРСОНАЖ: {character.GetFullName()}\n";
                         info += $"Профессия: {character.characterData.profession}\n";
                         info += $"Уровень: {character.characterData.level}\n";
@@ -700,12 +1030,57 @@ public class GameUI : MonoBehaviour
                         }
 
                         info += $"\nПозиция: {obj.transform.position:F1}";
-                        infoText.text = info;
+
+                        Debug.Log($"[GameUI] Setting enemy info text to: {info}");
+
+                        // Скрываем обычный текст и используем специальный текст для врагов
+                        infoText.text = "";
+
+                        // Показываем информацию во втором текстовом элементе
+                        if (enemyInfoText != null)
+                        {
+                            enemyInfoText.text = info;
+                            enemyInfoText.gameObject.SetActive(true);
+                            Debug.Log("[GameUI] Enemy info text activated and set");
+                        }
+                        else
+                        {
+                            Debug.LogError("[GameUI] enemyInfoText is null!");
+                        }
+
+                        // Дополнительная диагностика UI
+                        Debug.Log($"[GameUI] InfoText active: {infoText.gameObject.activeInHierarchy}, enabled: {infoText.enabled}");
+                        Debug.Log($"[GameUI] InfoText position: {infoText.rectTransform.anchoredPosition}, size: {infoText.rectTransform.sizeDelta}");
+                        Debug.Log($"[GameUI] InfoText text: '{infoText.text}'");
+                        Debug.Log($"[GameUI] InfoText color: {infoText.color}, fontSize: {infoText.fontSize}");
+                        Debug.Log($"[GameUI] InfoText parent active: {infoText.transform.parent.gameObject.activeInHierarchy}");
+                        Debug.Log($"[GameUI] InfoArea position: {infoArea.anchoredPosition}, size: {infoArea.sizeDelta}");
+                        Debug.Log($"[GameUI] BottomPanel active: {bottomPanel.gameObject.activeInHierarchy}");
+
+                        // Обновляем HP бар для врага
+                        Debug.Log("[GameUI] Calling UpdateEnemyHealthBar for enemy");
+                        UpdateEnemyHealthBar(character);
+
+                        // Скрываем кнопку разрушения для персонажей
+                        if (destroyRoomButton != null)
+                        {
+                            destroyRoomButton.gameObject.SetActive(false);
+                        }
+                        return; // Завершаем обработку для врага
                     }
                     else
                     {
                         // Для союзников показываем сообщение о том, что информация отображается вверху
                         infoText.text = "Информация о союзных персонажах\nотображается в верхней панели с иконками";
+
+                        // Скрываем текст врагов для союзников
+                        if (enemyInfoText != null)
+                        {
+                            enemyInfoText.gameObject.SetActive(false);
+                        }
+
+                        // Скрываем HP бар для союзников
+                        UpdateEnemyHealthBar(null);
                     }
                 }
                 else
@@ -733,10 +1108,28 @@ public class GameUI : MonoBehaviour
                         info += $"\nПозиция: {obj.transform.position:F1}";
 
                         infoText.text = info;
+
+                        // Скрываем текст врагов для обычных объектов
+                        if (enemyInfoText != null)
+                        {
+                            enemyInfoText.gameObject.SetActive(false);
+                        }
+
+                        // Скрываем HP бар для обычных объектов
+                        UpdateEnemyHealthBar(null);
                     }
                     else
                     {
                         infoText.text = $"ОБЪЕКТ: {obj.name}\nПозиция: {obj.transform.position:F1}";
+
+                        // Скрываем текст врагов для неизвестных объектов
+                        if (enemyInfoText != null)
+                        {
+                            enemyInfoText.gameObject.SetActive(false);
+                        }
+
+                        // Скрываем HP бар для обычных объектов
+                        UpdateEnemyHealthBar(null);
                     }
                 }
             }
@@ -811,6 +1204,8 @@ public class GameUI : MonoBehaviour
             {
                 destroyRoomButton.gameObject.SetActive(false);
             }
+            // Скрываем HP бар для множественного выделения
+            UpdateEnemyHealthBar(null);
         }
     }
 

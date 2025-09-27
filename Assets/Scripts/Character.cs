@@ -412,7 +412,9 @@ public class Character : MonoBehaviour
     /// </summary>
     public bool IsPlayerCharacter()
     {
-        return characterData.faction == Faction.Player;
+        bool isPlayer = characterData.faction == Faction.Player;
+        Debug.Log($"[Character] IsPlayerCharacter called for {GetFullName()}: faction={characterData.faction}, isPlayer={isPlayer}");
+        return isPlayer;
     }
 
     /// <summary>
