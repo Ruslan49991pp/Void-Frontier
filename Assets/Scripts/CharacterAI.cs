@@ -420,6 +420,18 @@ public class CharacterAI : MonoBehaviour
     public void OnPlayerInitiatedMovement()
     {
         playerInitiatedMovement = true;
+
+        // Останавливаем бой при получении команды движения от игрока
+        CombatSystem combatSystem = FindObjectOfType<CombatSystem>();
+        if (combatSystem != null)
+        {
+            Character character = GetComponent<Character>();
+            if (character != null)
+            {
+                combatSystem.StopCombatForCharacter(character);
+            }
+        }
+
         // Debug logging disabled
     }
 

@@ -92,6 +92,9 @@ public class EnemyTargetingSystem : MonoBehaviour
 
         HandleTargetingInput();
         HandleEnemyHover();
+
+        // Обновляем позиции индикаторов каждый кадр для плавного следования
+        UpdateTargetIndicators();
     }
 
     /// <summary>
@@ -855,6 +858,32 @@ public class EnemyTargetingSystem : MonoBehaviour
         foreach (Character target in allTargets)
         {
             RemoveTargetIndicator(target);
+        }
+    }
+
+    /// <summary>
+    /// Очистить цель для конкретного персонажа (убрать индикатор если никто больше не следует)
+    /// </summary>
+    public void ClearTargetForCharacter(Character character)
+    {
+        if (character == null) return;
+
+        // Убираем персонажа из активных целей
+        if (activeTargets.ContainsKey(character))
+        {
+            Character oldTarget = activeTargets[character];
+            activeTargets.Remove(character);
+
+            // Проверяем, следует ли кто-то еще за этой целью
+            if (oldTarget != null && !IsTargetBeingFollowed(oldTarget))
+            {
+                RemoveTargetIndicator(oldTarget);
+
+                if (debugMode)
+                {
+                    Debug.Log($"[EnemyTargeting] Removed target indicator for {oldTarget.GetFullName()} - no more followers");
+                }
+            }
         }
     }
 }

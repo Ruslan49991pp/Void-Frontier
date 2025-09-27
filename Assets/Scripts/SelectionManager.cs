@@ -1010,8 +1010,18 @@ public class SelectionManager : MonoBehaviour
     {
         try
         {
-            // Безопасная очистка выделения при уничтожении
-            ClearSelection();
+            // Безопасная очистка выделения при уничтожении (без уведомления UI)
+            if (selectedObjects != null)
+            {
+                foreach (var obj in selectedObjects)
+                {
+                    if (obj != null)
+                    {
+                        RemoveSelectionIndicator(obj);
+                    }
+                }
+                selectedObjects.Clear();
+            }
 
             // Очистка hover состояния
             if (currentHoveredObject != null)

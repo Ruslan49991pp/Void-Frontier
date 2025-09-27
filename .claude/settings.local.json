@@ -38,7 +38,15 @@
       "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_debug_text.log\")",
       "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_text_fix_final.log\")",
       "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_separate_text.log\")",
-      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_text_under_hp.log\")"
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_text_under_hp.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_combat_fix.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_rotation_fix.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_indicator_cleanup.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_clear_target_fix.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_attack_cooldown_fix.log\")",
+      "Bash(if exist \"C:\\temp\\unity_clear_target_fix.log\" type \"C:\\temp\\unity_clear_target_fix.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_attack_cooldown_final.log\")",
+      "Bash(if exist \"C:\\temp\\unity_attack_cooldown_final.log\" type \"C:\\temp\\unity_attack_cooldown_final.log\")"
     ],
     "deny": [],
     "ask": []

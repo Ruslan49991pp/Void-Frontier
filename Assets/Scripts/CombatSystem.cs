@@ -23,16 +23,20 @@ public class CombatSystem : MonoBehaviour
     public float damageFlashDuration = 0.2f;
 
     [Header("Debug")]
-    public bool debugMode = false;
+    public bool debugMode = true; // Включаем debug для отслеживания преследования
 
     // Компоненты системы
     private SelectionManager selectionManager;
     private GridManager gridManager;
     private Camera playerCamera;
+    private EnemyTargetingSystem enemyTargetingSystem;
 
     // Состояние боевых действий
     private Dictionary<Character, CombatData> activeCombatants = new Dictionary<Character, CombatData>();
     private Material damageIndicatorMaterial;
+
+    // Защита от одновременного применения урона к одной цели
+    private HashSet<Character> damageIndicationInProgress = new HashSet<Character>();
 
     // Класс для хранения данных о боевых действиях персонажа
     private class CombatData
@@ -62,6 +66,7 @@ public class CombatSystem : MonoBehaviour
         selectionManager = FindObjectOfType<SelectionManager>();
         gridManager = FindObjectOfType<GridManager>();
         playerCamera = Camera.main;
+        enemyTargetingSystem = FindObjectOfType<EnemyTargetingSystem>();
 
         LoadDamageIndicatorMaterial();
     }
@@ -231,6 +236,14 @@ public class CombatSystem : MonoBehaviour
     }
 
     /// <summary>
+    /// Остановить боевые действия персонажа (публичный метод)
+    /// </summary>
+    public void StopCombatForCharacter(Character attacker)
+    {
+        StopCombat(attacker);
+    }
+
+    /// <summary>
     /// Остановить боевые действия персонажа
     /// </summary>
     public void StopCombat(Character attacker)
@@ -259,7 +272,29 @@ public class CombatSystem : MonoBehaviour
                 movement.StopMovement();
             }
 
+            // Убираем индикатор цели, если никто больше не атакует эту цель
+            Character target = combatData.target;
             activeCombatants.Remove(attacker);
+
+            if (target != null && enemyTargetingSystem != null)
+            {
+                // Проверяем, атакует ли кто-то еще эту цель
+                bool isTargetStillBeingAttacked = false;
+                foreach (var combat in activeCombatants.Values)
+                {
+                    if (combat.target == target)
+                    {
+                        isTargetStillBeingAttacked = true;
+                        break;
+                    }
+                }
+
+                // Если никто больше не атакует эту цель, убираем индикатор
+                if (!isTargetStillBeingAttacked)
+                {
+                    enemyTargetingSystem.ClearTargetForCharacter(attacker);
+                }
+            }
 
             if (debugMode)
                 Debug.Log($"[CombatSystem] Stopped combat for {attacker.GetFullName()}");
@@ -286,27 +321,40 @@ public class CombatSystem : MonoBehaviour
             // Проверяем, находится ли цель в дистанции атаки
             if (distanceToTarget <= attackRange)
             {
-                // Цель в дистанции атаки
+                // Цель в дистанции атаки - останавливаем движение
                 combatData.isPursuing = false;
+                movement.StopMovement();
 
-                // Проверяем кулдаун атаки
-                if (Time.time - combatData.lastAttackTime >= attackCooldown && !combatData.isAttacking)
+                // Проверяем кулдаун атаки - атака начинается ТОЛЬКО если не атакуем сейчас И прошел кулдаун
+                float timeSinceLastAttack = Time.time - combatData.lastAttackTime;
+                if (!combatData.isAttacking && timeSinceLastAttack >= attackCooldown)
                 {
-                    // Выполняем атаку
+                    if (debugMode)
+                        Debug.Log($"[CombatSystem] {attacker.GetFullName()} starting attack (time since last: {timeSinceLastAttack:F2}s, cooldown: {attackCooldown}s)");
+
+                    // Выполняем атаку - блокируем новые атаки пока не завершится
                     yield return StartCoroutine(PerformAttack(attacker, combatData));
                 }
                 else
                 {
-                    // Ждем окончания кулдауна
+                    if (debugMode && Time.frameCount % 60 == 0) // Логируем каждую секунду
+                        Debug.Log($"[CombatSystem] {attacker.GetFullName()} waiting for attack readiness (time since last: {timeSinceLastAttack:F2}s, need: {attackCooldown}s, attacking: {combatData.isAttacking})");
+
+                    // Ждем готовности к следующей атаке
                     yield return new WaitForSeconds(0.1f);
                 }
             }
-            else if (distanceToTarget <= pursuitRange)
+            else
             {
-                // Цель в дистанции преследования - двигаемся к ней
-                if (!combatData.isPursuing || !movement.IsMoving())
+                // Цель за пределами дистанции атаки - преследуем ее независимо от расстояния
+                Vector3 targetPosition = GetNearestAttackPosition(combatData.target);
+
+                // Проверяем, нужно ли обновить маршрут (если цель сдвинулась или персонаж не движется)
+                bool needToUpdatePath = !movement.IsMoving() ||
+                                       Vector3.Distance(movement.GetDestination(), targetPosition) > 1.5f;
+
+                if (!combatData.isPursuing || needToUpdatePath)
                 {
-                    Vector3 targetPosition = GetNearestAttackPosition(combatData.target);
                     movement.MoveTo(targetPosition);
                     combatData.isPursuing = true;
 
@@ -317,17 +365,10 @@ public class CombatSystem : MonoBehaviour
                     }
 
                     if (debugMode)
-                        Debug.Log($"[CombatSystem] {attacker.GetFullName()} pursuing {combatData.target.GetFullName()}");
+                        Debug.Log($"[CombatSystem] {attacker.GetFullName()} pursuing {combatData.target.GetFullName()} (distance: {distanceToTarget:F1}, updating path: {needToUpdatePath})");
                 }
 
-                yield return new WaitForSeconds(0.2f);
-            }
-            else
-            {
-                // Цель слишком далеко - прекращаем преследование
-                if (debugMode)
-                    Debug.Log($"[CombatSystem] Target too far away. Stopping combat for {attacker.GetFullName()}");
-                break;
+                yield return new WaitForSeconds(0.1f); // Более частое обновление для лучшего преследования
             }
 
             yield return null;
@@ -337,7 +378,29 @@ public class CombatSystem : MonoBehaviour
         if (debugMode)
             Debug.Log($"[CombatSystem] Combat ended for {attacker.GetFullName()}");
 
+        // Убираем индикатор цели при завершении боя
+        Character target = combatData.target;
         activeCombatants.Remove(attacker);
+
+        if (target != null && enemyTargetingSystem != null)
+        {
+            // Проверяем, атакует ли кто-то еще эту цель
+            bool isTargetStillBeingAttacked = false;
+            foreach (var combat in activeCombatants.Values)
+            {
+                if (combat.target == target)
+                {
+                    isTargetStillBeingAttacked = true;
+                    break;
+                }
+            }
+
+            // Если никто больше не атакует эту цель, убираем индикатор
+            if (!isTargetStillBeingAttacked)
+            {
+                enemyTargetingSystem.ClearTargetForCharacter(attacker);
+            }
+        }
     }
 
     /// <summary>
@@ -345,11 +408,22 @@ public class CombatSystem : MonoBehaviour
     /// </summary>
     IEnumerator PerformAttack(Character attacker, CombatData combatData)
     {
+        // Проверяем, что цель все еще в дистанции атаки перед началом
+        float distanceCheck = Vector3.Distance(attacker.transform.position, combatData.target.transform.position);
+        if (distanceCheck > attackRange)
+        {
+            if (debugMode)
+                Debug.Log($"[CombatSystem] {attacker.GetFullName()} target moved out of range during attack start (distance: {distanceCheck:F2})");
+            yield break;
+        }
+
         combatData.isAttacking = true;
-        combatData.lastAttackTime = Time.time;
 
         if (debugMode)
-            Debug.Log($"[CombatSystem] {attacker.GetFullName()} attacking {combatData.target.GetFullName()}");
+            Debug.Log($"[CombatSystem] {attacker.GetFullName()} performing attack on {combatData.target.GetFullName()}");
+
+        // Поворачиваем атакующего лицом к цели
+        yield return StartCoroutine(RotateTowardsTarget(attacker, combatData.target));
 
         // Запускаем анимацию атаки
         combatData.attackAnimationCoroutine = StartCoroutine(AttackAnimation(attacker, combatData.target));
@@ -369,8 +443,13 @@ public class CombatSystem : MonoBehaviour
                 Debug.Log($"[CombatSystem] {attacker.GetFullName()} dealt {attackDamage} damage to {combatData.target.GetFullName()} (HP: {combatData.target.GetHealth()})");
         }
 
+        // ВАЖНО: Устанавливаем время последней атаки ПОСЛЕ завершения всей атаки
+        combatData.lastAttackTime = Time.time;
         combatData.isAttacking = false;
         combatData.attackAnimationCoroutine = null;
+
+        if (debugMode)
+            Debug.Log($"[CombatSystem] {attacker.GetFullName()} attack completed at {Time.time:F2}, next available at: {(Time.time + attackCooldown):F2}");
     }
 
     /// <summary>
@@ -420,38 +499,146 @@ public class CombatSystem : MonoBehaviour
     }
 
     /// <summary>
+    /// Повернуть персонажа лицом к цели
+    /// </summary>
+    IEnumerator RotateTowardsTarget(Character attacker, Character target)
+    {
+        if (attacker == null || target == null)
+            yield break;
+
+        Vector3 direction = (target.transform.position - attacker.transform.position).normalized;
+
+        // Убираем компонент Y для поворота только в горизонтальной плоскости
+        direction.y = 0;
+
+        if (direction == Vector3.zero)
+            yield break;
+
+        Quaternion targetRotation = Quaternion.LookRotation(direction);
+        float rotationSpeed = 720f; // Градусов в секунду для быстрого поворота во время атаки
+
+        while (Quaternion.Angle(attacker.transform.rotation, targetRotation) > 1f)
+        {
+            attacker.transform.rotation = Quaternion.RotateTowards(
+                attacker.transform.rotation,
+                targetRotation,
+                rotationSpeed * Time.deltaTime
+            );
+            yield return null;
+        }
+
+        // Устанавливаем финальное направление
+        attacker.transform.rotation = targetRotation;
+
+        if (debugMode)
+            Debug.Log($"[CombatSystem] {attacker.GetFullName()} rotated to face {target.GetFullName()}");
+    }
+
+    /// <summary>
     /// Показать индикацию урона (мигание материала)
     /// </summary>
     IEnumerator ShowDamageIndication(Character target)
     {
         if (target == null || damageIndicatorMaterial == null)
+        {
+            Debug.LogError($"[CombatSystem] ShowDamageIndication failed: target={target}, damageIndicatorMaterial={damageIndicatorMaterial}");
             yield break;
+        }
+
+        // Защита от одновременного применения урона к одной цели
+        if (damageIndicationInProgress.Contains(target))
+        {
+            Debug.Log($"[CombatSystem] Damage indication already in progress for {target.GetFullName()}, skipping");
+            yield break;
+        }
+
+        damageIndicationInProgress.Add(target);
+
+        Debug.Log($"[CombatSystem] === STARTING DAMAGE INDICATION for {target.GetFullName()} ===");
+
+        // Также записываем в файл для удобства
+        string logFile = "C:/temp/damage_indication_debug.log";
+        System.IO.File.AppendAllText(logFile, $"\n=== DAMAGE INDICATION START: {target.GetFullName()} at {System.DateTime.Now} ===\n");
 
         // Получаем все рендереры цели
         Renderer[] renderers = target.GetComponentsInChildren<Renderer>();
-        Dictionary<Renderer, Material> originalMaterials = new Dictionary<Renderer, Material>();
+        Dictionary<Renderer, Material[]> originalMaterials = new Dictionary<Renderer, Material[]>();
 
-        // Сохраняем оригинальные материалы и применяем материал урона
+        Debug.Log($"[CombatSystem] Found {renderers.Length} renderers on {target.GetFullName()}");
+
+        // Сохраняем оригинальные материалы и создаем массивы с материалом урона
         foreach (Renderer renderer in renderers)
         {
-            if (renderer != null && renderer.material != null)
+            if (renderer != null && renderer.sharedMaterials != null && renderer.sharedMaterials.Length > 0)
             {
-                originalMaterials[renderer] = renderer.material;
-                renderer.material = damageIndicatorMaterial;
+                Debug.Log($"[CombatSystem] Processing renderer: {renderer.name}");
+
+                // Логируем текущие материалы
+                for (int i = 0; i < renderer.sharedMaterials.Length; i++)
+                {
+                    Material mat = renderer.sharedMaterials[i];
+                    Debug.Log($"[CombatSystem]   Original material [{i}]: {(mat ? mat.name : "NULL")}");
+                }
+
+                // Сохраняем все оригинальные материалы
+                originalMaterials[renderer] = (Material[])renderer.sharedMaterials.Clone();
+
+                // Создаем массив материалов урона (заменяем все материалы на материал урона)
+                Material[] damageArray = new Material[renderer.sharedMaterials.Length];
+                for (int i = 0; i < damageArray.Length; i++)
+                {
+                    damageArray[i] = damageIndicatorMaterial;
+                }
+
+                // Применяем материалы урона
+                renderer.sharedMaterials = damageArray;
+
+                Debug.Log($"[CombatSystem] Applied {damageArray.Length} damage materials to {renderer.name}");
             }
         }
+
+        Debug.Log($"[CombatSystem] Waiting {damageFlashDuration} seconds for damage indication...");
 
         // Ждем указанное время
         yield return new WaitForSeconds(damageFlashDuration);
 
+        Debug.Log($"[CombatSystem] === RESTORING MATERIALS for {target.GetFullName()} ===");
+
         // Восстанавливаем оригинальные материалы
         foreach (var kvp in originalMaterials)
         {
-            if (kvp.Key != null)
+            if (kvp.Key != null && kvp.Value != null)
             {
-                kvp.Key.material = kvp.Value;
+                Debug.Log($"[CombatSystem] Restoring materials to {kvp.Key.name}:");
+
+                // Логируем что восстанавливаем
+                for (int i = 0; i < kvp.Value.Length; i++)
+                {
+                    Material mat = kvp.Value[i];
+                    Debug.Log($"[CombatSystem]   Restoring material [{i}]: {(mat ? mat.name : "NULL")}");
+                }
+
+                kvp.Key.sharedMaterials = kvp.Value;
+
+                // Проверяем что действительно восстановилось
+                yield return null; // Даем Unity обновиться
+
+                for (int i = 0; i < kvp.Key.sharedMaterials.Length; i++)
+                {
+                    Material mat = kvp.Key.sharedMaterials[i];
+                    Debug.Log($"[CombatSystem]   AFTER RESTORE [{i}]: {(mat ? mat.name : "NULL")}");
+                }
+            }
+            else
+            {
+                Debug.LogError($"[CombatSystem] Failed to restore materials: renderer={kvp.Key}, materials={kvp.Value}");
             }
         }
+
+        // Убираем блокировку
+        damageIndicationInProgress.Remove(target);
+
+        Debug.Log($"[CombatSystem] === DAMAGE INDICATION COMPLETE for {target.GetFullName()} ===");
     }
 
     /// <summary>

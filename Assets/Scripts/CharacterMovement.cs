@@ -361,6 +361,14 @@ public class CharacterMovement : MonoBehaviour
         // Debug logging disabled
         return isMoving;
     }
+
+    /// <summary>
+    /// Получить текущую цель движения
+    /// </summary>
+    public Vector3 GetDestination()
+    {
+        return targetPosition;
+    }
     
     /// <summary>
     /// Остановить текущее движение
