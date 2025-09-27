@@ -71,7 +71,7 @@ public class InventoryManager : MonoBehaviour
         GameObject inventoryUIGO = new GameObject("InventoryUI");
         inventoryUI = inventoryUIGO.AddComponent<InventoryUI>();
 
-        Debug.Log("Inventory system initialized");
+
     }
 
     /// <summary>
@@ -81,7 +81,7 @@ public class InventoryManager : MonoBehaviour
     {
         if (!enableInventorySystem) return;
 
-        Debug.Log("Creating complete test item set...");
+
 
         // Создаем полный набор тестовых предметов для проверки всех слотов
         CreateTestItemSet();
@@ -120,7 +120,7 @@ public class InventoryManager : MonoBehaviour
         );
 
         GameObject worldItem = Item.CreateWorldItem(item, position);
-        Debug.Log($"Created test item: {item.itemName} at {position}");
+
     }
 
     /// <summary>

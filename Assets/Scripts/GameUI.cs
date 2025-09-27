@@ -52,22 +52,22 @@ public class GameUI : MonoBehaviour
     
     void Start()
     {
-        Debug.Log("[GameUI] GameUI Start() called");
+
 
         if (selectionManager != null)
         {
             selectionManager.OnSelectionChanged += OnSelectionChanged;
-            Debug.Log("[GameUI] Successfully subscribed to SelectionManager events");
+
         }
         else
         {
-            Debug.LogError("[GameUI] SelectionManager is null!");
+
         }
 
         InitializeBuildingSystem();
         SyncBuildingDataWithShipBuildingSystem();
 
-        Debug.Log($"[GameUI] GameUI initialization complete. InfoText null: {infoText == null}, HealthBar null: {enemyHealthBarContainer == null}");
+
     }
 
     void Update()
@@ -474,11 +474,11 @@ public class GameUI : MonoBehaviour
             // Изначально скрываем HP бар
             enemyHealthBarContainer.SetActive(false);
 
-            Debug.Log("[GameUI] Successfully created enemy health bar");
+
         }
-        catch (System.Exception e)
+        catch (System.Exception)
         {
-            Debug.LogError($"[GameUI] Error creating enemy health bar: {e.Message}");
+            // Ошибка создания HP бара - игнорируем
         }
     }
 
@@ -520,11 +520,11 @@ public class GameUI : MonoBehaviour
             // Изначально скрываем
             enemyTextGO.SetActive(false);
 
-            Debug.Log("[GameUI] Successfully created enemy info text positioned under HP bar");
+
         }
-        catch (System.Exception e)
+        catch (System.Exception)
         {
-            Debug.LogError($"[GameUI] Error creating enemy info text: {e.Message}");
+            // Ошибка создания HP бара - игнорируем
         }
     }
 
@@ -533,33 +533,33 @@ public class GameUI : MonoBehaviour
     /// </summary>
     void UpdateEnemyHealthBar(Character enemy)
     {
-        Debug.Log($"[GameUI] UpdateEnemyHealthBar called. Enemy: {enemy?.GetFullName() ?? "null"}");
-        Debug.Log($"[GameUI] HP Bar components - Container: {enemyHealthBarContainer != null}, Fill: {healthBarFill != null}, Text: {healthBarText != null}");
+
+
 
         if (enemyHealthBarContainer == null || healthBarFill == null || healthBarText == null)
         {
-            Debug.LogError("[GameUI] HP Bar components are null! Cannot update health bar.");
+
             return;
         }
 
         if (enemy == null || enemy.IsPlayerCharacter())
         {
-            Debug.Log("[GameUI] Hiding HP bar - no enemy or player character");
+
             // Скрываем HP бар если нет врага или выбран союзник
             if (enemyHealthBarContainer.activeSelf)
             {
                 enemyHealthBarContainer.SetActive(false);
-                Debug.Log("[GameUI] HP bar hidden");
+
             }
             return;
         }
 
-        Debug.Log("[GameUI] Showing HP bar for enemy");
+
         // Показываем HP бар
         if (!enemyHealthBarContainer.activeSelf)
         {
             enemyHealthBarContainer.SetActive(true);
-            Debug.Log("[GameUI] HP bar container activated");
+
         }
 
         // Вычисляем процент здоровья
@@ -567,7 +567,7 @@ public class GameUI : MonoBehaviour
         float currentHealth = enemy.GetHealth();
         float maxHealth = enemy.GetMaxHealth();
 
-        Debug.Log($"[GameUI] Enemy health: {currentHealth}/{maxHealth} ({healthPercent * 100:F1}%)");
+
 
         // Обновляем заливку бара
         Image fillImage = healthBarFill.GetComponent<Image>();
@@ -583,11 +583,11 @@ public class GameUI : MonoBehaviour
             else
                 fillImage.color = new Color(0.8f, 0.2f, 0.2f, 1f); // Красный
 
-            Debug.Log($"[GameUI] HP bar fill updated: {healthPercent * 100:F1}%");
+
         }
         else
         {
-            Debug.LogError("[GameUI] HP bar fill Image component is null!");
+
         }
 
         // Обновляем текст HP
@@ -595,11 +595,11 @@ public class GameUI : MonoBehaviour
         {
             string hpText = $"HP: {currentHealth:F0}/{maxHealth:F0}";
             healthBarText.text = hpText;
-            Debug.Log($"[GameUI] HP text updated: {hpText}");
+
         }
         else
         {
-            Debug.LogError("[GameUI] HP bar text component is null!");
+
         }
     }
 
@@ -874,15 +874,15 @@ public class GameUI : MonoBehaviour
     void FindSelectionManager()
     {
         selectionManager = FindObjectOfType<SelectionManager>();
-        Debug.Log($"[GameUI] FindSelectionManager result: {selectionManager != null}");
+
 
         if (selectionManager == null)
         {
-            Debug.LogError("[GameUI] SelectionManager not found in scene!");
+
         }
         else
         {
-            Debug.Log($"[GameUI] Found SelectionManager: {selectionManager.gameObject.name}");
+
         }
     }
     
@@ -891,12 +891,12 @@ public class GameUI : MonoBehaviour
     /// </summary>
     void OnSelectionChanged(List<GameObject> selectedObjects)
     {
-        Debug.Log($"[GameUI] OnSelectionChanged called with {selectedObjects?.Count ?? 0} objects");
+
 
         // Проверяем, что GameUI полностью инициализирован
         if (infoText == null || !gameObject.activeInHierarchy)
         {
-            Debug.LogWarning("[GameUI] OnSelectionChanged called before GameUI is fully initialized or object inactive. Ignoring selection change.");
+
             return;
         }
 
@@ -906,7 +906,7 @@ public class GameUI : MonoBehaviour
             {
                 GameObject obj = selectedObjects[i];
                 Character character = obj?.GetComponent<Character>();
-                Debug.Log($"[GameUI] Selected object {i}: {obj?.name}, Has Character: {character != null}, Is Enemy: {character != null && !character.IsPlayerCharacter()}");
+
             }
         }
 
@@ -919,24 +919,24 @@ public class GameUI : MonoBehaviour
     /// </summary>
     void UpdateInfoArea()
     {
-        Debug.Log($"[GameUI] UpdateInfoArea called. InfoText null: {infoText == null}, BuildMode: {buildModeActive}, Selection count: {currentSelection?.Count ?? 0}");
+
 
         if (infoText == null || !gameObject.activeInHierarchy)
         {
-            Debug.LogWarning("[GameUI] infoText is null or GameUI inactive! May not be fully initialized yet.");
+
             return;
         }
 
         // Не обновляем информацию если активен режим строительства
         if (buildModeActive)
         {
-            Debug.Log("[GameUI] Build mode active, skipping info update");
+
             return;
         }
 
         if (currentSelection.Count == 0)
         {
-            Debug.Log("[GameUI] No selection, showing default text");
+
             infoText.text = "Выберите объект для просмотра информации";
             infoText.color = Color.white; // Возвращаем белый цвет для обычного текста
             infoText.fontSize = 14; // Обычный размер
@@ -962,7 +962,7 @@ public class GameUI : MonoBehaviour
         GameObject selectedRoom = GetSelectedRoom();
         bool hasRoom = selectedRoom != null;
 
-        Debug.Log($"[GameUI] Found room: {hasRoom}");
+
 
         if (hasRoom)
         {
@@ -998,7 +998,7 @@ public class GameUI : MonoBehaviour
         }
         else
         {
-            Debug.Log("[GameUI] No room found, checking other objects");
+
 
             // Проверяем, что выделено
             if (currentSelection.Count == 1)
@@ -1006,17 +1006,17 @@ public class GameUI : MonoBehaviour
                 GameObject obj = currentSelection[0];
                 Character character = obj.GetComponent<Character>();
 
-                Debug.Log($"[GameUI] Single selection: {obj?.name}, Character component: {character != null}");
+
 
                 if (character != null)
                 {
-                    Debug.Log($"[GameUI] Character found: {character.GetFullName()}, IsPlayer: {character.IsPlayerCharacter()}, Faction: {character.characterData?.faction}");
+
 
                     // Показываем информацию только о вражеских персонажах
                     // Информация о союзниках отображается в верхней панели с иконками
                     if (!character.IsPlayerCharacter())
                     {
-                        Debug.Log("[GameUI] Displaying enemy character info");
+
 
                         string info = $"ВРАЖЕСКИЙ ПЕРСОНАЖ: {character.GetFullName()}\n";
                         info += $"Профессия: {character.characterData.profession}\n";
@@ -1031,7 +1031,7 @@ public class GameUI : MonoBehaviour
 
                         info += $"\nПозиция: {obj.transform.position:F1}";
 
-                        Debug.Log($"[GameUI] Setting enemy info text to: {info}");
+
 
                         // Скрываем обычный текст и используем специальный текст для врагов
                         infoText.text = "";
@@ -1041,24 +1041,24 @@ public class GameUI : MonoBehaviour
                         {
                             enemyInfoText.text = info;
                             enemyInfoText.gameObject.SetActive(true);
-                            Debug.Log("[GameUI] Enemy info text activated and set");
+
                         }
                         else
                         {
-                            Debug.LogError("[GameUI] enemyInfoText is null!");
+
                         }
 
                         // Дополнительная диагностика UI
-                        Debug.Log($"[GameUI] InfoText active: {infoText.gameObject.activeInHierarchy}, enabled: {infoText.enabled}");
-                        Debug.Log($"[GameUI] InfoText position: {infoText.rectTransform.anchoredPosition}, size: {infoText.rectTransform.sizeDelta}");
-                        Debug.Log($"[GameUI] InfoText text: '{infoText.text}'");
-                        Debug.Log($"[GameUI] InfoText color: {infoText.color}, fontSize: {infoText.fontSize}");
-                        Debug.Log($"[GameUI] InfoText parent active: {infoText.transform.parent.gameObject.activeInHierarchy}");
-                        Debug.Log($"[GameUI] InfoArea position: {infoArea.anchoredPosition}, size: {infoArea.sizeDelta}");
-                        Debug.Log($"[GameUI] BottomPanel active: {bottomPanel.gameObject.activeInHierarchy}");
+
+
+
+
+
+
+
 
                         // Обновляем HP бар для врага
-                        Debug.Log("[GameUI] Calling UpdateEnemyHealthBar for enemy");
+
                         UpdateEnemyHealthBar(character);
 
                         // Скрываем кнопку разрушения для персонажей

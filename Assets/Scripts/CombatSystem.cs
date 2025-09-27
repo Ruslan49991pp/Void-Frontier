@@ -109,13 +109,7 @@ public class CombatSystem : MonoBehaviour
             damageIndicatorMaterial.EnableKeyword("_EMISSION");
             damageIndicatorMaterial.SetColor("_EmissionColor", new Color(0.8f, 0f, 0f, 1f));
 
-            if (debugMode)
-                Debug.LogWarning($"[CombatSystem] Material '{damageIndicatorMaterialName}' not found. Using fallback red material.");
-        }
-        else
-        {
-            if (debugMode)
-                Debug.Log($"[CombatSystem] Successfully loaded material '{damageIndicatorMaterialName}'");
+            Debug.LogWarning($"[CombatSystem] Material '{damageIndicatorMaterialName}' not found. Using fallback red material.");
         }
     }
 
@@ -136,8 +130,6 @@ public class CombatSystem : MonoBehaviour
             Character targetEnemy = GetEnemyUnderMouse();
             if (targetEnemy != null)
             {
-                if (debugMode)
-                    Debug.Log($"[CombatSystem] Assigning attack target '{targetEnemy.GetFullName()}' to {selectedAllies.Count} allies");
 
                 // Назначаем цель для атаки всем выделенным союзникам
                 foreach (Character ally in selectedAllies)
@@ -231,8 +223,6 @@ public class CombatSystem : MonoBehaviour
         // Запускаем корутину боевых действий
         combatData.combatCoroutine = StartCoroutine(CombatBehavior(attacker, combatData));
 
-        if (debugMode)
-            Debug.Log($"[CombatSystem] {attacker.GetFullName()} assigned to attack {target.GetFullName()}");
     }
 
     /// <summary>
@@ -296,8 +286,6 @@ public class CombatSystem : MonoBehaviour
                 }
             }
 
-            if (debugMode)
-                Debug.Log($"[CombatSystem] Stopped combat for {attacker.GetFullName()}");
         }
     }
 
@@ -329,17 +317,11 @@ public class CombatSystem : MonoBehaviour
                 float timeSinceLastAttack = Time.time - combatData.lastAttackTime;
                 if (!combatData.isAttacking && timeSinceLastAttack >= attackCooldown)
                 {
-                    if (debugMode)
-                        Debug.Log($"[CombatSystem] {attacker.GetFullName()} starting attack (time since last: {timeSinceLastAttack:F2}s, cooldown: {attackCooldown}s)");
-
                     // Выполняем атаку - блокируем новые атаки пока не завершится
                     yield return StartCoroutine(PerformAttack(attacker, combatData));
                 }
                 else
                 {
-                    if (debugMode && Time.frameCount % 60 == 0) // Логируем каждую секунду
-                        Debug.Log($"[CombatSystem] {attacker.GetFullName()} waiting for attack readiness (time since last: {timeSinceLastAttack:F2}s, need: {attackCooldown}s, attacking: {combatData.isAttacking})");
-
                     // Ждем готовности к следующей атаке
                     yield return new WaitForSeconds(0.1f);
                 }
@@ -364,8 +346,6 @@ public class CombatSystem : MonoBehaviour
                         ai.OnPlayerInitiatedMovement();
                     }
 
-                    if (debugMode)
-                        Debug.Log($"[CombatSystem] {attacker.GetFullName()} pursuing {combatData.target.GetFullName()} (distance: {distanceToTarget:F1}, updating path: {needToUpdatePath})");
                 }
 
                 yield return new WaitForSeconds(0.1f); // Более частое обновление для лучшего преследования
@@ -375,8 +355,6 @@ public class CombatSystem : MonoBehaviour
         }
 
         // Боевые действия завершены
-        if (debugMode)
-            Debug.Log($"[CombatSystem] Combat ended for {attacker.GetFullName()}");
 
         // Убираем индикатор цели при завершении боя
         Character target = combatData.target;
@@ -412,15 +390,10 @@ public class CombatSystem : MonoBehaviour
         float distanceCheck = Vector3.Distance(attacker.transform.position, combatData.target.transform.position);
         if (distanceCheck > attackRange)
         {
-            if (debugMode)
-                Debug.Log($"[CombatSystem] {attacker.GetFullName()} target moved out of range during attack start (distance: {distanceCheck:F2})");
             yield break;
         }
 
         combatData.isAttacking = true;
-
-        if (debugMode)
-            Debug.Log($"[CombatSystem] {attacker.GetFullName()} performing attack on {combatData.target.GetFullName()}");
 
         // Поворачиваем атакующего лицом к цели
         yield return StartCoroutine(RotateTowardsTarget(attacker, combatData.target));
@@ -438,18 +411,12 @@ public class CombatSystem : MonoBehaviour
 
             // Показываем индикацию урона
             StartCoroutine(ShowDamageIndication(combatData.target));
-
-            if (debugMode)
-                Debug.Log($"[CombatSystem] {attacker.GetFullName()} dealt {attackDamage} damage to {combatData.target.GetFullName()} (HP: {combatData.target.GetHealth()})");
         }
 
         // ВАЖНО: Устанавливаем время последней атаки ПОСЛЕ завершения всей атаки
         combatData.lastAttackTime = Time.time;
         combatData.isAttacking = false;
         combatData.attackAnimationCoroutine = null;
-
-        if (debugMode)
-            Debug.Log($"[CombatSystem] {attacker.GetFullName()} attack completed at {Time.time:F2}, next available at: {(Time.time + attackCooldown):F2}");
     }
 
     /// <summary>
@@ -529,9 +496,6 @@ public class CombatSystem : MonoBehaviour
 
         // Устанавливаем финальное направление
         attacker.transform.rotation = targetRotation;
-
-        if (debugMode)
-            Debug.Log($"[CombatSystem] {attacker.GetFullName()} rotated to face {target.GetFullName()}");
     }
 
     /// <summary>
@@ -548,38 +512,20 @@ public class CombatSystem : MonoBehaviour
         // Защита от одновременного применения урона к одной цели
         if (damageIndicationInProgress.Contains(target))
         {
-            Debug.Log($"[CombatSystem] Damage indication already in progress for {target.GetFullName()}, skipping");
             yield break;
         }
 
         damageIndicationInProgress.Add(target);
 
-        Debug.Log($"[CombatSystem] === STARTING DAMAGE INDICATION for {target.GetFullName()} ===");
-
-        // Также записываем в файл для удобства
-        string logFile = "C:/temp/damage_indication_debug.log";
-        System.IO.File.AppendAllText(logFile, $"\n=== DAMAGE INDICATION START: {target.GetFullName()} at {System.DateTime.Now} ===\n");
-
         // Получаем все рендереры цели
         Renderer[] renderers = target.GetComponentsInChildren<Renderer>();
         Dictionary<Renderer, Material[]> originalMaterials = new Dictionary<Renderer, Material[]>();
-
-        Debug.Log($"[CombatSystem] Found {renderers.Length} renderers on {target.GetFullName()}");
 
         // Сохраняем оригинальные материалы и создаем массивы с материалом урона
         foreach (Renderer renderer in renderers)
         {
             if (renderer != null && renderer.sharedMaterials != null && renderer.sharedMaterials.Length > 0)
             {
-                Debug.Log($"[CombatSystem] Processing renderer: {renderer.name}");
-
-                // Логируем текущие материалы
-                for (int i = 0; i < renderer.sharedMaterials.Length; i++)
-                {
-                    Material mat = renderer.sharedMaterials[i];
-                    Debug.Log($"[CombatSystem]   Original material [{i}]: {(mat ? mat.name : "NULL")}");
-                }
-
                 // Сохраняем все оригинальные материалы
                 originalMaterials[renderer] = (Material[])renderer.sharedMaterials.Clone();
 
@@ -592,53 +538,23 @@ public class CombatSystem : MonoBehaviour
 
                 // Применяем материалы урона
                 renderer.sharedMaterials = damageArray;
-
-                Debug.Log($"[CombatSystem] Applied {damageArray.Length} damage materials to {renderer.name}");
             }
         }
 
-        Debug.Log($"[CombatSystem] Waiting {damageFlashDuration} seconds for damage indication...");
-
         // Ждем указанное время
         yield return new WaitForSeconds(damageFlashDuration);
-
-        Debug.Log($"[CombatSystem] === RESTORING MATERIALS for {target.GetFullName()} ===");
 
         // Восстанавливаем оригинальные материалы
         foreach (var kvp in originalMaterials)
         {
             if (kvp.Key != null && kvp.Value != null)
             {
-                Debug.Log($"[CombatSystem] Restoring materials to {kvp.Key.name}:");
-
-                // Логируем что восстанавливаем
-                for (int i = 0; i < kvp.Value.Length; i++)
-                {
-                    Material mat = kvp.Value[i];
-                    Debug.Log($"[CombatSystem]   Restoring material [{i}]: {(mat ? mat.name : "NULL")}");
-                }
-
                 kvp.Key.sharedMaterials = kvp.Value;
-
-                // Проверяем что действительно восстановилось
-                yield return null; // Даем Unity обновиться
-
-                for (int i = 0; i < kvp.Key.sharedMaterials.Length; i++)
-                {
-                    Material mat = kvp.Key.sharedMaterials[i];
-                    Debug.Log($"[CombatSystem]   AFTER RESTORE [{i}]: {(mat ? mat.name : "NULL")}");
-                }
-            }
-            else
-            {
-                Debug.LogError($"[CombatSystem] Failed to restore materials: renderer={kvp.Key}, materials={kvp.Value}");
             }
         }
 
         // Убираем блокировку
         damageIndicationInProgress.Remove(target);
-
-        Debug.Log($"[CombatSystem] === DAMAGE INDICATION COMPLETE for {target.GetFullName()} ===");
     }
 
     /// <summary>
@@ -744,16 +660,7 @@ public class CombatSystem : MonoBehaviour
     /// </summary>
     public void LogCombatInfo()
     {
-        Debug.Log($"[CombatSystem] Active combatants: {activeCombatants.Count}");
-
-        foreach (var kvp in activeCombatants)
-        {
-            Character attacker = kvp.Key;
-            CombatData data = kvp.Value;
-
-            Debug.Log($"  {attacker.GetFullName()} -> {data.target?.GetFullName() ?? "NULL"} " +
-                     $"(Pursuing: {data.isPursuing}, Attacking: {data.isAttacking})");
-        }
+        // Метод оставлен для обратной совместимости, но логи отключены
     }
 
     void OnDestroy()

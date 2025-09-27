@@ -164,7 +164,7 @@ public class EnemyTargetingSystem : MonoBehaviour
             Character clickedEnemy = GetEnemyUnderMouse();
             if (clickedEnemy != null)
             {
-                Debug.Log($"[EnemyTargeting] RMB clicked on enemy: {clickedEnemy.GetFullName()}, assigning attack to {selectedAllies.Count} allies");
+
 
                 AssignAttackToAllies(selectedAllies, clickedEnemy);
             }
@@ -358,11 +358,11 @@ public class EnemyTargetingSystem : MonoBehaviour
     {
         if (allies.Count == 0 || target == null || combatSystem == null)
         {
-            Debug.LogWarning("[EnemyTargeting] Cannot assign attack - missing components or empty allies list");
+
             return;
         }
 
-        Debug.Log($"[EnemyTargeting] Assigning attack target '{target.GetFullName()}' to {allies.Count} allies");
+
 
         foreach (Character ally in allies)
         {
@@ -372,7 +372,7 @@ public class EnemyTargetingSystem : MonoBehaviour
             // Назначаем боевую цель через CombatSystem
             combatSystem.AssignCombatTarget(ally, target);
 
-            Debug.Log($"[EnemyTargeting] {ally.GetFullName()} assigned to attack {target.GetFullName()}");
+
         }
 
         // Создаем визуальный индикатор цели
@@ -881,7 +881,7 @@ public class EnemyTargetingSystem : MonoBehaviour
 
                 if (debugMode)
                 {
-                    Debug.Log($"[EnemyTargeting] Removed target indicator for {oldTarget.GetFullName()} - no more followers");
+
                 }
             }
         }

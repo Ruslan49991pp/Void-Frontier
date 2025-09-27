@@ -34,13 +34,13 @@ public class InventoryDragDropTest : MonoBehaviour
     /// </summary>
     void InitializeTest()
     {
-        Debug.Log("[DragDropTest] Initializing drag and drop test...");
+
 
         // Находим InventoryManager
         inventoryManager = InventoryManager.Instance;
         if (inventoryManager == null)
         {
-            Debug.LogError("[DragDropTest] InventoryManager not found!");
+
             return;
         }
 
@@ -57,11 +57,11 @@ public class InventoryDragDropTest : MonoBehaviour
 
         if (testCharacter == null)
         {
-            Debug.LogError("[DragDropTest] No player character found!");
+
             return;
         }
 
-        Debug.Log("[DragDropTest] Test initialized successfully. Press T to run test.");
+
     }
 
     /// <summary>
@@ -71,18 +71,18 @@ public class InventoryDragDropTest : MonoBehaviour
     {
         if (testCharacter == null)
         {
-            Debug.LogError("[DragDropTest] Test character not available!");
+
             return;
         }
 
         Inventory inventory = testCharacter.GetInventory();
         if (inventory == null)
         {
-            Debug.LogError("[DragDropTest] Test character has no inventory!");
+
             return;
         }
 
-        Debug.Log("[DragDropTest] Running drag and drop test...");
+
 
         // Очищаем инвентарь
         inventory.ClearInventory();
@@ -96,14 +96,14 @@ public class InventoryDragDropTest : MonoBehaviour
         {
             inventoryUI.SetCurrentInventory(inventory);
             inventoryUI.ShowInventory();
-            Debug.Log("[DragDropTest] Inventory opened. Now you can test drag and drop manually!");
-            Debug.Log("[DragDropTest] Features to test:");
-            Debug.Log("  1. TOOLTIPS: Hover mouse over any item to see detailed info");
-            Debug.Log("  2. Drag items between inventory slots");
-            Debug.Log("  3. Drag items from inventory to equipment slots");
-            Debug.Log("  4. Drag items from equipment slots back to inventory");
-            Debug.Log("  5. Stack items of the same type");
-            Debug.Log("  6. Swap different items between slots");
+
+
+
+
+
+
+
+
         }
     }
 
@@ -219,16 +219,16 @@ public class InventoryDragDropTest : MonoBehaviour
         tool.value = 75;
         inventory.AddItem(tool, 1);
 
-        Debug.Log("[DragDropTest] Created test items in inventory:");
-        Debug.Log($"  - {weapon.itemName} (Equipment: {weapon.equipmentSlot})");
-        Debug.Log($"  - {shield.itemName} (Equipment: {shield.equipmentSlot})");
-        Debug.Log($"  - {armor.itemName} (Equipment: {armor.equipmentSlot})");
-        Debug.Log($"  - {helmet.itemName} (Equipment: {helmet.equipmentSlot})");
-        Debug.Log($"  - {legs.itemName} (Equipment: {legs.equipmentSlot})");
-        Debug.Log($"  - {boots.itemName} (Equipment: {boots.equipmentSlot})");
-        Debug.Log($"  - {medkit.itemName} x3 (Stackable)");
-        Debug.Log($"  - {resource.itemName} x7 (Stackable)");
-        Debug.Log($"  - {tool.itemName}");
+
+
+
+
+
+
+
+
+
+
     }
 
     void OnGUI()

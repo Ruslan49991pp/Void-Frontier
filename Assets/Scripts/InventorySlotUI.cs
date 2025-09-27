@@ -271,18 +271,18 @@ public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     void OnSlotClick()
     {
         float timeSinceLastClick = Time.time - lastClickTime;
-        Debug.Log($"[SlotUI] Click on slot {slotIndex}, time since last: {timeSinceLastClick:F3}s");
+
 
         if (timeSinceLastClick <= doubleClickTimeLimit)
         {
             // Двойной клик
-            Debug.Log($"[SlotUI] Double click detected on slot {slotIndex}");
+
             OnSlotDoubleClicked?.Invoke(slotIndex);
         }
         else
         {
             // Одиночный клик
-            Debug.Log($"[SlotUI] Single click on slot {slotIndex}");
+
             OnSlotClicked?.Invoke(slotIndex);
         }
 
@@ -362,7 +362,7 @@ public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
         draggedSlot = this;
 
-        Debug.Log($"[DragDrop] Begin drag from slot {GetDragDropId()} (equipment: {isEquipmentSlot}, item: {currentSlot.itemData.itemName})");
+
 
         // Скрываем tooltip во время перетаскивания
         TooltipSystem.Instance.HideTooltip();
@@ -506,19 +506,19 @@ public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (eventData.button == PointerEventData.InputButton.Left)
         {
             float timeSinceLastClick = Time.time - lastClickTime;
-            Debug.Log($"[SlotUI] OnPointerClick on slot {slotIndex}, time since last: {timeSinceLastClick:F3}s");
+
 
             if (timeSinceLastClick <= doubleClickTimeLimit && timeSinceLastClick > 0.05f) // Минимальная задержка для избежания одного клика
             {
                 // Двойной клик
-                Debug.Log($"[SlotUI] Double click detected via OnPointerClick on slot {slotIndex}");
+
                 OnSlotDoubleClicked?.Invoke(slotIndex);
                 lastClickTime = 0f; // Сбрасываем для избежания тройного клика
             }
             else
             {
                 // Одиночный клик или первый клик в серии
-                Debug.Log($"[SlotUI] Single click via OnPointerClick on slot {slotIndex}");
+
                 OnSlotClicked?.Invoke(slotIndex);
                 lastClickTime = Time.time;
             }

@@ -188,7 +188,7 @@ public class Inventory : MonoBehaviour
         if (!unlimitedWeight && GetCurrentWeight() + (itemData.weight * quantity) > maxWeight)
         {
             if (debugMode)
-                Debug.Log($"Cannot add {itemData.itemName}: weight limit exceeded");
+
             return false;
         }
 
@@ -221,7 +221,7 @@ public class Inventory : MonoBehaviour
             OnInventoryChanged?.Invoke();
 
             if (debugMode)
-                Debug.Log($"Added {addedQuantity} {itemData.itemName} to inventory");
+
 
             return remainingQuantity == 0; // true если добавили все
         }
@@ -257,7 +257,7 @@ public class Inventory : MonoBehaviour
             OnInventoryChanged?.Invoke();
 
             if (debugMode)
-                Debug.Log($"Removed {removedQuantity} {itemData.itemName} from inventory");
+
 
             return remainingToRemove == 0; // true если удалили все
         }
@@ -396,9 +396,6 @@ public class Inventory : MonoBehaviour
         }
 
         OnInventoryChanged?.Invoke();
-
-        if (debugMode)
-            Debug.Log("Inventory cleared");
     }
 
     /// <summary>
@@ -481,9 +478,6 @@ public class Inventory : MonoBehaviour
         // Удаляем из инвентаря
         RemoveItemFromSlot(slotIndex, toDrop);
 
-        if (debugMode)
-            Debug.Log($"Dropped {toDrop} {itemData.itemName}");
-
         return true;
     }
 
@@ -527,7 +521,7 @@ public class Inventory : MonoBehaviour
             if (!UnequipItem(slot))
             {
                 if (debugMode)
-                    Debug.Log($"Cannot equip {item.itemName}: slot {slot} is occupied and cannot be cleared (inventory full)");
+
                 return false;
             }
         }

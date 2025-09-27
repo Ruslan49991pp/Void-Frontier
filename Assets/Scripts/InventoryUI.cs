@@ -58,7 +58,7 @@ public class InventoryUI : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[InventoryUI] SelectionManager not found!");
+
         }
 
         if (showInventoryOnStart)
@@ -179,7 +179,7 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     void CreateInventoryPanel()
     {
-        Debug.Log("[InventoryUI] Creating main inventory panel...");
+
         GameObject panelGO = new GameObject("InventoryPanel");
         panelGO.transform.SetParent(mainCanvas.transform, false);
 
@@ -189,7 +189,7 @@ public class InventoryUI : MonoBehaviour
         inventoryPanel.offsetMin = Vector2.zero;
         inventoryPanel.offsetMax = Vector2.zero;
 
-        Debug.Log($"[InventoryUI] Main panel created with rect: {inventoryPanel.rect}, anchors: {inventoryPanel.anchorMin} - {inventoryPanel.anchorMax}");
+
 
         // Фон панели (полупрозрачный темный)
         Image panelBg = panelGO.AddComponent<Image>();
@@ -269,7 +269,7 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     void CreateHumanImageContainer(GameObject parent)
     {
-        Debug.Log("[InventoryUI] Creating human image container...");
+
         humanImageContainer = new GameObject("HumanImageContainer");
         humanImageContainer.transform.SetParent(parent.transform, false);
 
@@ -279,40 +279,40 @@ public class InventoryUI : MonoBehaviour
         humanContainer.offsetMin = Vector2.zero;
         humanContainer.offsetMax = Vector2.zero;
 
-        Debug.Log($"[InventoryUI] Human image container rect: {humanContainer.rect}");
+
 
         // Загружаем изображение человека
-        Debug.Log("[InventoryUI] Trying to load I_man sprite from Resources...");
+
         Sprite humanSprite = Resources.Load<Sprite>("I_man");
 
         // Пробуем альтернативные пути
         if (humanSprite == null)
         {
-            Debug.Log("[InventoryUI] Trying alternative path: Resources/I_man...");
+
             humanSprite = Resources.Load<Sprite>("Resources/I_man");
         }
 
         if (humanSprite != null)
         {
-            Debug.Log($"[InventoryUI] Successfully loaded I_man sprite: {humanSprite.name}, size: {humanSprite.rect}");
+
             Image humanImage = humanImageContainer.AddComponent<Image>();
             humanImage.sprite = humanSprite;
             humanImage.type = Image.Type.Simple;
             humanImage.preserveAspect = true;
             humanImage.color = new Color(1f, 1f, 1f, 0.8f);
             humanImage.raycastTarget = false; // Отключаем рейкасты для изображения человека
-            Debug.Log("[InventoryUI] Applied I_man sprite to human container (raycastTarget: false)");
+
         }
         else
         {
-            Debug.LogError("[InventoryUI] Failed to load I_man sprite from Resources!");
+
 
             // Проверяем что есть в ресурсах
             Sprite[] allSprites = Resources.LoadAll<Sprite>("");
-            Debug.LogError($"[InventoryUI] Found {allSprites.Length} sprites in Resources");
+
             for (int i = 0; i < allSprites.Length; i++)
             {
-                Debug.LogError($"[InventoryUI] Sprite {i}: {allSprites[i].name}");
+
             }
         }
     }
@@ -326,7 +326,7 @@ public class InventoryUI : MonoBehaviour
         {
             // Перемещаем на первую позицию в иерархии (задний план)
             humanImageContainer.transform.SetAsFirstSibling();
-            Debug.Log("[InventoryUI] Human image moved to background layer");
+
         }
     }
 
@@ -335,7 +335,7 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     void CreateEquipmentContainer(GameObject parent)
     {
-        Debug.Log("[InventoryUI] Creating equipment container...");
+
         GameObject containerGO = new GameObject("EquipmentContainer");
         containerGO.transform.SetParent(parent.transform, false);
 
@@ -345,7 +345,7 @@ public class InventoryUI : MonoBehaviour
         equipmentContainer.offsetMin = Vector2.zero;
         equipmentContainer.offsetMax = Vector2.zero;
 
-        Debug.Log($"[InventoryUI] Equipment container rect: {equipmentContainer.rect}");
+
 
         // Создаем слоты экипировки в позициях частей тела человека
         CreateEquipmentSlot(containerGO, EquipmentSlot.LeftHand, new Vector2(0.15f, 0.55f)); // Левая рука
@@ -355,7 +355,7 @@ public class InventoryUI : MonoBehaviour
         CreateEquipmentSlot(containerGO, EquipmentSlot.Legs, new Vector2(0.5f, 0.45f)); // Ноги
         CreateEquipmentSlot(containerGO, EquipmentSlot.Feet, new Vector2(0.5f, 0.15f)); // Ступни
 
-        Debug.Log("[InventoryUI] Equipment container created with 6 slots");
+
 
         // Перемещаем контейнер экипировки на передний план для видимости
         if (containerGO != null)
@@ -368,10 +368,10 @@ public class InventoryUI : MonoBehaviour
             if (containerImage != null)
             {
                 containerImage.enabled = true;
-                Debug.Log($"[InventoryUI] Equipment container Image enabled: {containerImage.enabled}");
+
             }
 
-            Debug.Log($"[InventoryUI] Equipment container moved to front layer, active: {containerGO.activeInHierarchy}");
+
         }
 
         // Принудительно обновляем layout и проверяем видимость слотов
@@ -385,8 +385,6 @@ public class InventoryUI : MonoBehaviour
             {
                 // Также принудительно перемещаем каждый слот на передний план
                 slotUI.transform.SetAsLastSibling();
-                Debug.Log($"[InventoryUI] Equipment slot {kvp.Key}: active={slotUI.gameObject.activeInHierarchy}, " +
-                         $"position={slotUI.transform.position}, localPosition={slotUI.transform.localPosition}");
             }
         }
     }
@@ -396,7 +394,7 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     void CreateEquipmentSlot(GameObject parent, EquipmentSlot slot, Vector2 normalizedPosition)
     {
-        Debug.Log($"[InventoryUI] Creating equipment slot {slot} at position {normalizedPosition}");
+
 
         GameObject slotGO = Instantiate(slotPrefab, parent.transform);
         slotGO.SetActive(true);
@@ -418,9 +416,9 @@ public class InventoryUI : MonoBehaviour
         // Принудительно обновляем layout
         Canvas.ForceUpdateCanvases();
 
-        Debug.Log($"[InventoryUI] Equipment slot {slot} - anchorMin: {slotRect.anchorMin}, anchorMax: {slotRect.anchorMax}");
-        Debug.Log($"[InventoryUI] Equipment slot {slot} - anchoredPosition: {slotRect.anchoredPosition}, sizeDelta: {slotRect.sizeDelta}");
-        Debug.Log($"[InventoryUI] Equipment slot {slot} - final rect: {slotRect.rect}");
+
+
+
 
         InventorySlotUI slotUI = slotGO.GetComponent<InventorySlotUI>();
         if (slotUI != null)
@@ -432,7 +430,7 @@ public class InventoryUI : MonoBehaviour
             slotUI.OnSlotDoubleClicked += OnEquipmentSlotDoubleClicked; // Добавляем обработчик двойного клика
             slotUI.OnSlotDragAndDrop += OnSlotDragAndDrop; // Используем общий обработчик
             equipmentSlotUIs[slot] = slotUI;
-            Debug.Log($"[InventoryUI] Added equipment slot {slot} to dictionary. Dictionary count: {equipmentSlotUIs.Count}");
+
 
             // Делаем слоты экипировки максимально видимыми
             Image slotImage = slotUI.backgroundImage;
@@ -441,7 +439,7 @@ public class InventoryUI : MonoBehaviour
                 slotImage.color = new Color(0.8f, 0.8f, 0.9f, 1.0f); // Очень яркий цвет
                 slotImage.raycastTarget = true;
                 slotImage.enabled = true; // Явно включаем компонент
-                Debug.Log($"[InventoryUI] Equipment slot {slot} backgroundImage color set to: {slotImage.color}");
+
             }
 
             // Проверяем основной Image компонент слота
@@ -451,7 +449,7 @@ public class InventoryUI : MonoBehaviour
                 mainImage.color = new Color(0.7f, 0.7f, 0.8f, 1.0f); // Яркий фон
                 mainImage.raycastTarget = true;
                 mainImage.enabled = true;
-                Debug.Log($"[InventoryUI] Equipment slot {slot} mainImage color set to: {mainImage.color}");
+
             }
 
             // Принудительно включаем все Image компоненты в слоте
@@ -460,13 +458,13 @@ public class InventoryUI : MonoBehaviour
             {
                 img.enabled = true;
                 img.color = new Color(img.color.r, img.color.g, img.color.b, 1.0f); // Убираем прозрачность
-                Debug.Log($"[InventoryUI] Equipment slot {slot} child image enabled: {img.name}, color: {img.color}");
+
             }
-            Debug.Log($"[InventoryUI] Equipment slot {slot} configured successfully");
+
         }
         else
         {
-            Debug.LogError($"[InventoryUI] Failed to get InventorySlotUI component for slot {slot}");
+
         }
     }
 
@@ -475,7 +473,7 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     void CreateSlotsContainer(GameObject parent)
     {
-        Debug.Log("[InventoryUI] Creating slots container...");
+
         GameObject containerGO = new GameObject("SlotsContainer");
         containerGO.transform.SetParent(parent.transform, false);
 
@@ -485,7 +483,7 @@ public class InventoryUI : MonoBehaviour
         slotsContainer.offsetMin = Vector2.zero;
         slotsContainer.offsetMax = Vector2.zero;
 
-        Debug.Log($"[InventoryUI] Slots container rect: {slotsContainer.rect}");
+
 
         // Фон контейнера
         Image containerBg = containerGO.AddComponent<Image>();
@@ -500,7 +498,7 @@ public class InventoryUI : MonoBehaviour
         gridLayout.childAlignment = TextAnchor.UpperLeft;
         gridLayout.padding = new RectOffset(5, 5, 5, 5);
 
-        Debug.Log($"[InventoryUI] Grid layout configured: cellSize={gridLayout.cellSize}, spacing={gridLayout.spacing}, columns={gridLayout.constraintCount}");
+
     }
 
 
@@ -729,7 +727,7 @@ public class InventoryUI : MonoBehaviour
 
         // НЕ очищаем слоты экипировки здесь, так как они создаются только при инициализации
         // и должны сохраняться между обновлениями инвентаря
-        Debug.Log($"[InventoryUI] ClearSlotUIElements called - keeping equipment slots (count: {equipmentSlotUIs.Count})");
+
     }
 
     /// <summary>
@@ -762,30 +760,30 @@ public class InventoryUI : MonoBehaviour
         UpdateInventoryStats();
 
         // Обновляем визуальное состояние слотов экипировки
-        Debug.Log($"[InventoryUI] About to call UpdateEquipmentSlotVisuals - equipmentSlotUIs count: {equipmentSlotUIs.Count}");
+
         foreach (var kvp in equipmentSlotUIs)
         {
             InventorySlotUI slotUI = kvp.Value;
             if (slotUI != null)
             {
-                Debug.Log($"[InventoryUI] Before UpdateEquipmentSlotVisuals: {kvp.Key} slotUI={slotUI != null}, backgroundImage={slotUI.backgroundImage != null}");
+
                 if (slotUI.backgroundImage != null)
                 {
-                    Debug.Log($"[InventoryUI] Before UpdateEquipmentSlotVisuals: {kvp.Key} color = {slotUI.backgroundImage.color}, enabled = {slotUI.backgroundImage.enabled}");
+
                 }
             }
         }
         UpdateEquipmentSlotVisuals();
-        Debug.Log("[InventoryUI] After UpdateEquipmentSlotVisuals - checking slot colors after...");
+
         foreach (var kvp in equipmentSlotUIs)
         {
             InventorySlotUI slotUI = kvp.Value;
             if (slotUI != null)
             {
-                Debug.Log($"[InventoryUI] After UpdateEquipmentSlotVisuals: {kvp.Key} slotUI={slotUI != null}, backgroundImage={slotUI.backgroundImage != null}");
+
                 if (slotUI.backgroundImage != null)
                 {
-                    Debug.Log($"[InventoryUI] After UpdateEquipmentSlotVisuals: {kvp.Key} color = {slotUI.backgroundImage.color}, enabled = {slotUI.backgroundImage.enabled}");
+
                 }
             }
         }
@@ -818,7 +816,7 @@ public class InventoryUI : MonoBehaviour
 
                 // Также обеспечиваем видимость GameObject
                 slotUI.gameObject.SetActive(true);
-                Debug.Log($"[InventoryUI] Updated equipment slot {slotType}, active: {slotUI.gameObject.activeInHierarchy}");
+
             }
         }
     }
@@ -929,7 +927,7 @@ public class InventoryUI : MonoBehaviour
         {
             ItemData item = slot.itemData;
 
-            Debug.Log($"[DoubleClick] Attempting to auto-equip {item.itemName} ({item.itemType}, slot: {item.equipmentSlot})");
+
 
             // Проверяем, можно ли экипировать предмет
             if (item.CanBeEquipped() && item.equipmentSlot != EquipmentSlot.None)
@@ -947,7 +945,7 @@ public class InventoryUI : MonoBehaviour
                         if (currentInventory.EquipItem(item))
                         {
                             currentInventory.RemoveItem(item, 1);
-                            Debug.Log($"[DoubleClick] Successfully equipped {item.itemName} to {targetSlot}");
+
                             // Обновляем визуалы заблокированных слотов
                             UpdateEquipmentSlotVisuals();
                             // Снимаем выделение с пустого слота
@@ -957,12 +955,12 @@ public class InventoryUI : MonoBehaviour
                         {
                             // Восстанавливаем оригинальный слот при неудаче
                             item.equipmentSlot = originalSlot;
-                            Debug.Log($"[DoubleClick] Failed to equip weapon {item.itemName}");
+
                         }
                     }
                     else
                     {
-                        Debug.Log($"[DoubleClick] No available weapon slots for {item.itemName}");
+
                     }
                 }
                 else
@@ -970,26 +968,26 @@ public class InventoryUI : MonoBehaviour
                     // Для брони проверяем соответствующий слот
                     if (currentInventory.IsEquipmentSlotBlocked(item.equipmentSlot))
                     {
-                        Debug.Log($"[DoubleClick] Cannot equip {item.itemName} - slot {item.equipmentSlot} is blocked");
+
                         return;
                     }
 
                     if (currentInventory.EquipItem(item))
                     {
                         currentInventory.RemoveItem(item, 1);
-                        Debug.Log($"[DoubleClick] Successfully equipped {item.itemName} to {item.equipmentSlot}");
+
                         // Снимаем выделение с пустого слота
                         ClearSlotSelection();
                     }
                     else
                     {
-                        Debug.Log($"[DoubleClick] Failed to equip {item.itemName} (slot may be occupied)");
+
                     }
                 }
             }
             else
             {
-                Debug.Log($"[DoubleClick] Item {item.itemName} cannot be equipped (CanBeEquipped: {item.CanBeEquipped()}, slot: {item.equipmentSlot})");
+
             }
         }
     }
@@ -1024,7 +1022,7 @@ public class InventoryUI : MonoBehaviour
         // Определяем слот экипировки по индексу
         EquipmentSlot equipmentSlot = (EquipmentSlot)slotIndex;
 
-        Debug.Log($"[DoubleClick] Attempting to unequip from equipment slot {equipmentSlot}");
+
 
         // Проверяем, есть ли предмет в этом слоте
         if (currentInventory.IsEquipped(equipmentSlot))
@@ -1040,7 +1038,7 @@ public class InventoryUI : MonoBehaviour
                     // Снимаем предмет с экипировки (UnequipItem уже добавляет предмет в инвентарь)
                     if (currentInventory.UnequipItem(equipmentSlot))
                     {
-                        Debug.Log($"[DoubleClick] Successfully unequipped {equippedItem.itemName} from {equipmentSlot} to inventory");
+
                         // Обновляем визуалы заблокированных слотов
                         UpdateEquipmentSlotVisuals();
                         // Снимаем выделение
@@ -1048,22 +1046,22 @@ public class InventoryUI : MonoBehaviour
                     }
                     else
                     {
-                        Debug.Log($"[DoubleClick] Failed to unequip {equippedItem.itemName} from {equipmentSlot} - inventory might be full");
+
                     }
                 }
                 else
                 {
-                    Debug.Log($"[DoubleClick] No free inventory slots available for {equippedItem.itemName}");
+
                 }
             }
             else
             {
-                Debug.LogWarning($"[DoubleClick] Equipment slot {equipmentSlot} shows as equipped but no item found");
+
             }
         }
         else
         {
-            Debug.Log($"[DoubleClick] No item equipped in slot {equipmentSlot}");
+
         }
     }
 
@@ -1093,7 +1091,7 @@ public class InventoryUI : MonoBehaviour
     {
         if (currentInventory == null) return;
 
-        Debug.Log($"[DragDrop] Moving from DragDropId {fromDragDropId} to DragDropId {toDragDropId}");
+
 
         // Определяем типы слотов по ID
         bool isFromEquipment = fromDragDropId >= 1000;
@@ -1126,16 +1124,16 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     void HandleInventoryToInventoryDrag(int fromSlot, int toSlot)
     {
-        Debug.Log($"[DragDrop] Inventory to inventory: {fromSlot} -> {toSlot}");
+
         bool success = currentInventory.MoveItem(fromSlot, toSlot);
 
         if (success)
         {
-            Debug.Log($"Moved item from slot {fromSlot} to slot {toSlot}");
+
         }
         else
         {
-            Debug.Log($"Failed to move item from slot {fromSlot} to slot {toSlot}");
+
         }
     }
 
@@ -1145,13 +1143,13 @@ public class InventoryUI : MonoBehaviour
     void HandleInventoryToEquipmentDrag(int fromSlot, int equipSlotId)
     {
         EquipmentSlot equipSlot = (EquipmentSlot)equipSlotId;
-        Debug.Log($"[DragDrop] Inventory to equipment: slot {fromSlot} -> {equipSlot} (ID: {equipSlotId})");
+
 
         InventorySlot fromInventorySlot = currentInventory.GetSlot(fromSlot);
         if (fromInventorySlot != null && !fromInventorySlot.IsEmpty())
         {
             ItemData item = fromInventorySlot.itemData;
-            Debug.Log($"[DragDrop] Trying to equip {item.itemName} (requires: {item.equipmentSlot}) to slot {equipSlot}");
+
 
             // Проверяем совместимость
             bool canEquipToSlot = false;
@@ -1175,7 +1173,7 @@ public class InventoryUI : MonoBehaviour
                 // Check if the slot is blocked (e.g., second hand when weapon is already equipped)
                 if (currentInventory.IsEquipmentSlotBlocked(equipSlot))
                 {
-                    Debug.Log($"Cannot equip {item.itemName} to {equipSlot} - slot is blocked (weapon already equipped in other hand)");
+
                     return;
                 }
 
@@ -1190,7 +1188,7 @@ public class InventoryUI : MonoBehaviour
                 if (currentInventory.EquipItem(item))
                 {
                     currentInventory.RemoveItem(item, 1);
-                    Debug.Log($"Equipped {item.itemName} to {equipSlot}");
+
 
                     // Update UI to show blocked slots
                     UpdateEquipmentSlotVisuals();
@@ -1202,18 +1200,18 @@ public class InventoryUI : MonoBehaviour
                     {
                         item.equipmentSlot = originalSlot;
                     }
-                    Debug.Log("Failed to equip item - slot might be occupied");
+
                 }
             }
             else
             {
                 if (item.equipmentSlot == EquipmentSlot.None)
                 {
-                    Debug.Log($"Item {item.itemName} cannot be equipped - it's not an equipment item");
+
                 }
                 else
                 {
-                    Debug.Log($"Item {item.itemName} cannot be equipped in slot {equipSlot} - requires {item.equipmentSlot}");
+
                 }
             }
         }
@@ -1225,18 +1223,18 @@ public class InventoryUI : MonoBehaviour
     void HandleEquipmentToInventoryDrag(int equipSlotId, int toSlot)
     {
         EquipmentSlot equipSlot = (EquipmentSlot)equipSlotId;
-        Debug.Log($"[DragDrop] Equipment to inventory: {equipSlot} -> slot {toSlot}");
+
 
         // UnequipItem автоматически добавляет предмет в инвентарь, поэтому дополнительно добавлять не нужно
         if (currentInventory.UnequipItem(equipSlot))
         {
-            Debug.Log($"Unequipped item from {equipSlot} to inventory");
+
             // Update UI to show unblocked slots
             UpdateEquipmentSlotVisuals();
         }
         else
         {
-            Debug.Log("Failed to unequip item - inventory might be full");
+
         }
     }
 
@@ -1247,14 +1245,14 @@ public class InventoryUI : MonoBehaviour
     {
         EquipmentSlot fromEquipSlot = (EquipmentSlot)fromEquipSlotId;
         EquipmentSlot toEquipSlot = (EquipmentSlot)toEquipSlotId;
-        Debug.Log($"[DragDrop] Equipment to equipment: {fromEquipSlot} -> {toEquipSlot}");
+
 
         ItemData fromItem = currentInventory.GetEquippedItem(fromEquipSlot);
         ItemData toItem = currentInventory.GetEquippedItem(toEquipSlot);
 
         if (fromItem == null)
         {
-            Debug.Log("No item in source equipment slot");
+
             return;
         }
 
@@ -1290,7 +1288,7 @@ public class InventoryUI : MonoBehaviour
             currentInventory.AddItem(toItem, 1);
         }
 
-        Debug.Log($"Equipment swap completed: {fromEquipSlot}<->{toEquipSlot}");
+
     }
 
 
@@ -1380,15 +1378,13 @@ public class InventoryUI : MonoBehaviour
             isInventoryVisible = true;
             IsAnyInventoryOpen = true;
 
-            Debug.Log("[InventoryUI] ShowInventory called - checking equipment slots visibility...");
+
             foreach (var kvp in equipmentSlotUIs)
             {
                 InventorySlotUI slotUI = kvp.Value;
                 if (slotUI != null)
                 {
-                    Debug.Log($"[InventoryUI] Equipment slot {kvp.Key}: active={slotUI.gameObject.activeInHierarchy}, " +
-                             $"backgroundEnabled={slotUI.backgroundImage?.enabled}, " +
-                             $"backgroundColor={slotUI.backgroundImage?.color}");
+                    // Слот существует - обновляем состояние
                 }
             }
 
@@ -1397,7 +1393,7 @@ public class InventoryUI : MonoBehaviour
         }
         else
         {
-            Debug.LogError("[InventoryUI] Cannot show inventory - inventoryPanel is null!");
+
         }
     }
 
@@ -1423,7 +1419,7 @@ public class InventoryUI : MonoBehaviour
         }
         else
         {
-            Debug.LogError("[InventoryUI] Cannot hide inventory - inventoryPanel is null!");
+
         }
     }
 
@@ -1493,7 +1489,7 @@ public class InventoryUI : MonoBehaviour
 
                 // Принудительно включаем видимость
                 slotUI.backgroundImage.enabled = true;
-                Debug.Log($"[InventoryUI] Updated equipment slot {slot} visual: blocked={isBlocked}, hasItem={hasItem}, color={slotUI.backgroundImage.color}");
+
             }
         }
     }
