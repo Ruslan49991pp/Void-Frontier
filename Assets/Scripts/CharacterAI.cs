@@ -66,6 +66,12 @@ public class CharacterAI : MonoBehaviour
 
     void Update()
     {
+        // Не выполняем ИИ для мертвых персонажей
+        if (character != null && character.IsDead())
+        {
+            return;
+        }
+
         UpdateAIState();
         HandleCurrentState();
     }

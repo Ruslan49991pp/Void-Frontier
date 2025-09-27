@@ -81,6 +81,13 @@ public class CharacterMovement : MonoBehaviour
     {
         // Debug logging disabled
 
+        // Не позволяем мертвым персонажам двигаться
+        Character character = GetComponent<Character>();
+        if (character != null && character.IsDead())
+        {
+            return;
+        }
+
         if (gridManager == null)
         {
             if (debugMovement)
@@ -129,6 +136,14 @@ public class CharacterMovement : MonoBehaviour
     IEnumerator MoveToTarget()
     {
         // Debug logging disabled
+
+        // Проверяем, не мертв ли персонаж
+        Character character = GetComponent<Character>();
+        if (character != null && character.IsDead())
+        {
+            isMoving = false;
+            yield break;
+        }
 
         Vector3 startPosition = transform.position;
 

@@ -28,6 +28,11 @@ public class Character : MonoBehaviour
     [Header("Visual")]
     public Renderer characterRenderer;
     public Color defaultColor = Color.green;
+
+    [Header("Death")]
+    private bool isDead = false;
+    private bool isSearchable = false;
+    private bool hasBeenSearched = false;
     public Color selectedColor = new Color(1f, 0.5f, 0f, 1f); // Оранжевый цвет
     public Color hoverColor = Color.cyan;
     
@@ -329,13 +334,151 @@ public class Character : MonoBehaviour
             objectInfo.health = characterData.health;
         }
         
-        if (characterData.health <= 0)
+        if (characterData.health <= 0 && !isDead)
         {
-            // Выбрасываем добычу при смерти
-            DropLootOnDeath();
+            // Выполняем смерть персонажа
+            Die();
         }
     }
-    
+
+    /// <summary>
+    /// Обработка смерти персонажа
+    /// </summary>
+    void Die()
+    {
+        if (isDead) return; // Предотвращаем повторную смерть
+
+        isDead = true;
+
+        // Поворачиваем персонажа на -90 градусов по оси X (падение)
+        transform.rotation = Quaternion.Euler(-90f, transform.rotation.eulerAngles.y, transform.rotation.eulerAngles.z);
+
+        // Отключаем все компоненты управления и движения
+        DisableCharacterControl();
+
+        // НЕ выбрасываем лут - он остается внутри для обыска
+        // DropLootOnDeath(); // Закомментировано
+
+        // Останавливаем боевые действия с этим персонажем
+        StopCombatInvolvement();
+
+        // Делаем персонажа доступным для обыска
+        MakeSearchable();
+    }
+
+    /// <summary>
+    /// Отключение всех компонентов управления персонажа
+    /// </summary>
+    void DisableCharacterControl()
+    {
+        // Отключаем движение
+        CharacterMovement movement = GetComponent<CharacterMovement>();
+        if (movement != null)
+        {
+            movement.StopMovement(); // Останавливаем текущее движение
+            movement.enabled = false;
+        }
+
+        // Отключаем AI
+        CharacterAI ai = GetComponent<CharacterAI>();
+        if (ai != null)
+        {
+            ai.enabled = false;
+        }
+
+        // Останавливаем все боевые действия
+        CombatSystem combatSystem = FindObjectOfType<CombatSystem>();
+        if (combatSystem != null)
+        {
+            combatSystem.StopCombatForCharacter(this);
+        }
+
+        // НЕ отключаем коллайдер для мертвых - нужен для обыска
+        // Collider characterCollider = GetComponent<Collider>();
+        // if (characterCollider != null)
+        // {
+        //     characterCollider.enabled = false;
+        // }
+    }
+
+    /// <summary>
+    /// Остановка всех боевых действий с участием этого персонажа
+    /// </summary>
+    void StopCombatInvolvement()
+    {
+        CombatSystem combatSystem = FindObjectOfType<CombatSystem>();
+        if (combatSystem != null)
+        {
+            // Останавливаем бой если этот персонаж атаковал кого-то
+            if (combatSystem.IsInCombat(this))
+            {
+                combatSystem.StopCombatForCharacter(this);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Делаем мертвого персонажа доступным для обыска
+    /// </summary>
+    void MakeSearchable()
+    {
+        if (isDead)
+        {
+            isSearchable = true;
+            hasBeenSearched = false;
+
+            // Можно добавить визуальный индикатор что можно обыскать
+            // Например, изменить цвет или добавить иконку
+        }
+    }
+
+    /// <summary>
+    /// Обыскать мертвого персонажа (вызывается извне)
+    /// </summary>
+    public bool SearchCorpse()
+    {
+        if (!isDead)
+            return false; // Можно обыскивать только мертвых
+
+        if (!CanBeSearched())
+            return false;
+
+        // Открываем инвентарь мертвого персонажа для обыска
+        Inventory corpseInventory = GetComponent<Inventory>();
+        if (corpseInventory != null)
+        {
+            // Открываем инвентарь трупа
+            InventoryUI inventoryUI = FindObjectOfType<InventoryUI>();
+            if (inventoryUI != null)
+            {
+                inventoryUI.SetCurrentInventory(corpseInventory, this);
+                inventoryUI.ShowInventory();
+                Debug.Log($"[SEARCH] Opened inventory of {GetFullName()}");
+            }
+            else
+            {
+                Debug.LogWarning($"[SEARCH] InventoryUI not found for {GetFullName()}");
+                // Если нет UI, выбрасываем лут как fallback
+                DropLootOnDeath();
+            }
+
+            // Помечаем как обысканный чтобы нельзя было обыскать повторно
+            hasBeenSearched = true;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Проверить, можно ли обыскать этого персонажа
+    /// </summary>
+    public bool CanBeSearched()
+    {
+        return isDead && isSearchable && !hasBeenSearched;
+    }
+
     /// <summary>
     /// Восстановить здоровье
     /// </summary>
@@ -405,6 +548,14 @@ public class Character : MonoBehaviour
     public void SetFaction(Faction faction)
     {
         characterData.faction = faction;
+    }
+
+    /// <summary>
+    /// Проверить, мертв ли персонаж
+    /// </summary>
+    public bool IsDead()
+    {
+        return isDead;
     }
 
     /// <summary>

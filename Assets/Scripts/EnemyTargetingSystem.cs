@@ -158,15 +158,24 @@ public class EnemyTargetingSystem : MonoBehaviour
             //     $"Targeting mode {(isTargetingMode ? "ENABLED" : "DISABLED")}. Selected allies: {selectedAllies.Count}");
         }
 
-        // Обрабатываем ПКМ по врагу для атаки
+        // Обрабатываем ПКМ по врагу для атаки или обыска
         if (isTargetingMode && Input.GetMouseButtonDown(1)) // Только ПКМ для атаки
         {
             Character clickedEnemy = GetEnemyUnderMouse();
             if (clickedEnemy != null)
             {
-
-
-                AssignAttackToAllies(selectedAllies, clickedEnemy);
+                // Проверяем, мертв ли враг и можно ли его обыскать
+                if (clickedEnemy.IsDead() && clickedEnemy.CanBeSearched())
+                {
+                    Debug.Log($"[SEARCH] Opening inventory of {clickedEnemy.GetFullName()}");
+                    // Обыскиваем мертвого врага
+                    AssignSearchToAllies(selectedAllies, clickedEnemy);
+                }
+                else if (!clickedEnemy.IsDead())
+                {
+                    // Атакуем живого врага
+                    AssignAttackToAllies(selectedAllies, clickedEnemy);
+                }
             }
         }
     }
@@ -282,7 +291,7 @@ public class EnemyTargetingSystem : MonoBehaviour
             if (character != null)
             {
 
-                if (character.IsEnemyCharacter())
+                if (character.IsEnemyCharacter() || (character.IsDead() && character.CanBeSearched()))
                 {
 
                     return character;
@@ -307,7 +316,7 @@ public class EnemyTargetingSystem : MonoBehaviour
 
         foreach (Character character in allCharacters)
         {
-            if (character.IsEnemyCharacter())
+            if (character.IsEnemyCharacter() || (character.IsDead() && character.CanBeSearched()))
             {
                 float distance = Vector3.Cross(ray.direction, character.transform.position - ray.origin).magnitude;
                 if (distance < 2f && distance < minDistance) // В пределах 2 единиц от луча
@@ -377,6 +386,85 @@ public class EnemyTargetingSystem : MonoBehaviour
 
         // Создаем визуальный индикатор цели
         CreateTargetIndicator(target);
+    }
+
+    /// <summary>
+    /// Назначить обыск мертвого врага союзникам
+    /// </summary>
+    void AssignSearchToAllies(List<Character> allies, Character corpse)
+    {
+        if (allies.Count == 0 || corpse == null || !corpse.IsDead() || !corpse.CanBeSearched())
+        {
+            return;
+        }
+
+        // Назначаем первого доступного союзника для обыска
+        Character searcher = null;
+        foreach (Character ally in allies)
+        {
+            if (ally != null && !ally.IsDead())
+            {
+                searcher = ally;
+                break;
+            }
+        }
+
+        if (searcher == null) return;
+
+        // Останавливаем старое следование для обыскивающего
+        StopFollowing(searcher);
+
+        // Отправляем союзника к трупу для обыска
+        StartSearching(searcher, corpse);
+    }
+
+    /// <summary>
+    /// Начать обыск трупа
+    /// </summary>
+    void StartSearching(Character searcher, Character corpse)
+    {
+        // Находим позицию рядом с трупом
+        Vector3 searchPosition = GetFollowPosition(corpse);
+
+        // Отправляем обыскивающего к трупу
+        CharacterMovement movement = searcher.GetComponent<CharacterMovement>();
+        if (movement == null)
+        {
+            movement = searcher.gameObject.AddComponent<CharacterMovement>();
+        }
+
+        // Движемся к трупу и выполняем обыск по прибытии
+        movement.MoveTo(searchPosition);
+
+        // Подписываемся на событие прибытия для выполнения обыска
+        movement.OnMovementComplete += (arrivedMovement) => PerformSearch(searcher, corpse);
+
+        // Уведомляем AI о движении, инициированном игроком
+        CharacterAI ai = searcher.GetComponent<CharacterAI>();
+        if (ai != null)
+        {
+            ai.OnPlayerInitiatedMovement();
+        }
+    }
+
+    /// <summary>
+    /// Выполнить обыск трупа
+    /// </summary>
+    void PerformSearch(Character searcher, Character corpse)
+    {
+        if (searcher == null || corpse == null || !corpse.CanBeSearched())
+        {
+            return;
+        }
+
+        // Выполняем обыск
+        bool searchSuccessful = corpse.SearchCorpse();
+
+        if (searchSuccessful)
+        {
+            // Можно добавить визуальные эффекты или звуки обыска
+            // Например, показать сообщение о найденных предметах
+        }
     }
 
     /// <summary>

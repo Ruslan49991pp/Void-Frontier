@@ -166,7 +166,7 @@ public class CombatSystem : MonoBehaviour
             if (character == null)
                 character = hit.collider.GetComponentInParent<Character>();
 
-            if (character != null && character.IsEnemyCharacter())
+            if (character != null && character.IsEnemyCharacter() && !character.IsDead())
             {
                 return character;
             }
@@ -302,7 +302,7 @@ public class CombatSystem : MonoBehaviour
             movement = attacker.gameObject.AddComponent<CharacterMovement>();
         }
 
-        while (combatData.target != null && combatData.target.GetHealth() > 0)
+        while (combatData.target != null && combatData.target.GetHealth() > 0 && !combatData.target.IsDead())
         {
             float distanceToTarget = Vector3.Distance(attacker.transform.position, combatData.target.transform.position);
 
@@ -405,7 +405,7 @@ public class CombatSystem : MonoBehaviour
         yield return combatData.attackAnimationCoroutine;
 
         // Наносим урон
-        if (combatData.target != null && combatData.target.GetHealth() > 0)
+        if (combatData.target != null && combatData.target.GetHealth() > 0 && !combatData.target.IsDead())
         {
             combatData.target.TakeDamage(attackDamage);
 
@@ -613,8 +613,9 @@ public class CombatSystem : MonoBehaviour
             Character attacker = kvp.Key;
             CombatData combatData = kvp.Value;
 
-            // Проверяем, что персонажи еще существуют
-            if (attacker == null || combatData.target == null || combatData.target.GetHealth() <= 0)
+            // Проверяем, что персонажи еще существуют и атакующий не мертв
+            if (attacker == null || combatData.target == null || combatData.target.GetHealth() <= 0 ||
+                combatData.target.IsDead() || attacker.IsDead())
             {
                 toRemove.Add(attacker);
                 continue;

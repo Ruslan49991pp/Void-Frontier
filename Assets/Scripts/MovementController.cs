@@ -593,7 +593,7 @@ public class MovementController : MonoBehaviour
                 }
             }
 
-            if (character != null && character.IsEnemyCharacter())
+            if (character != null && (character.IsEnemyCharacter() || (character.IsDead() && character.CanBeSearched())))
             {
 
                 return character;

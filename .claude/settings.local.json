@@ -46,7 +46,10 @@
       "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_attack_cooldown_fix.log\")",
       "Bash(if exist \"C:\\temp\\unity_clear_target_fix.log\" type \"C:\\temp\\unity_clear_target_fix.log\")",
       "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_attack_cooldown_final.log\")",
-      "Bash(if exist \"C:\\temp\\unity_attack_cooldown_final.log\" type \"C:\\temp\\unity_attack_cooldown_final.log\")"
+      "Bash(if exist \"C:\\temp\\unity_attack_cooldown_final.log\" type \"C:\\temp\\unity_attack_cooldown_final.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_search_system.log\")",
+      "Bash(if exist \"C:\\temp\\unity_search_system.log\" type \"C:\\temp\\unity_search_system.log\")",
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_search_test.log\")"
     ],
     "deny": [],
     "ask": []
