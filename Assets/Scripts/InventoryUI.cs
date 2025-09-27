@@ -1029,36 +1029,26 @@ public class InventoryUI : MonoBehaviour
         // Проверяем, есть ли предмет в этом слоте
         if (currentInventory.IsEquipped(equipmentSlot))
         {
-            // Получаем экипированный предмет
+            // Получаем экипированный предмет для логирования
             ItemData equippedItem = currentInventory.GetEquippedItem(equipmentSlot);
             if (equippedItem != null)
             {
-                // Ищем свободный слот в основном инвентаре
+                // Проверяем, есть ли место в инвентаре
                 int freeSlotIndex = FindNearestFreeInventorySlot();
                 if (freeSlotIndex != -1)
                 {
-                    // Снимаем предмет с экипировки
+                    // Снимаем предмет с экипировки (UnequipItem уже добавляет предмет в инвентарь)
                     if (currentInventory.UnequipItem(equipmentSlot))
                     {
-                        // Добавляем в основной инвентарь
-                        if (currentInventory.AddItem(equippedItem, 1))
-                        {
-                            Debug.Log($"[DoubleClick] Successfully unequipped {equippedItem.itemName} from {equipmentSlot} to inventory slot {freeSlotIndex}");
-                            // Обновляем визуалы заблокированных слотов
-                            UpdateEquipmentSlotVisuals();
-                            // Снимаем выделение
-                            ClearSlotSelection();
-                        }
-                        else
-                        {
-                            // Если не удалось добавить в инвентарь, возвращаем предмет обратно
-                            currentInventory.EquipItem(equippedItem);
-                            Debug.Log($"[DoubleClick] Failed to add {equippedItem.itemName} to inventory - re-equipped item");
-                        }
+                        Debug.Log($"[DoubleClick] Successfully unequipped {equippedItem.itemName} from {equipmentSlot} to inventory");
+                        // Обновляем визуалы заблокированных слотов
+                        UpdateEquipmentSlotVisuals();
+                        // Снимаем выделение
+                        ClearSlotSelection();
                     }
                     else
                     {
-                        Debug.Log($"[DoubleClick] Failed to unequip {equippedItem.itemName} from {equipmentSlot}");
+                        Debug.Log($"[DoubleClick] Failed to unequip {equippedItem.itemName} from {equipmentSlot} - inventory might be full");
                     }
                 }
                 else
@@ -1237,6 +1227,7 @@ public class InventoryUI : MonoBehaviour
         EquipmentSlot equipSlot = (EquipmentSlot)equipSlotId;
         Debug.Log($"[DragDrop] Equipment to inventory: {equipSlot} -> slot {toSlot}");
 
+        // UnequipItem автоматически добавляет предмет в инвентарь, поэтому дополнительно добавлять не нужно
         if (currentInventory.UnequipItem(equipSlot))
         {
             Debug.Log($"Unequipped item from {equipSlot} to inventory");
