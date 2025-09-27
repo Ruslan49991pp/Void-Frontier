@@ -127,10 +127,10 @@ public class Character : MonoBehaviour
         if (characterInventory == null)
         {
             characterInventory = gameObject.AddComponent<Inventory>();
-
-            // Настраиваем инвентарь в зависимости от фракции
-            SetupInventoryForFaction();
         }
+
+        // Ждем следующий кадр для правильной инициализации инвентаря
+        StartCoroutine(DelayedInventorySetup());
     }
 
     void Update()
@@ -637,6 +637,18 @@ public class Character : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Отложенная настройка инвентаря для правильной инициализации
+    /// </summary>
+    System.Collections.IEnumerator DelayedInventorySetup()
+    {
+        // Ждем один кадр для завершения инициализации компонентов
+        yield return null;
+
+        // Настраиваем инвентарь в зависимости от фракции
+        SetupInventoryForFaction();
+    }
+
     void OnDestroy()
     {
         // Освобождаем материал
@@ -661,6 +673,9 @@ public class Character : MonoBehaviour
                 characterInventory.maxWeight = 100f;
                 characterInventory.autoPickupEnabled = true;
                 characterInventory.autoPickupRange = 1.5f;
+
+                // Генерируем стартовые предметы для союзников
+                GeneratePlayerStartingItems();
                 break;
 
             case Faction.Enemy:
@@ -678,7 +693,52 @@ public class Character : MonoBehaviour
                 characterInventory.maxSlots = 15;
                 characterInventory.maxWeight = 75f;
                 characterInventory.autoPickupEnabled = false;
+
+                // Генерируем стартовые предметы для нейтральных персонажей
+                GenerateNeutralStartingItems();
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Генерировать стартовые предметы для союзников
+    /// </summary>
+    void GeneratePlayerStartingItems()
+    {
+        if (characterInventory == null || characterData.faction != Faction.Player)
+            return;
+
+        // Добавляем по 1 предмету каждого типа
+        ItemType[] allTypes = { ItemType.Weapon, ItemType.Armor, ItemType.Tool, ItemType.Medical, ItemType.Resource, ItemType.Consumable };
+
+        foreach (ItemType itemType in allTypes)
+        {
+            ItemData startingItem = CreateSpecificLoot(itemType);
+            if (startingItem != null)
+            {
+                characterInventory.AddItem(startingItem, 1);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Генерировать стартовые предметы для нейтральных персонажей
+    /// </summary>
+    void GenerateNeutralStartingItems()
+    {
+        if (characterInventory == null || characterData.faction != Faction.Neutral)
+            return;
+
+        // Добавляем по 1 предмету каждого типа
+        ItemType[] allTypes = { ItemType.Weapon, ItemType.Armor, ItemType.Tool, ItemType.Medical, ItemType.Resource, ItemType.Consumable };
+
+        foreach (ItemType itemType in allTypes)
+        {
+            ItemData startingItem = CreateSpecificLoot(itemType);
+            if (startingItem != null)
+            {
+                characterInventory.AddItem(startingItem, 1);
+            }
         }
     }
 
@@ -690,12 +750,12 @@ public class Character : MonoBehaviour
         if (characterInventory == null || characterData.faction != Faction.Enemy)
             return;
 
-        // Создаем простые предметы для врагов
-        int lootCount = staticRandom.Next(1, 4); // 1-3 предмета
+        // Добавляем по 1 предмету каждого типа
+        ItemType[] allTypes = { ItemType.Weapon, ItemType.Armor, ItemType.Tool, ItemType.Medical, ItemType.Resource, ItemType.Consumable };
 
-        for (int i = 0; i < lootCount; i++)
+        foreach (ItemType itemType in allTypes)
         {
-            ItemData lootItem = CreateRandomLoot();
+            ItemData lootItem = CreateSpecificLoot(itemType);
             if (lootItem != null)
             {
                 characterInventory.AddItem(lootItem, 1);
@@ -704,18 +764,15 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Создать случайный предмет для добычи
+    /// Создать предмет определенного типа
     /// </summary>
-    ItemData CreateRandomLoot()
+    ItemData CreateSpecificLoot(ItemType itemType)
     {
         ItemData item = new ItemData();
-
-        // Случайный тип предмета
-        ItemType[] availableTypes = { ItemType.Weapon, ItemType.Medical, ItemType.Resource, ItemType.Tool };
-        item.itemType = availableTypes[staticRandom.Next(0, availableTypes.Length)];
+        item.itemType = itemType;
 
         // Настраиваем предмет в зависимости от типа
-        switch (item.itemType)
+        switch (itemType)
         {
             case ItemType.Weapon:
                 item.itemName = "Basic Weapon";
@@ -724,6 +781,7 @@ public class Character : MonoBehaviour
                 item.value = staticRandom.Next(10, 50);
                 item.weight = 2f;
                 item.rarity = ItemRarity.Common;
+                item.equipmentSlot = EquipmentSlot.RightHand; // Оружие можно держать в правой руке
                 break;
 
             case ItemType.Medical:
@@ -752,9 +810,61 @@ public class Character : MonoBehaviour
                 item.weight = 1f;
                 item.rarity = ItemRarity.Common;
                 break;
+
+            case ItemType.Armor:
+                // Создаем случайную броню для разных слотов
+                EquipmentSlot[] armorSlots = { EquipmentSlot.Head, EquipmentSlot.Chest, EquipmentSlot.Legs, EquipmentSlot.Feet };
+                EquipmentSlot armorSlot = armorSlots[staticRandom.Next(0, armorSlots.Length)];
+
+                switch (armorSlot)
+                {
+                    case EquipmentSlot.Head:
+                        item.itemName = "Basic Helmet";
+                        item.description = "Simple protective helmet";
+                        break;
+                    case EquipmentSlot.Chest:
+                        item.itemName = "Basic Chest Armor";
+                        item.description = "Simple chest protection";
+                        break;
+                    case EquipmentSlot.Legs:
+                        item.itemName = "Basic Leg Armor";
+                        item.description = "Simple leg protection";
+                        break;
+                    case EquipmentSlot.Feet:
+                        item.itemName = "Basic Boots";
+                        item.description = "Simple protective boots";
+                        break;
+                }
+
+                item.equipmentSlot = armorSlot;
+                item.armor = staticRandom.Next(2, 8);
+                item.weight = staticRandom.Next(1, 4);
+                item.value = staticRandom.Next(15, 40);
+                item.rarity = ItemRarity.Common;
+                break;
+
+            case ItemType.Consumable:
+                item.itemName = "Basic Consumable";
+                item.description = "Single-use item";
+                item.value = staticRandom.Next(5, 20);
+                item.weight = 0.2f;
+                item.maxStackSize = 5;
+                item.rarity = ItemRarity.Common;
+                break;
         }
 
         return item;
+    }
+
+    /// <summary>
+    /// Создать случайный предмет для добычи (старый метод для совместимости)
+    /// </summary>
+    ItemData CreateRandomLoot()
+    {
+        // Случайный тип предмета
+        ItemType[] availableTypes = { ItemType.Weapon, ItemType.Armor, ItemType.Tool, ItemType.Medical, ItemType.Resource, ItemType.Consumable };
+        ItemType randomType = availableTypes[staticRandom.Next(0, availableTypes.Length)];
+        return CreateSpecificLoot(randomType);
     }
 
     /// <summary>
