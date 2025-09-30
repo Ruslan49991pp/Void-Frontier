@@ -306,8 +306,26 @@ public class CombatSystem : MonoBehaviour
         {
             float distanceToTarget = Vector3.Distance(attacker.transform.position, combatData.target.transform.position);
 
+            // Получаем систему оружия для определения дальности атаки
+            WeaponSystem weaponSystem = attacker.GetComponent<WeaponSystem>();
+            float currentAttackRange = attackRange; // Дефолтная дальность
+            float currentAttackCooldown = attackCooldown; // Дефолтный кулдаун
+
+            if (weaponSystem != null)
+            {
+                // Выбираем лучшее оружие для текущей дистанции
+                weaponSystem.SelectBestWeapon(combatData.target.transform.position, distanceToTarget);
+
+                Weapon currentWeapon = weaponSystem.GetCurrentWeapon();
+                if (currentWeapon != null)
+                {
+                    currentAttackRange = currentWeapon.range;
+                    currentAttackCooldown = currentWeapon.GetAttackCooldown();
+                }
+            }
+
             // Проверяем, находится ли цель в дистанции атаки
-            if (distanceToTarget <= attackRange)
+            if (distanceToTarget <= currentAttackRange)
             {
                 // Цель в дистанции атаки - останавливаем движение
                 combatData.isPursuing = false;
@@ -315,7 +333,7 @@ public class CombatSystem : MonoBehaviour
 
                 // Проверяем кулдаун атаки - атака начинается ТОЛЬКО если не атакуем сейчас И прошел кулдаун
                 float timeSinceLastAttack = Time.time - combatData.lastAttackTime;
-                if (!combatData.isAttacking && timeSinceLastAttack >= attackCooldown)
+                if (!combatData.isAttacking && timeSinceLastAttack >= currentAttackCooldown)
                 {
                     // Выполняем атаку - блокируем новые атаки пока не завершится
                     yield return StartCoroutine(PerformAttack(attacker, combatData));
@@ -386,6 +404,41 @@ public class CombatSystem : MonoBehaviour
     /// </summary>
     IEnumerator PerformAttack(Character attacker, CombatData combatData)
     {
+        // Получаем систему оружия атакующего
+        WeaponSystem weaponSystem = attacker.GetComponent<WeaponSystem>();
+        if (weaponSystem == null)
+        {
+            // Если нет системы оружия, используем старую систему
+            yield return StartCoroutine(PerformLegacyAttack(attacker, combatData));
+            yield break;
+        }
+
+        float distanceToTarget = Vector3.Distance(attacker.transform.position, combatData.target.transform.position);
+
+        // Используем систему оружия для атаки
+        combatData.isAttacking = true;
+
+        // Система оружия сама выберет подходящее оружие и выполнит атаку
+        weaponSystem.AttackTarget(combatData.target);
+
+        // Получаем время атаки от текущего оружия
+        Weapon currentWeapon = weaponSystem.GetCurrentWeapon();
+        float attackCooldownTime = currentWeapon != null ? currentWeapon.GetAttackCooldown() : attackCooldown;
+
+        // Ждем завершения атаки
+        yield return new WaitForSeconds(attackCooldownTime * 0.5f); // Половина времени для анимации
+
+        // ВАЖНО: Устанавливаем время последней атаки ПОСЛЕ завершения всей атаки
+        combatData.lastAttackTime = Time.time;
+        combatData.isAttacking = false;
+        combatData.attackAnimationCoroutine = null;
+    }
+
+    /// <summary>
+    /// Выполнить атаку по старой системе (для совместимости)
+    /// </summary>
+    IEnumerator PerformLegacyAttack(Character attacker, CombatData combatData)
+    {
         // Проверяем, что цель все еще в дистанции атаки перед началом
         float distanceCheck = Vector3.Distance(attacker.transform.position, combatData.target.transform.position);
         if (distanceCheck > attackRange)
@@ -411,6 +464,9 @@ public class CombatSystem : MonoBehaviour
 
             // Показываем индикацию урона
             StartCoroutine(ShowDamageIndication(combatData.target));
+
+            // Показываем текст урона
+            ShowDamageText(combatData.target, attackDamage);
         }
 
         // ВАЖНО: Устанавливаем время последней атаки ПОСЛЕ завершения всей атаки
@@ -555,6 +611,101 @@ public class CombatSystem : MonoBehaviour
 
         // Убираем блокировку
         damageIndicationInProgress.Remove(target);
+    }
+
+    /// <summary>
+    /// Показать текст урона с поворотом к камере
+    /// </summary>
+    void ShowDamageText(Character target, float damage)
+    {
+        if (target == null) return;
+
+        // Создаем объект с текстом урона
+        Vector3 damagePosition = target.transform.position + Vector3.up * 1.8f;
+        GameObject damageTextObj = LookAtCamera.CreateBillboardText(
+            $"-{damage:F0}",
+            damagePosition,
+            Color.white,
+            12
+        );
+
+        Debug.Log($"[CombatSystem] Created damage text object: {damageTextObj.name} at position {damageTextObj.transform.position}");
+
+        // Анимируем текст - СТРОГО 1 секунда
+        Coroutine animationCoroutine = StartCoroutine(AnimateLegacyDamageText(damageTextObj, 1.0f));
+
+        // Регистрируем в менеджере для отслеживания
+        DamageTextManager.Instance.RegisterDamageText(damageTextObj, animationCoroutine);
+
+        // ПРИНУДИТЕЛЬНОЕ уничтожение ровно через 1 секунду
+        StartCoroutine(ForceCleanupAfterDelay(damageTextObj, 1.0f));
+    }
+
+    /// <summary>
+    /// Анимация текста урона для старой системы боя
+    /// </summary>
+    IEnumerator AnimateLegacyDamageText(GameObject damageTextObj, float duration)
+    {
+        Debug.Log($"[CombatSystem] Starting damage text animation for {damageTextObj.name}, duration: {duration}s");
+
+        TextMesh textMesh = damageTextObj.GetComponent<TextMesh>();
+        Vector3 startPos = damageTextObj.transform.position;
+        Vector3 endPos = new Vector3(startPos.x, 10f, startPos.z);
+
+        Debug.Log($"[CombatSystem] Animation path: {startPos} -> {endPos}");
+
+        Color startColor = textMesh.color;
+
+        float elapsedTime = 0f;
+        while (elapsedTime < duration)
+        {
+            float t = elapsedTime / duration;
+
+            // Движение вверх
+            damageTextObj.transform.position = Vector3.Lerp(startPos, endPos, t);
+
+            // Плавное исчезновение
+            Color color = startColor;
+            color.a = 1f - t;
+            textMesh.color = color;
+
+            // Увеличение размера в начале
+            float scale = 1f + (0.3f * (1f - t));
+            damageTextObj.transform.localScale = Vector3.one * scale;
+
+            elapsedTime += Time.deltaTime;
+
+            // Логируем каждые 0.5 секунды
+            if (Mathf.FloorToInt(elapsedTime * 2) > Mathf.FloorToInt((elapsedTime - Time.deltaTime) * 2))
+            {
+                Debug.Log($"[CombatSystem] Animation progress: {t:F2}, position: {damageTextObj.transform.position}, alpha: {color.a:F2}");
+            }
+
+            yield return null;
+        }
+
+        Debug.Log($"[CombatSystem] Animation completed for {damageTextObj.name}, elapsed time: {elapsedTime:F2}s");
+
+        // Принудительно уничтожаем через менеджер
+        if (damageTextObj != null)
+        {
+            Debug.Log($"[CombatSystem] Requesting cleanup for {damageTextObj.name}");
+            DamageTextManager.Instance.ForceCleanupObject(damageTextObj);
+        }
+    }
+
+    /// <summary>
+    /// Принудительная очистка объекта через заданное время
+    /// </summary>
+    IEnumerator ForceCleanupAfterDelay(GameObject obj, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        if (obj != null)
+        {
+            Debug.Log($"[CombatSystem] MANDATORY cleanup after {delay}s for {obj.name}");
+            DamageTextManager.Instance.ForceCleanupObject(obj);
+        }
     }
 
     /// <summary>

@@ -129,6 +129,13 @@ public class Character : MonoBehaviour
             characterInventory = gameObject.AddComponent<Inventory>();
         }
 
+        // Добавляем систему оружия
+        WeaponSystem weaponSystem = GetComponent<WeaponSystem>();
+        if (weaponSystem == null)
+        {
+            weaponSystem = gameObject.AddComponent<WeaponSystem>();
+        }
+
         // Ждем следующий кадр для правильной инициализации инвентаря
         StartCoroutine(DelayedInventorySetup());
     }
