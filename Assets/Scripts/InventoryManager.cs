@@ -113,10 +113,15 @@ public class InventoryManager : MonoBehaviour
 
     void CreateWorldTestItem(ItemData item)
     {
+        // Спавн в центре случайной клетки сетки
+        int randomX = Random.Range(-5, 6); // От -5 до 5
+        int randomZ = Random.Range(-5, 6);
+
+        // Центр клетки: целочисленные координаты + 0.5
         Vector3 position = new Vector3(
-            Random.Range(-5f, 5f),
+            randomX + 0.5f,
             0.5f,
-            Random.Range(-5f, 5f)
+            randomZ + 0.5f
         );
 
         GameObject worldItem = Item.CreateWorldItem(item, position);
@@ -305,9 +310,19 @@ public class InventoryManager : MonoBehaviour
     {
         if (character == null || item == null) return null;
 
-        Vector3 dropPosition = character.transform.position +
-            character.transform.forward * 2f +
-            new Vector3(Random.Range(-0.5f, 0.5f), 0.5f, Random.Range(-0.5f, 0.5f));
+        Vector3 characterPos = character.transform.position;
+        Vector3 offset = character.transform.forward * 2f;
+        Vector3 targetPos = characterPos + offset;
+
+        // Округляем до ближайшего центра клетки
+        int gridX = Mathf.RoundToInt(targetPos.x);
+        int gridZ = Mathf.RoundToInt(targetPos.z);
+
+        Vector3 dropPosition = new Vector3(
+            gridX + 0.5f,
+            0.5f,
+            gridZ + 0.5f
+        );
 
         return Item.CreateWorldItem(item, dropPosition);
     }

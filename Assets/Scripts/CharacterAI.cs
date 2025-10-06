@@ -28,6 +28,7 @@ public class CharacterAI : MonoBehaviour
     private CharacterMovement movement;
     private SelectionManager selectionManager;
     private GridManager gridManager;
+    private CombatSystem combatSystem;
 
     // Переменные состояния
     private AIState currentState = AIState.PlayerControlled;
@@ -50,6 +51,7 @@ public class CharacterAI : MonoBehaviour
 
         selectionManager = FindObjectOfType<SelectionManager>();
         gridManager = FindObjectOfType<GridManager>();
+        combatSystem = FindObjectOfType<CombatSystem>();
     }
 
     void Start()
@@ -428,17 +430,15 @@ public class CharacterAI : MonoBehaviour
         playerInitiatedMovement = true;
 
         // Останавливаем бой при получении команды движения от игрока
-        CombatSystem combatSystem = FindObjectOfType<CombatSystem>();
-        if (combatSystem != null)
+        if (combatSystem != null && character != null)
         {
-            Character character = GetComponent<Character>();
-            if (character != null)
-            {
-                combatSystem.StopCombatForCharacter(character);
-            }
+            combatSystem.StopCombatForCharacter(character);
+            Debug.Log($"[CharacterAI] {character.GetFullName()} stopped combat due to player movement command");
         }
-
-        // Debug logging disabled
+        else
+        {
+            Debug.LogWarning($"[CharacterAI] Could not stop combat - combatSystem={combatSystem}, character={character}");
+        }
     }
 
     void OnDestroy()

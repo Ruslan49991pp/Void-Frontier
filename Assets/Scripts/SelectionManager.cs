@@ -378,6 +378,18 @@ public class SelectionManager : MonoBehaviour
                     return;
                 }
 
+                // Проверяем, является ли это предметом инвентаря
+                Item item = hitObject.GetComponent<Item>();
+                if (item != null)
+                {
+                    FileLogger.Log($"DEBUG: Found Item: {hitObject.name}");
+
+                    // Предметы выделяем по одному
+                    ClearSelection();
+                    ToggleSelection(hitObject);
+                    return;
+                }
+
                 LocationObjectInfo objectInfo = hitObject.GetComponent<LocationObjectInfo>();
                 if (objectInfo != null)
                 {

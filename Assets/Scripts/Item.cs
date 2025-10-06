@@ -154,6 +154,10 @@ public class Item : MonoBehaviour
         itemRenderer = GetComponent<Renderer>();
 
         // Настраиваем коллайдер как триггер для взаимодействия
+        // Это позволит:
+        // 1. Выстрелы будут проходить сквозь предметы
+        // 2. Предметы можно будет выделять (RaycastAll с QueryTriggerInteraction.Collide)
+        // 3. Можно будет поднимать предметы
         if (itemCollider != null)
         {
             itemCollider.isTrigger = true;

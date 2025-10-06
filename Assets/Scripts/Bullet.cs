@@ -152,9 +152,9 @@ public class Bullet : MonoBehaviour
             float deltaTime = Time.deltaTime;
             float distanceThisFrame = speed * deltaTime;
 
-            // Проверяем попадания с помощью raycast
+            // Проверяем попадания с помощью raycast, игнорируя триггеры (предметы на земле)
             RaycastHit hit;
-            if (Physics.Raycast(transform.position, direction, out hit, distanceThisFrame, hitLayers))
+            if (Physics.Raycast(transform.position, direction, out hit, distanceThisFrame, hitLayers, QueryTriggerInteraction.Ignore))
             {
                 // Перемещаем пулю в точку попадания
                 transform.position = hit.point;

@@ -33,10 +33,20 @@ public class MovementController : MonoBehaviour
     
     void Update()
     {
+        // Тестовый лог раз в 2 секунды (120 кадров при 60 FPS)
+        if (Time.frameCount % 120 == 0)
+        {
+            Debug.Log($"[MovementController] Update running. Inventory open: {InventoryUI.IsAnyInventoryOpen}");
+        }
+
         // Блокируем ввод если открыт инвентарь
         if (!InventoryUI.IsAnyInventoryOpen)
         {
             HandleMovementInput();
+        }
+        else if (Input.GetMouseButtonDown(1))
+        {
+            Debug.LogWarning("[MovementController] Right click blocked - inventory is open!");
         }
     }
     
@@ -47,42 +57,63 @@ public class MovementController : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(1)) // ПКМ
         {
+            Debug.Log("[MovementController] Right mouse button clicked");
+
             // Защита от спама кликов
             if (Time.time - lastClickTime < CLICK_COOLDOWN)
             {
+                Debug.Log("[MovementController] Click ignored - cooldown active");
                 return;
             }
             lastClickTime = Time.time;
 
             // Получаем выделенных персонажей
             List<Character> selectedCharacters = GetSelectedCharacters();
+            Debug.Log($"[MovementController] Selected characters: {selectedCharacters.Count}");
 
             if (selectedCharacters.Count > 0)
             {
-                // Проверяем, есть ли враг под курсором - если да, то не выполняем обычное движение
+                // Получаем позицию клика на сетке СНАЧАЛА
+                Vector3 clickWorldPos = GetMouseWorldPosition();
+                if (clickWorldPos == Vector3.zero)
+                {
+                    Debug.Log("[MovementController] Click world position is zero, ignoring");
+                    return;
+                }
+
+                Vector2Int targetGridPos = gridManager.WorldToGrid(clickWorldPos);
+                Debug.Log($"[MovementController] Click at grid position: {targetGridPos}");
+
+                // Проверяем, есть ли враг под курсором
                 Character enemyUnderMouse = GetEnemyUnderMouse();
+
+                // Если враг под курсором И мы кликнули именно НА врага (на его клетке)
                 if (enemyUnderMouse != null)
                 {
+                    Vector2Int enemyGridPos = gridManager.WorldToGrid(enemyUnderMouse.transform.position);
 
-                    return; // Позволяем EnemyTargetingSystem обработать клик
+                    // Если клик на той же клетке что и враг - это команда атаки
+                    // EnemyTargetingSystem обработает это И прервет текущую атаку
+                    if (targetGridPos == enemyGridPos)
+                    {
+                        Debug.Log($"[MovementController] Click on enemy {enemyUnderMouse.GetFullName()}, letting EnemyTargetingSystem handle it");
+                        return; // Позволяем EnemyTargetingSystem обработать клик на врага
+                    }
+                    // Иначе клик рядом с врагом - это команда движения, продолжаем ниже
+                    Debug.Log($"[MovementController] Click near enemy {enemyUnderMouse.GetFullName()}, treating as movement command");
                 }
-                // Получаем позицию клика на сетке
-                Vector3 clickWorldPos = GetMouseWorldPosition();
-                if (clickWorldPos != Vector3.zero)
-                {
-                    Vector2Int targetGridPos = gridManager.WorldToGrid(clickWorldPos);
-                    
-                    // Проверяем, свободна ли целевая клетка
-                    Vector2Int finalTargetPos = GetNearestFreeCell(targetGridPos, selectedCharacters);
-                    Vector3 targetWorldPos = gridManager.GridToWorld(finalTargetPos);
-                    
-                    
-                    // Очистка движений только для выделенных персонажей
-                    ClearMovingGroupsForSelectedCharacters(selectedCharacters);
-                    
-                    // Запускаем движение персонажей к цели
-                    MoveCharactersToTarget(selectedCharacters, finalTargetPos);
-                }
+
+                // Команда движения - прерываем любой бой и начинаем движение
+                Debug.Log("[MovementController] Executing movement command");
+
+                // Очистка движений только для выделенных персонажей
+                ClearMovingGroupsForSelectedCharacters(selectedCharacters);
+
+                // Проверяем, свободна ли целевая клетка
+                Vector2Int finalTargetPos = GetNearestFreeCell(targetGridPos, selectedCharacters);
+
+                // Запускаем движение персонажей к цели (это вызовет OnPlayerInitiatedMovement)
+                MoveCharactersToTarget(selectedCharacters, finalTargetPos);
             }
         }
     }

@@ -164,6 +164,16 @@ public class EnemyTargetingSystem : MonoBehaviour
             Character clickedEnemy = GetEnemyUnderMouse();
             if (clickedEnemy != null)
             {
+                // ВАЖНО: Прерываем текущую атаку для всех выделенных персонажей
+                foreach (var ally in selectedAllies)
+                {
+                    CharacterAI ai = ally.GetComponent<CharacterAI>();
+                    if (ai != null)
+                    {
+                        ai.OnPlayerInitiatedMovement(); // Это прерывает текущую атаку
+                    }
+                }
+
                 // Проверяем, мертв ли враг и можно ли его обыскать
                 if (clickedEnemy.IsDead() && clickedEnemy.CanBeSearched())
                 {
@@ -173,7 +183,8 @@ public class EnemyTargetingSystem : MonoBehaviour
                 }
                 else if (!clickedEnemy.IsDead())
                 {
-                    // Атакуем живого врага
+                    // Атакуем живого врага (новую цель)
+                    Debug.Log($"[EnemyTargeting] Switching attack target to {clickedEnemy.GetFullName()}");
                     AssignAttackToAllies(selectedAllies, clickedEnemy);
                 }
             }

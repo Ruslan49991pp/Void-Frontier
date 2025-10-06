@@ -9,7 +9,7 @@ using System.Collections;
 public class WeaponSystem : MonoBehaviour
 {
     [Header("Weapon System Settings")]
-    public float meleePreferenceRange = 3f;    // Дистанция предпочтения ближнего боя
+    public float meleePreferenceRange = 1.5f;  // Дистанция предпочтения ближнего боя (соседняя клетка)
     public float rangedPreferenceRange = 8f;   // Дистанция предпочтения огнестрельного оружия
     public bool autoReloadEnabled = true;      // Автоматическая перезарядка
     public bool debugMode = false;             // Отладочный режим
@@ -24,6 +24,9 @@ public class WeaponSystem : MonoBehaviour
     private Weapon currentWeapon;
     private Character character;
     private Inventory inventory;
+
+    // Кеш оружия для сохранения состояния (патроны, прочность)
+    private Dictionary<string, RangedWeapon> rangedWeaponCache = new Dictionary<string, RangedWeapon>();
 
     // Статистика использования
     private int meleeAttacks = 0;
@@ -47,6 +50,13 @@ public class WeaponSystem : MonoBehaviour
     {
         // Инициализируем базовое оружие
         InitializeDefaultWeapons();
+
+        // Подписываемся на изменения инвентаря для автоматической экипировки
+        if (inventory != null)
+        {
+            inventory.OnInventoryChanged += CheckAndEquipWeapons;
+            inventory.OnEquipmentChanged += SyncEquipmentWithWeapons;
+        }
     }
 
     /// <summary>
@@ -54,21 +64,202 @@ public class WeaponSystem : MonoBehaviour
     /// </summary>
     private void InitializeDefaultWeapons()
     {
-        // Создаем базовое оружие ближнего боя
+        // Создаем ТОЛЬКО базовое оружие ближнего боя (нож - виртуальный, всегда доступен)
         MeleeWeapon meleeWeapon = MeleeWeapon.CreatePresetWeapon(defaultMeleeCategory, defaultWeaponRarity);
         AddWeapon(meleeWeapon);
 
-        // Создаем базовое огнестрельное оружие
-        RangedWeapon rangedWeapon = RangedWeapon.CreatePresetWeapon(defaultRangedCategory, defaultWeaponRarity);
-        AddWeapon(rangedWeapon);
+        // НЕ создаем базовое огнестрельное оружие - оно должно быть найдено/экипировано
+        // RangedWeapon rangedWeapon = RangedWeapon.CreatePresetWeapon(defaultRangedCategory, defaultWeaponRarity);
+        // AddWeapon(rangedWeapon);
 
         // Выбираем оружие ближнего боя по умолчанию
         SetCurrentWeapon(meleeWeapon);
 
         if (debugMode)
         {
-            Debug.Log($"[WeaponSystem] {character.GetFullName()} initialized with {meleeWeapon.weaponName} and {rangedWeapon.weaponName}");
+            Debug.Log($"[WeaponSystem] {character.GetFullName()} initialized with default {meleeWeapon.weaponName} (virtual melee weapon)");
         }
+    }
+
+    /// <summary>
+    /// Проверить и экипировать оружие из инвентаря при изменении инвентаря
+    /// </summary>
+    private void CheckAndEquipWeapons()
+    {
+        if (inventory == null)
+        {
+            Debug.LogWarning($"[WeaponSystem] CheckAndEquipWeapons called but inventory is null for {character?.GetFullName()}");
+            return;
+        }
+
+        if (character == null)
+        {
+            Debug.LogWarning($"[WeaponSystem] CheckAndEquipWeapons called but character is null");
+            return;
+        }
+
+        try
+        {
+            Debug.Log($"[WeaponSystem] Checking and equipping weapons for {character.GetFullName()}");
+
+            // Проверяем, есть ли огнестрельное оружие в инвентаре, но не экипированное
+            List<InventorySlot> usedSlots = inventory.GetUsedSlotsList();
+            if (usedSlots == null)
+            {
+                Debug.LogWarning($"[WeaponSystem] GetUsedSlotsList returned null");
+                return;
+            }
+
+            Debug.Log($"[WeaponSystem] Found {usedSlots.Count} items in inventory");
+
+            foreach (InventorySlot slot in usedSlots)
+            {
+                if (slot == null)
+                {
+                    Debug.LogWarning($"[WeaponSystem] Null slot in inventory");
+                    continue;
+                }
+
+                if (slot.itemData != null && slot.itemData.itemType == ItemType.Weapon)
+                {
+                    string weaponName = slot.itemData.itemName;
+                    Debug.Log($"[WeaponSystem] Found weapon in inventory: {weaponName}");
+
+                    // Проверяем, экипировано ли уже оружие
+                    if (!inventory.HasWeaponEquipped())
+                    {
+                        Debug.Log($"[WeaponSystem] No weapon equipped, attempting to equip {weaponName}");
+
+                        // Сохраняем ссылку на ItemData перед экипировкой
+                        ItemData weaponData = slot.itemData;
+
+                        // Автоматически экипируем первое найденное оружие
+                        if (inventory.EquipItem(weaponData))
+                        {
+                            Debug.Log($"[WeaponSystem] Auto-equipped {weaponName} from inventory");
+                            break;
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[WeaponSystem] Failed to auto-equip {weaponName}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.Log($"[WeaponSystem] Weapon already equipped, skipping auto-equip");
+                    }
+                }
+            }
+
+            // Синхронизируем оружие с экипировкой
+            SyncEquipmentWithWeapons();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[WeaponSystem] Exception in CheckAndEquipWeapons for {character?.GetFullName()}: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    /// <summary>
+    /// Синхронизировать оружие WeaponSystem с экипировкой из Inventory
+    /// </summary>
+    private void SyncEquipmentWithWeapons()
+    {
+        if (inventory == null)
+        {
+            Debug.LogWarning($"[WeaponSystem] SyncEquipmentWithWeapons called but inventory is null for {character?.GetFullName()}");
+            return;
+        }
+
+        if (character == null)
+        {
+            Debug.LogWarning($"[WeaponSystem] SyncEquipmentWithWeapons called but character is null");
+            return;
+        }
+
+        try
+        {
+            Debug.Log($"[WeaponSystem] Syncing equipment with weapons for {character.GetFullName()}");
+
+            // Очищаем список огнестрельного оружия (оставляем только нож)
+            int removedCount = weapons.RemoveAll(w => w != null && w.weaponType == WeaponType.Ranged);
+            Debug.Log($"[WeaponSystem] Removed {removedCount} ranged weapons, {weapons.Count} weapons remaining");
+
+            // Проверяем экипированное оружие в руках
+            ItemData leftHandWeapon = inventory.GetEquippedItem(EquipmentSlot.LeftHand);
+            ItemData rightHandWeapon = inventory.GetEquippedItem(EquipmentSlot.RightHand);
+
+            Debug.Log($"[WeaponSystem] Left hand: {leftHandWeapon?.itemName ?? "empty"}, Right hand: {rightHandWeapon?.itemName ?? "empty"}");
+
+            // Добавляем экипированное оружие в WeaponSystem
+            if (leftHandWeapon != null && leftHandWeapon.itemType == ItemType.Weapon)
+            {
+                RangedWeapon rangedWeapon = CreateRangedWeaponFromItemData(leftHandWeapon);
+                if (rangedWeapon != null)
+                {
+                    AddWeapon(rangedWeapon);
+                    Debug.Log($"[WeaponSystem] Synced left hand weapon: {rangedWeapon.weaponName} (damage: {rangedWeapon.damage}, range: {rangedWeapon.range})");
+                }
+            }
+
+            if (rightHandWeapon != null && rightHandWeapon.itemType == ItemType.Weapon)
+            {
+                RangedWeapon rangedWeapon = CreateRangedWeaponFromItemData(rightHandWeapon);
+                if (rangedWeapon != null)
+                {
+                    AddWeapon(rangedWeapon);
+                    Debug.Log($"[WeaponSystem] Synced right hand weapon: {rangedWeapon.weaponName} (damage: {rangedWeapon.damage}, range: {rangedWeapon.range})");
+                }
+            }
+
+            Debug.Log($"[WeaponSystem] Sync complete. Total weapons: {weapons.Count}");
+            foreach (var weapon in weapons)
+            {
+                if (weapon != null)
+                {
+                    Debug.Log($"  - {weapon.weaponName} ({weapon.weaponType}): damage={weapon.damage}, range={weapon.range}");
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[WeaponSystem] Exception in SyncEquipmentWithWeapons for {character?.GetFullName()}: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    /// <summary>
+    /// Создать RangedWeapon из ItemData с сохранением состояния
+    /// </summary>
+    private RangedWeapon CreateRangedWeaponFromItemData(ItemData itemData)
+    {
+        if (itemData == null || itemData.itemType != ItemType.Weapon)
+            return null;
+
+        // Проверяем, есть ли уже оружие в кеше
+        string weaponKey = itemData.itemName;
+        if (rangedWeaponCache.ContainsKey(weaponKey))
+        {
+            Debug.Log($"[WeaponSystem] Using cached RangedWeapon: {weaponKey}, Ammo: {rangedWeaponCache[weaponKey].currentAmmo}/{rangedWeaponCache[weaponKey].magazineSize}");
+            return rangedWeaponCache[weaponKey];
+        }
+
+        // Создаем новое огнестрельное оружие на основе характеристик предмета
+        RangedWeapon weapon = RangedWeapon.CreatePresetWeapon(defaultRangedCategory, itemData.rarity);
+        weapon.weaponName = itemData.itemName;
+        weapon.description = itemData.description;
+        weapon.damage = itemData.damage;
+        weapon.icon = itemData.icon;
+        weapon.prefab = itemData.prefab;
+
+        // ВАЖНО: Убеждаемся что оружие полностью заряжено при первом создании
+        weapon.ForceReload();
+
+        // Сохраняем в кеш
+        rangedWeaponCache[weaponKey] = weapon;
+
+        Debug.Log($"[WeaponSystem] Created NEW RangedWeapon: {weapon.weaponName}, Ammo: {weapon.currentAmmo}/{weapon.magazineSize}");
+
+        return weapon;
     }
 
     /// <summary>
@@ -98,6 +289,12 @@ public class WeaponSystem : MonoBehaviour
         if (weapon == null) return;
 
         weapons.Remove(weapon);
+
+        // Удаляем из кеша если это огнестрельное оружие
+        if (weapon is RangedWeapon)
+        {
+            rangedWeaponCache.Remove(weapon.weaponName);
+        }
 
         // Если это было текущее оружие, выбираем другое
         if (currentWeapon == weapon)
@@ -157,19 +354,47 @@ public class WeaponSystem : MonoBehaviour
     {
         if (weapons.Count == 0)
         {
-            Debug.LogWarning("[WeaponSystem] No weapons available!");
+            Debug.LogWarning($"[WeaponSystem] No weapons available for {character.GetFullName()}!");
             return;
         }
 
         Weapon bestWeapon = null;
         float bestScore = -1f;
 
+        Debug.Log($"[WeaponSystem] {character.GetFullName()} selecting weapon for distance {distanceToTarget:F2}, available weapons: {weapons.Count}");
+
         foreach (Weapon weapon in weapons)
         {
-            if (!weapon.CanAttack())
+            // Для оружия без патронов разрешаем выбор (для перезарядки)
+            bool canConsider = weapon.CanAttack();
+
+            // Особый случай: дальнобойное оружие без патронов может быть перезаряжено
+            if (!canConsider && weapon is RangedWeapon rangedWeapon)
+            {
+                if (rangedWeapon.NeedsReload() && !rangedWeapon.IsReloading())
+                {
+                    canConsider = true; // Разрешаем выбор для перезарядки
+                }
+            }
+
+            if (!canConsider)
+            {
+                if (debugMode)
+                {
+                    Debug.Log($"[WeaponSystem] Skipping {weapon.weaponName} - cannot attack");
+                }
                 continue;
+            }
 
             float score = CalculateWeaponScore(weapon, distanceToTarget);
+
+            string ammoInfo = "";
+            if (weapon is RangedWeapon rw)
+            {
+                ammoInfo = $", Ammo: {rw.currentAmmo}/{rw.magazineSize}";
+            }
+            Debug.Log($"[WeaponSystem] {weapon.weaponName} ({weapon.weaponType}): Score = {score:F1}{ammoInfo}, Range: {weapon.range:F1}");
+
             if (score > bestScore)
             {
                 bestScore = score;
@@ -181,6 +406,15 @@ public class WeaponSystem : MonoBehaviour
         if (bestWeapon == null)
         {
             bestWeapon = weapons[0];
+            if (debugMode)
+            {
+                Debug.LogWarning($"[WeaponSystem] No suitable weapon found, defaulting to {bestWeapon.weaponName}");
+            }
+        }
+
+        if (bestWeapon != null)
+        {
+            Debug.Log($"[WeaponSystem] {character.GetFullName()} SELECTED {bestWeapon.weaponName} ({bestWeapon.weaponType}) with score {bestScore:F1}");
         }
 
         SetCurrentWeapon(bestWeapon);
@@ -204,7 +438,7 @@ public class WeaponSystem : MonoBehaviour
         // Оценка по типу оружия и дистанции
         if (weapon.weaponType == WeaponType.Melee)
         {
-            // Ближний бой предпочтителен на короткой дистанции
+            // Ближний бой предпочтителен ТОЛЬКО на короткой дистанции
             if (distance <= meleePreferenceRange)
             {
                 score += 100f; // Высокий приоритет
@@ -212,37 +446,49 @@ public class WeaponSystem : MonoBehaviour
             }
             else
             {
-                score += 50f; // Средний приоритет
+                // За пределами дистанции ближнего боя - ОЧЕНЬ низкий приоритет
+                // Чем дальше, тем хуже
+                score += 5f - (distance - meleePreferenceRange) * 2f;
+
+                // Если дальше 3 единиц - вообще не рассматриваем
+                if (distance > 3f)
+                {
+                    return -1f;
+                }
             }
         }
         else if (weapon.weaponType == WeaponType.Ranged)
         {
             RangedWeapon rangedWeapon = weapon as RangedWeapon;
 
-            // Проверяем наличие патронов
-            if (rangedWeapon != null && rangedWeapon.HasAmmo())
+            if (rangedWeapon != null)
             {
-                // Огнестрельное оружие предпочтительно на дальней дистанции
-                if (distance >= meleePreferenceRange)
+                // БЕСКОНЕЧНЫЕ ПАТРОНЫ - оружие всегда готово к стрельбе
+                if (!rangedWeapon.IsReloading())
                 {
-                    score += 100f; // Высокий приоритет
-                    if (distance <= rangedPreferenceRange)
+                    // Огнестрельное оружие ВСЕГДА предпочтительнее
+                    score += 150f; // ВЫСОКИЙ базовый приоритет
+
+                    // Огнестрельное оружие предпочтительно на дальней дистанции
+                    if (distance >= meleePreferenceRange)
                     {
-                        score += (distance - meleePreferenceRange) * 5f; // Бонус за среднюю дистанцию
+                        score += 50f; // Дополнительный бонус на дальней дистанции
+                        if (distance <= rangedPreferenceRange)
+                        {
+                            score += (distance - meleePreferenceRange) * 5f; // Бонус за среднюю дистанцию
+                        }
+                    }
+                    else
+                    {
+                        // Даже на ближней дистанции оружие дальнего боя предпочтительнее
+                        score += 20f;
                     }
                 }
                 else
                 {
-                    score += 30f; // Низкий приоритет на ближней дистанции
+                    // Перезаряжается - низкий приоритет
+                    score = 10f;
                 }
-
-                // Бонус за количество патронов
-                score += rangedWeapon.GetAmmoPercent() * 20f;
-            }
-            else
-            {
-                // Без патронов - очень низкий приоритет
-                score = 10f;
             }
         }
 
@@ -289,7 +535,15 @@ public class WeaponSystem : MonoBehaviour
             if (rangedWeapon.NeedsReload() && autoReloadEnabled && !rangedWeapon.IsReloading())
             {
                 StartCoroutine(rangedWeapon.ReloadWeapon());
-                Debug.Log($"[WeaponSystem] Auto-reloading {rangedWeapon.weaponName}");
+                Debug.Log($"[WeaponSystem] {character.GetFullName()} auto-reloading {rangedWeapon.weaponName} (current ammo: {rangedWeapon.currentAmmo}/{rangedWeapon.magazineSize})");
+                return; // Не атакуем во время перезарядки
+            }
+            else if (rangedWeapon.IsReloading())
+            {
+                if (debugMode)
+                {
+                    Debug.Log($"[WeaponSystem] {character.GetFullName()} is reloading {rangedWeapon.weaponName}, cannot attack");
+                }
                 return; // Не атакуем во время перезарядки
             }
         }
@@ -429,6 +683,16 @@ public class WeaponSystem : MonoBehaviour
     public float GetCurrentWeaponRange()
     {
         return currentWeapon?.range ?? 0f;
+    }
+
+    void OnDestroy()
+    {
+        // Отписываемся от событий инвентаря
+        if (inventory != null)
+        {
+            inventory.OnInventoryChanged -= CheckAndEquipWeapons;
+            inventory.OnEquipmentChanged -= SyncEquipmentWithWeapons;
+        }
     }
 
     void OnDrawGizmosSelected()

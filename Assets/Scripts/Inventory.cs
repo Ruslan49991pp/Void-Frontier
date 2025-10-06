@@ -114,7 +114,7 @@ public class Inventory : MonoBehaviour
     public LayerMask itemLayer = -1;
 
     [Header("Debug")]
-    public bool debugMode = false;
+    public bool debugMode = true;
 
     // События
     public System.Action<ItemData, int> OnItemAdded;
@@ -514,6 +514,14 @@ public class Inventory : MonoBehaviour
         if (!equipmentSlots.ContainsKey(slot))
             return false;
 
+        // Проверяем, есть ли предмет в инвентаре
+        if (!HasItem(item, 1))
+        {
+            if (debugMode)
+                Debug.LogWarning($"[Inventory] Cannot equip {item.itemName} - not in inventory");
+            return false;
+        }
+
         // Если слот занят, снимаем предыдущий предмет
         if (!equipmentSlots[slot].IsEmpty())
         {
@@ -521,13 +529,25 @@ public class Inventory : MonoBehaviour
             if (!UnequipItem(slot))
             {
                 if (debugMode)
-
+                    Debug.LogWarning($"[Inventory] Cannot unequip current item from {slot}");
                 return false;
             }
         }
 
+        // Удаляем предмет из обычного инвентаря
+        if (!RemoveItem(item, 1))
+        {
+            if (debugMode)
+                Debug.LogWarning($"[Inventory] Failed to remove {item.itemName} from inventory");
+            return false;
+        }
+
         // Экипируем новый предмет
         equipmentSlots[slot] = new InventorySlot(item, 1);
+
+        if (debugMode)
+            Debug.Log($"[Inventory] Equipped {item.itemName} to {slot}");
+
         OnEquipmentChanged?.Invoke();
         return true;
     }

@@ -61,6 +61,20 @@ public class DamageTextManager : MonoBehaviour
     /// </summary>
     public void UnregisterDamageText(GameObject damageTextObj)
     {
+        // Сохраняем имя до работы с объектом
+        string objName = "Unknown";
+        try
+        {
+            if (damageTextObj != null)
+            {
+                objName = damageTextObj.name;
+            }
+        }
+        catch
+        {
+            objName = "Destroyed";
+        }
+
         int index = activeDamageTexts.IndexOf(damageTextObj);
         if (index >= 0)
         {
@@ -69,7 +83,7 @@ public class DamageTextManager : MonoBehaviour
             {
                 activeCoroutines.RemoveAt(index);
             }
-            Debug.Log($"[DamageTextManager] Unregistered {damageTextObj?.name}. Total active: {activeDamageTexts.Count}");
+            Debug.Log($"[DamageTextManager] Unregistered {objName}. Total active: {activeDamageTexts.Count}");
         }
     }
 
@@ -84,38 +98,71 @@ public class DamageTextManager : MonoBehaviour
             return;
         }
 
+        // Сохраняем имя и индекс ДО любых операций с объектом
+        string objName = "Unknown";
+        int index = activeDamageTexts.IndexOf(damageTextObj);
+
+        try
+        {
+            objName = damageTextObj.name;
+        }
+        catch
+        {
+            objName = "Destroyed";
+        }
+
         // Проверяем, не уничтожен ли уже объект
+        bool alreadyDestroyed = false;
         try
         {
             if (damageTextObj.transform == null)
             {
-                Debug.Log($"[DamageTextManager] Object {damageTextObj.name} already destroyed - skipping cleanup");
-                return;
+                Debug.Log($"[DamageTextManager] Object {objName} already destroyed - skipping cleanup");
+                alreadyDestroyed = true;
             }
         }
         catch (System.Exception)
         {
             Debug.Log("[DamageTextManager] Object already destroyed (exception caught) - skipping cleanup");
-            // Убираем из списков и выходим
-            UnregisterDamageText(damageTextObj);
+            alreadyDestroyed = true;
+        }
+
+        if (alreadyDestroyed)
+        {
+            // Убираем из списков напрямую по индексу
+            if (index >= 0)
+            {
+                activeDamageTexts.RemoveAt(index);
+                if (index < activeCoroutines.Count)
+                {
+                    activeCoroutines.RemoveAt(index);
+                }
+            }
             return;
         }
 
-        Debug.Log($"[DamageTextManager] Force cleanup: {damageTextObj.name}");
+        Debug.Log($"[DamageTextManager] Force cleanup: {objName}");
 
         // Останавливаем корутину если она есть
-        int index = activeDamageTexts.IndexOf(damageTextObj);
         if (index >= 0 && index < activeCoroutines.Count && activeCoroutines[index] != null)
         {
             StopCoroutine(activeCoroutines[index]);
-            Debug.Log($"[DamageTextManager] Stopped coroutine for {damageTextObj.name}");
+            Debug.Log($"[DamageTextManager] Stopped coroutine for {objName}");
         }
 
         // Принудительная очистка
         CleanupDamageTextObject(damageTextObj);
 
-        // Убираем из списков
-        UnregisterDamageText(damageTextObj);
+        // Убираем из списков напрямую по индексу (объект уже уничтожен)
+        if (index >= 0)
+        {
+            activeDamageTexts.RemoveAt(index);
+            if (index < activeCoroutines.Count)
+            {
+                activeCoroutines.RemoveAt(index);
+            }
+            Debug.Log($"[DamageTextManager] Unregistered {objName}. Total active: {activeDamageTexts.Count}");
+        }
     }
 
     /// <summary>
@@ -142,6 +189,9 @@ public class DamageTextManager : MonoBehaviour
 
         try
         {
+            // Сохраняем имя до уничтожения
+            string objName = obj.name;
+
             // Отключаем все компоненты
             var allComponents = obj.GetComponents<Component>();
             foreach (var component in allComponents)
@@ -167,7 +217,7 @@ public class DamageTextManager : MonoBehaviour
 
             // Уничтожаем основной объект
             DestroyImmediate(obj);
-            Debug.Log($"[DamageTextManager] Successfully destroyed object {obj.name}");
+            Debug.Log($"[DamageTextManager] Successfully destroyed object {objName}");
         }
         catch (System.Exception ex)
         {

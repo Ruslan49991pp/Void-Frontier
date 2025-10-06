@@ -52,22 +52,17 @@ public class GameUI : MonoBehaviour
     
     void Start()
     {
-
-
         if (selectionManager != null)
         {
             selectionManager.OnSelectionChanged += OnSelectionChanged;
-
         }
         else
         {
-
+            FileLogger.Log("[GameUI] WARNING: SelectionManager is null! Cannot subscribe to OnSelectionChanged");
         }
 
         InitializeBuildingSystem();
         SyncBuildingDataWithShipBuildingSystem();
-
-
     }
 
     void Update()
@@ -110,12 +105,15 @@ public class GameUI : MonoBehaviour
         bottomPanel.anchorMax = new Vector2(1, 0);
         bottomPanel.pivot = new Vector2(0.5f, 0);
         bottomPanel.anchoredPosition = Vector2.zero;
-        bottomPanel.sizeDelta = new Vector2(0, 75); // Высота панели уменьшена в 2 раза
+        bottomPanel.sizeDelta = new Vector2(0, 150); // Увеличиваем высоту панели для вмещения всех элементов
         
         // Фон панели
         Image backgroundImage = bottomPanelGO.AddComponent<Image>();
         backgroundImage.color = new Color(0.1f, 0.1f, 0.15f, 0.9f);
-        
+
+        // Принудительно обновляем layout перед созданием дочерних элементов
+        Canvas.ForceUpdateCanvases();
+
         // Создаем области внутри панели
         CreateInfoArea();        // Слева - информация о выделенном
         CreateActionArea();      // По центру - действия и строительство
@@ -179,7 +177,8 @@ public class GameUI : MonoBehaviour
         infoArea.anchorMax = new Vector2(0.3f, 1); // 30% ширины слева
         infoArea.pivot = new Vector2(0, 0);
         infoArea.anchoredPosition = Vector2.zero;
-        infoArea.sizeDelta = Vector2.zero;
+        infoArea.offsetMin = Vector2.zero; // Устанавливаем отступы явно
+        infoArea.offsetMax = Vector2.zero;
 
         // Фон области информации
         Image infoBg = infoAreaGO.AddComponent<Image>();
@@ -199,8 +198,8 @@ public class GameUI : MonoBehaviour
         RectTransform textRect = textGO.GetComponent<RectTransform>();
         textRect.anchorMin = Vector2.zero;
         textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = new Vector2(10, 90); // Увеличиваем отступ снизу для HP бара (45) + кнопки (25) + отступ (20)
-        textRect.offsetMax = new Vector2(-10, -10);
+        textRect.offsetMin = new Vector2(10, 80); // Отступ снизу: кнопка (30px) + HP бар (25px) + отступы (25px) = 80px
+        textRect.offsetMax = new Vector2(-10, -5); // Небольшой отступ сверху
 
         // Создаем кнопку разрушения комнаты в области информации
         CreateDestroyRoomButton(infoAreaGO);
@@ -891,12 +890,9 @@ public class GameUI : MonoBehaviour
     /// </summary>
     void OnSelectionChanged(List<GameObject> selectedObjects)
     {
-
-
         // Проверяем, что GameUI полностью инициализирован
         if (infoText == null || !gameObject.activeInHierarchy)
         {
-
             return;
         }
 
@@ -919,24 +915,19 @@ public class GameUI : MonoBehaviour
     /// </summary>
     void UpdateInfoArea()
     {
-
-
         if (infoText == null || !gameObject.activeInHierarchy)
         {
-
             return;
         }
 
         // Не обновляем информацию если активен режим строительства
         if (buildModeActive)
         {
-
             return;
         }
 
         if (currentSelection.Count == 0)
         {
-
             infoText.text = "Выберите объект для просмотра информации";
             infoText.color = Color.white; // Возвращаем белый цвет для обычного текста
             infoText.fontSize = 14; // Обычный размер
@@ -1010,14 +1001,10 @@ public class GameUI : MonoBehaviour
 
                 if (character != null)
                 {
-
-
                     // Показываем информацию только о вражеских персонажах
                     // Информация о союзниках отображается в верхней панели с иконками
                     if (!character.IsPlayerCharacter())
                     {
-
-
                         string info = $"ВРАЖЕСКИЙ ПЕРСОНАЖ: {character.GetFullName()}\n";
                         info += $"Профессия: {character.characterData.profession}\n";
                         info += $"Уровень: {character.characterData.level}\n";
@@ -1031,8 +1018,6 @@ public class GameUI : MonoBehaviour
 
                         info += $"\nПозиция: {obj.transform.position:F1}";
 
-
-
                         // Скрываем обычный текст и используем специальный текст для врагов
                         infoText.text = "";
 
@@ -1041,11 +1026,6 @@ public class GameUI : MonoBehaviour
                         {
                             enemyInfoText.text = info;
                             enemyInfoText.gameObject.SetActive(true);
-
-                        }
-                        else
-                        {
-
                         }
 
                         // Дополнительная диагностика UI
@@ -1085,51 +1065,95 @@ public class GameUI : MonoBehaviour
                 }
                 else
                 {
-                    // Показываем информацию об обычном объекте
-                    LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
-
-                    if (objectInfo != null)
+                    // Проверяем, является ли это предметом инвентаря
+                    Item item = obj.GetComponent<Item>();
+                    if (item != null && item.itemData != null)
                     {
-                        string info = $"ОБЪЕКТ: {objectInfo.objectName}\n";
-                        info += $"Тип: {objectInfo.objectType}\n";
-                        info += $"Прочность: {objectInfo.health:F0}\n";
-                        if (objectInfo.isDestructible)
+                        ItemData itemData = item.itemData;
+                        string info = $"ПРЕДМЕТ: {itemData.itemName}\n";
+                        info += $"Тип: {itemData.itemType}\n";
+                        info += $"Редкость: {itemData.rarity}\n";
+
+                        if (!string.IsNullOrEmpty(itemData.description))
                         {
-                            info += "Можно разрушить: Да\n";
+                            info += $"\n{itemData.description}\n";
                         }
-                        else
-                        {
-                            info += "Можно разрушить: Нет\n";
-                        }
-                        if (objectInfo.canBeScavenged)
-                        {
-                            info += "Можно собрать ресурсы: Да\n";
-                        }
-                        info += $"\nПозиция: {obj.transform.position:F1}";
+
+                        if (itemData.damage > 0)
+                            info += $"\nУрон: {itemData.damage}";
+                        if (itemData.armor > 0)
+                            info += $"\nЗащита: {itemData.armor}";
+                        if (itemData.healing > 0)
+                            info += $"\nЛечение: {itemData.healing}";
+
+                        if (itemData.equipmentSlot != EquipmentSlot.None)
+                            info += $"\nСлот: {itemData.GetEquipmentSlotName()}";
+
+                        info += $"\nВес: {itemData.weight}";
+                        info += $"\nЦенность: {itemData.value}";
+
+                        if (itemData.maxStackSize > 1)
+                            info += $"\nМакс. стек: {itemData.maxStackSize}";
 
                         infoText.text = info;
 
-                        // Скрываем текст врагов для обычных объектов
+                        // Скрываем текст врагов для предметов
                         if (enemyInfoText != null)
                         {
                             enemyInfoText.gameObject.SetActive(false);
                         }
 
-                        // Скрываем HP бар для обычных объектов
+                        // Скрываем HP бар для предметов
                         UpdateEnemyHealthBar(null);
                     }
                     else
                     {
-                        infoText.text = $"ОБЪЕКТ: {obj.name}\nПозиция: {obj.transform.position:F1}";
+                        // Показываем информацию об обычном объекте
+                        LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
 
-                        // Скрываем текст врагов для неизвестных объектов
-                        if (enemyInfoText != null)
+                        if (objectInfo != null)
                         {
-                            enemyInfoText.gameObject.SetActive(false);
-                        }
+                            string info = $"ОБЪЕКТ: {objectInfo.objectName}\n";
+                            info += $"Тип: {objectInfo.objectType}\n";
+                            info += $"Прочность: {objectInfo.health:F0}\n";
+                            if (objectInfo.isDestructible)
+                            {
+                                info += "Можно разрушить: Да\n";
+                            }
+                            else
+                            {
+                                info += "Можно разрушить: Нет\n";
+                            }
+                            if (objectInfo.canBeScavenged)
+                            {
+                                info += "Можно собрать ресурсы: Да\n";
+                            }
+                            info += $"\nПозиция: {obj.transform.position:F1}";
 
-                        // Скрываем HP бар для обычных объектов
-                        UpdateEnemyHealthBar(null);
+                            infoText.text = info;
+
+                            // Скрываем текст врагов для обычных объектов
+                            if (enemyInfoText != null)
+                            {
+                                enemyInfoText.gameObject.SetActive(false);
+                            }
+
+                            // Скрываем HP бар для обычных объектов
+                            UpdateEnemyHealthBar(null);
+                        }
+                        else
+                        {
+                            infoText.text = $"ОБЪЕКТ: {obj.name}\nПозиция: {obj.transform.position:F1}";
+
+                            // Скрываем текст врагов для неизвестных объектов
+                            if (enemyInfoText != null)
+                            {
+                                enemyInfoText.gameObject.SetActive(false);
+                            }
+
+                            // Скрываем HP бар для обычных объектов
+                            UpdateEnemyHealthBar(null);
+                        }
                     }
                 }
             }

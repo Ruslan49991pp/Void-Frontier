@@ -184,6 +184,13 @@ public class MeleeWeapon : Weapon
         float elapsedTime = 0f;
         while (elapsedTime < duration)
         {
+            // Проверяем, что объект все еще существует
+            if (effect == null || textMesh == null)
+            {
+                Debug.LogWarning($"[MeleeWeapon] Damage text object was destroyed during animation");
+                yield break;
+            }
+
             float t = elapsedTime / duration;
             effect.transform.position = Vector3.Lerp(startPos, endPos, t);
 

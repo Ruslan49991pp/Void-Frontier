@@ -25,11 +25,19 @@ public class CombatSystem : MonoBehaviour
     [Header("Debug")]
     public bool debugMode = true; // Включаем debug для отслеживания преследования
 
+    [Header("Line of Sight")]
+    public LayerMask lineOfSightBlockers = -1; // Слои которые блокируют линию видимости
+    public float lineOfSightCheckInterval = 0.5f; // Интервал проверки линии видимости
+    public int maxPositionSearchAttempts = 8; // Максимум попыток найти позицию с чистой траекторией
+
     // Компоненты системы
     private SelectionManager selectionManager;
     private GridManager gridManager;
     private Camera playerCamera;
     private EnemyTargetingSystem enemyTargetingSystem;
+
+    // Отслеживание линии видимости
+    private Dictionary<Character, bool> hasLineOfSight = new Dictionary<Character, bool>();
 
     // Состояние боевых действий
     private Dictionary<Character, CombatData> activeCombatants = new Dictionary<Character, CombatData>();
@@ -238,54 +246,71 @@ public class CombatSystem : MonoBehaviour
     /// </summary>
     public void StopCombat(Character attacker)
     {
-        if (activeCombatants.ContainsKey(attacker))
+        // Проверяем что персонаж еще существует
+        if (attacker == null)
         {
-            CombatData combatData = activeCombatants[attacker];
+            Debug.LogWarning($"[CombatSystem] StopCombat called for null attacker");
+            return;
+        }
 
-            // Останавливаем корутины
-            if (combatData.combatCoroutine != null)
-            {
-                StopCoroutine(combatData.combatCoroutine);
-                combatData.combatCoroutine = null;
-            }
+        if (!activeCombatants.ContainsKey(attacker))
+        {
+            Debug.LogWarning($"[CombatSystem] StopCombat called for {attacker.GetFullName()} but they are not in active combatants");
+            return;
+        }
 
-            if (combatData.attackAnimationCoroutine != null)
-            {
-                StopCoroutine(combatData.attackAnimationCoroutine);
-                combatData.attackAnimationCoroutine = null;
-            }
+        CombatData combatData = activeCombatants[attacker];
+        Debug.Log($"[CombatSystem] Stopping combat for {attacker.GetFullName()} (was attacking {combatData.target?.GetFullName()})");
 
-            // Останавливаем движение
+        // Останавливаем корутины
+        if (combatData.combatCoroutine != null)
+        {
+            StopCoroutine(combatData.combatCoroutine);
+            combatData.combatCoroutine = null;
+            Debug.Log($"[CombatSystem] Stopped combat coroutine for {attacker.GetFullName()}");
+        }
+
+        if (combatData.attackAnimationCoroutine != null)
+        {
+            StopCoroutine(combatData.attackAnimationCoroutine);
+            combatData.attackAnimationCoroutine = null;
+            Debug.Log($"[CombatSystem] Stopped attack animation coroutine for {attacker.GetFullName()}");
+        }
+
+        // Останавливаем движение (только если персонаж еще существует)
+        if (attacker != null)
+        {
             CharacterMovement movement = attacker.GetComponent<CharacterMovement>();
             if (movement != null)
             {
                 movement.StopMovement();
+                Debug.Log($"[CombatSystem] Stopped movement for {attacker.GetFullName()}");
             }
+        }
 
-            // Убираем индикатор цели, если никто больше не атакует эту цель
-            Character target = combatData.target;
-            activeCombatants.Remove(attacker);
+        // Убираем индикатор цели, если никто больше не атакует эту цель
+        Character target = combatData.target;
+        activeCombatants.Remove(attacker);
+        Debug.Log($"[CombatSystem] Removed {(attacker != null ? attacker.GetFullName() : "destroyed character")} from active combatants");
 
-            if (target != null && enemyTargetingSystem != null)
+        if (target != null && enemyTargetingSystem != null)
+        {
+            // Проверяем, атакует ли кто-то еще эту цель
+            bool isTargetStillBeingAttacked = false;
+            foreach (var combat in activeCombatants.Values)
             {
-                // Проверяем, атакует ли кто-то еще эту цель
-                bool isTargetStillBeingAttacked = false;
-                foreach (var combat in activeCombatants.Values)
+                if (combat.target == target)
                 {
-                    if (combat.target == target)
-                    {
-                        isTargetStillBeingAttacked = true;
-                        break;
-                    }
-                }
-
-                // Если никто больше не атакует эту цель, убираем индикатор
-                if (!isTargetStillBeingAttacked)
-                {
-                    enemyTargetingSystem.ClearTargetForCharacter(attacker);
+                    isTargetStillBeingAttacked = true;
+                    break;
                 }
             }
 
+            // Если никто больше не атакует эту цель, убираем индикатор
+            if (!isTargetStillBeingAttacked)
+            {
+                enemyTargetingSystem.ClearTargetForCharacter(attacker);
+            }
         }
     }
 
@@ -327,7 +352,53 @@ public class CombatSystem : MonoBehaviour
             // Проверяем, находится ли цель в дистанции атаки
             if (distanceToTarget <= currentAttackRange)
             {
-                // Цель в дистанции атаки - останавливаем движение
+                // Цель в дистанции атаки - проверяем линию видимости для дальнобойного оружия
+                Weapon currentWeapon = weaponSystem?.GetCurrentWeapon();
+                bool needsLineOfSight = currentWeapon != null && currentWeapon.weaponType == WeaponType.Ranged;
+                bool hasLineOfSight = true;
+
+                if (needsLineOfSight)
+                {
+                    hasLineOfSight = HasClearLineOfSight(attacker, combatData.target);
+
+                    if (!hasLineOfSight)
+                    {
+                        // Линия видимости заблокирована - ищем позицию с чистым выстрелом
+                        Vector3? clearShotPosition = FindPositionWithClearShot(attacker, combatData.target, currentAttackRange);
+
+                        if (clearShotPosition.HasValue)
+                        {
+                            // Нашли позицию - двигаемся туда
+                            if (debugMode)
+                                Debug.Log($"[CombatSystem] {attacker.GetFullName()} moving to clear shot position");
+
+                            movement.MoveTo(clearShotPosition.Value);
+                            combatData.isPursuing = true;
+
+                            // НЕ вызываем OnPlayerInitiatedMovement() - это движение инициировано боевой системой, а не игроком
+
+                            yield return new WaitForSeconds(0.1f);
+                            continue; // Пропускаем атаку, продолжаем движение
+                        }
+                        else
+                        {
+                            // Не нашли позицию - подходим ближе
+                            if (debugMode)
+                                Debug.LogWarning($"[CombatSystem] {attacker.GetFullName()} can't find clear shot, moving closer");
+
+                            Vector3 targetPosition = GetNearestAttackPosition(combatData.target);
+                            movement.MoveTo(targetPosition);
+                            combatData.isPursuing = true;
+
+                            // НЕ вызываем OnPlayerInitiatedMovement() - это движение инициировано боевой системой, а не игроком
+
+                            yield return new WaitForSeconds(0.1f);
+                            continue;
+                        }
+                    }
+                }
+
+                // Линия видимости чистая или оружие ближнего боя - останавливаемся и атакуем
                 combatData.isPursuing = false;
                 movement.StopMovement();
 
@@ -358,11 +429,7 @@ public class CombatSystem : MonoBehaviour
                     movement.MoveTo(targetPosition);
                     combatData.isPursuing = true;
 
-                    // Уведомляем AI о движении
-                    if (ai != null)
-                    {
-                        ai.OnPlayerInitiatedMovement();
-                    }
+                    // НЕ вызываем OnPlayerInitiatedMovement() - это движение инициировано боевой системой, а не игроком
 
                 }
 
@@ -709,6 +776,135 @@ public class CombatSystem : MonoBehaviour
     }
 
     /// <summary>
+    /// Проверить есть ли прямая линия видимости между атакующим и целью
+    /// </summary>
+    bool HasClearLineOfSight(Character attacker, Character target)
+    {
+        if (attacker == null || target == null)
+            return false;
+
+        // Позиция выстрела (на высоте персонажа)
+        Vector3 shooterPos = attacker.transform.position + Vector3.up * 1f;
+        Vector3 targetPos = target.transform.position + Vector3.up * 1f;
+
+        Vector3 direction = targetPos - shooterPos;
+        float distance = direction.magnitude;
+
+        // Raycast для проверки препятствий
+        RaycastHit hit;
+        if (Physics.Raycast(shooterPos, direction.normalized, out hit, distance, lineOfSightBlockers))
+        {
+            // Проверяем, попали ли мы именно в цель или в препятствие
+            Character hitCharacter = hit.collider.GetComponent<Character>();
+            if (hitCharacter == null)
+                hitCharacter = hit.collider.GetComponentInParent<Character>();
+
+            if (hitCharacter == target)
+            {
+                // Попали в цель - линия видимости чистая
+                if (debugMode)
+                    Debug.Log($"[CombatSystem] {attacker.GetFullName()} has CLEAR line of sight to {target.GetFullName()}");
+                return true;
+            }
+            else
+            {
+                // Попали в препятствие
+                if (debugMode)
+                    Debug.Log($"[CombatSystem] {attacker.GetFullName()} line of sight BLOCKED by {hit.collider.name} to {target.GetFullName()}");
+                return false;
+            }
+        }
+
+        // Ничего не попало - линия видимости чистая
+        if (debugMode)
+            Debug.Log($"[CombatSystem] {attacker.GetFullName()} has CLEAR line of sight to {target.GetFullName()} (no obstacles)");
+        return true;
+    }
+
+    /// <summary>
+    /// Найти позицию с чистой линией видимости до цели
+    /// </summary>
+    Vector3? FindPositionWithClearShot(Character attacker, Character target, float searchRadius)
+    {
+        if (gridManager == null)
+            return null;
+
+        Vector2Int attackerGridPos = gridManager.WorldToGrid(attacker.transform.position);
+        Vector2Int targetGridPos = gridManager.WorldToGrid(target.transform.position);
+
+        // Генерируем позиции по кругу вокруг текущей позиции
+        List<Vector2Int> searchPositions = new List<Vector2Int>();
+
+        // Начинаем с текущей позиции
+        searchPositions.Add(attackerGridPos);
+
+        // Добавляем позиции по радиусу
+        int radiusCells = Mathf.CeilToInt(searchRadius);
+        for (int radius = 1; radius <= radiusCells; radius++)
+        {
+            for (int angle = 0; angle < 360; angle += 45) // 8 направлений
+            {
+                float rad = angle * Mathf.Deg2Rad;
+                int offsetX = Mathf.RoundToInt(Mathf.Cos(rad) * radius);
+                int offsetY = Mathf.RoundToInt(Mathf.Sin(rad) * radius);
+
+                Vector2Int searchPos = attackerGridPos + new Vector2Int(offsetX, offsetY);
+                if (!searchPositions.Contains(searchPos))
+                {
+                    searchPositions.Add(searchPos);
+                }
+            }
+        }
+
+        // Проверяем каждую позицию
+        foreach (Vector2Int gridPos in searchPositions)
+        {
+            if (!gridManager.IsValidGridPosition(gridPos))
+                continue;
+
+            var cell = gridManager.GetCell(gridPos);
+            if (cell != null && cell.isOccupied)
+                continue; // Занято
+
+            Vector3 worldPos = gridManager.GridToWorld(gridPos);
+
+            // Проверяем линию видимости с этой позиции
+            Vector3 shooterPos = worldPos + Vector3.up * 1f;
+            Vector3 targetPos = target.transform.position + Vector3.up * 1f;
+
+            Vector3 direction = targetPos - shooterPos;
+            float distance = direction.magnitude;
+
+            RaycastHit hit;
+            if (Physics.Raycast(shooterPos, direction.normalized, out hit, distance, lineOfSightBlockers))
+            {
+                Character hitCharacter = hit.collider.GetComponent<Character>();
+                if (hitCharacter == null)
+                    hitCharacter = hit.collider.GetComponentInParent<Character>();
+
+                if (hitCharacter == target)
+                {
+                    // Нашли позицию с чистым выстрелом!
+                    if (debugMode)
+                        Debug.Log($"[CombatSystem] Found clear shot position for {attacker.GetFullName()} at {worldPos}");
+                    return worldPos;
+                }
+            }
+            else
+            {
+                // Нет препятствий - тоже подходит
+                if (debugMode)
+                    Debug.Log($"[CombatSystem] Found clear shot position for {attacker.GetFullName()} at {worldPos} (no obstacles)");
+                return worldPos;
+            }
+        }
+
+        if (debugMode)
+            Debug.LogWarning($"[CombatSystem] Could not find clear shot position for {attacker.GetFullName()}");
+        return null;
+    }
+
+    /// <summary>
     /// Получить ближайшую позицию для атаки цели
     /// </summary>
     Vector3 GetNearestAttackPosition(Character target)
@@ -772,12 +968,44 @@ public class CombatSystem : MonoBehaviour
                 continue;
             }
 
-            // Проверяем, не слишком ли далеко цель
-            float distance = Vector3.Distance(attacker.transform.position, combatData.target.transform.position);
-            if (distance > pursuitRange)
+            // Получаем максимальную дальность преследования на основе оружия персонажа
+            float maxPursuitDistance = pursuitRange; // Дефолтное значение
+
+            WeaponSystem weaponSystem = attacker.GetComponent<WeaponSystem>();
+            if (weaponSystem != null)
             {
-                toRemove.Add(attacker);
+                // Получаем все оружие персонажа
+                var weapons = weaponSystem.GetAllWeapons();
+                float maxWeaponRange = 0f;
+
+                // Находим максимальную дальность среди всего оружия
+                foreach (var weapon in weapons)
+                {
+                    if (weapon.range > maxWeaponRange)
+                    {
+                        maxWeaponRange = weapon.range;
+                    }
+                }
+
+                // Используем максимальную дальность оружия + 50% запас для преследования
+                // Но не меньше стандартного pursuitRange
+                if (maxWeaponRange > 0)
+                {
+                    maxPursuitDistance = Mathf.Max(pursuitRange, maxWeaponRange * 1.5f);
+                }
             }
+
+            // ОТКЛЮЧЕНО: Не проверяем дистанцию - если игрок дал команду атаковать, персонаж должен преследовать цель на любом расстоянии
+            // float distance = Vector3.Distance(attacker.transform.position, combatData.target.transform.position);
+            // if (distance > maxPursuitDistance)
+            // {
+            //     if (debugMode)
+            //     {
+            //         Debug.Log($"[CombatSystem] {attacker.GetFullName()} stopped pursuing {combatData.target.GetFullName()} - " +
+            //                  $"distance {distance:F1} exceeds max pursuit range {maxPursuitDistance:F1}");
+            //     }
+            //     toRemove.Add(attacker);
+            // }
         }
 
         // Удаляем завершенные боевые действия
@@ -821,7 +1049,11 @@ public class CombatSystem : MonoBehaviour
         List<Character> allCombatants = new List<Character>(activeCombatants.Keys);
         foreach (Character attacker in allCombatants)
         {
-            StopCombat(attacker);
+            // Проверяем что персонаж еще существует перед остановкой боя
+            if (attacker != null)
+            {
+                StopCombat(attacker);
+            }
         }
 
         activeCombatants.Clear();
@@ -836,7 +1068,7 @@ public class CombatSystem : MonoBehaviour
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, pursuitRange);
 
-        // Показываем линии к целям
+        // Показываем линии к целям с учетом линии видимости
         foreach (var kvp in activeCombatants)
         {
             Character attacker = kvp.Key;
@@ -844,8 +1076,31 @@ public class CombatSystem : MonoBehaviour
 
             if (attacker != null && target != null)
             {
-                Gizmos.color = kvp.Value.isAttacking ? Color.red : new Color(1f, 0.5f, 0f); // оранжевый
-                Gizmos.DrawLine(attacker.transform.position, target.transform.position);
+                Vector3 shooterPos = attacker.transform.position + Vector3.up * 1f;
+                Vector3 targetPos = target.transform.position + Vector3.up * 1f;
+
+                // Проверяем линию видимости
+                bool clearShot = HasClearLineOfSight(attacker, target);
+
+                // Цвет линии зависит от состояния
+                if (kvp.Value.isAttacking)
+                {
+                    Gizmos.color = Color.red; // Атакует
+                }
+                else if (clearShot)
+                {
+                    Gizmos.color = Color.green; // Чистая линия видимости
+                }
+                else
+                {
+                    Gizmos.color = Color.yellow; // Заблокировано
+                }
+
+                Gizmos.DrawLine(shooterPos, targetPos);
+
+                // Рисуем точки на позициях стрелка и цели
+                Gizmos.DrawWireSphere(shooterPos, 0.2f);
+                Gizmos.DrawWireSphere(targetPos, 0.2f);
             }
         }
     }

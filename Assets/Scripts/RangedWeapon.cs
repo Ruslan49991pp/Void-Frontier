@@ -39,7 +39,8 @@ public class RangedWeapon : Weapon
     /// </summary>
     public override bool CanAttack()
     {
-        return base.CanAttack() && currentAmmo > 0 && !isReloading;
+        // Бесконечные патроны - проверяем только базовые условия
+        return base.CanAttack() && !isReloading;
     }
 
     /// <summary>
@@ -137,11 +138,11 @@ public class RangedWeapon : Weapon
         FireBullet(muzzlePosition, target.transform.position, attacker);
 
         // Обновляем состояние оружия
-        currentAmmo--;
+        // currentAmmo--; // ОТКЛЮЧЕНО: Бесконечные патроны
         lastShotTime = Time.time;
         Use(); // Снижаем прочность
 
-        Debug.Log($"[RangedWeapon] Shot fired. Ammo remaining: {currentAmmo}/{magazineSize}");
+        Debug.Log($"[RangedWeapon] Shot fired. Infinite ammo enabled.");
 
         yield return null;
     }
