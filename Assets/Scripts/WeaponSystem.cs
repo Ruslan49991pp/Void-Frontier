@@ -40,7 +40,6 @@ public class WeaponSystem : MonoBehaviour
 
         if (character == null)
         {
-            Debug.LogError("[WeaponSystem] Character component not found!");
             enabled = false;
             return;
         }
@@ -74,11 +73,6 @@ public class WeaponSystem : MonoBehaviour
 
         // Выбираем оружие ближнего боя по умолчанию
         SetCurrentWeapon(meleeWeapon);
-
-        if (debugMode)
-        {
-            Debug.Log($"[WeaponSystem] {character.GetFullName()} initialized with default {meleeWeapon.weaponName} (virtual melee weapon)");
-        }
     }
 
     /// <summary>
@@ -86,67 +80,39 @@ public class WeaponSystem : MonoBehaviour
     /// </summary>
     private void CheckAndEquipWeapons()
     {
-        if (inventory == null)
+        if (inventory == null || character == null)
         {
-            Debug.LogWarning($"[WeaponSystem] CheckAndEquipWeapons called but inventory is null for {character?.GetFullName()}");
-            return;
-        }
-
-        if (character == null)
-        {
-            Debug.LogWarning($"[WeaponSystem] CheckAndEquipWeapons called but character is null");
             return;
         }
 
         try
         {
-            Debug.Log($"[WeaponSystem] Checking and equipping weapons for {character.GetFullName()}");
-
-            // Проверяем, есть ли огнестрельное оружие в инвентаре, но не экипированное
             List<InventorySlot> usedSlots = inventory.GetUsedSlotsList();
             if (usedSlots == null)
             {
-                Debug.LogWarning($"[WeaponSystem] GetUsedSlotsList returned null");
                 return;
             }
-
-            Debug.Log($"[WeaponSystem] Found {usedSlots.Count} items in inventory");
 
             foreach (InventorySlot slot in usedSlots)
             {
                 if (slot == null)
                 {
-                    Debug.LogWarning($"[WeaponSystem] Null slot in inventory");
                     continue;
                 }
 
                 if (slot.itemData != null && slot.itemData.itemType == ItemType.Weapon)
                 {
-                    string weaponName = slot.itemData.itemName;
-                    Debug.Log($"[WeaponSystem] Found weapon in inventory: {weaponName}");
-
                     // Проверяем, экипировано ли уже оружие
                     if (!inventory.HasWeaponEquipped())
                     {
-                        Debug.Log($"[WeaponSystem] No weapon equipped, attempting to equip {weaponName}");
-
                         // Сохраняем ссылку на ItemData перед экипировкой
                         ItemData weaponData = slot.itemData;
 
                         // Автоматически экипируем первое найденное оружие
                         if (inventory.EquipItem(weaponData))
                         {
-                            Debug.Log($"[WeaponSystem] Auto-equipped {weaponName} from inventory");
                             break;
                         }
-                        else
-                        {
-                            Debug.LogWarning($"[WeaponSystem] Failed to auto-equip {weaponName}");
-                        }
-                    }
-                    else
-                    {
-                        Debug.Log($"[WeaponSystem] Weapon already equipped, skipping auto-equip");
                     }
                 }
             }
@@ -156,7 +122,8 @@ public class WeaponSystem : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[WeaponSystem] Exception in CheckAndEquipWeapons for {character?.GetFullName()}: {e.Message}\n{e.StackTrace}");
+            // Критичная ошибка - оставляем
+            Debug.LogError($"[WeaponSystem] Exception in CheckAndEquipWeapons: {e.Message}");
         }
     }
 
@@ -165,31 +132,19 @@ public class WeaponSystem : MonoBehaviour
     /// </summary>
     private void SyncEquipmentWithWeapons()
     {
-        if (inventory == null)
+        if (inventory == null || character == null)
         {
-            Debug.LogWarning($"[WeaponSystem] SyncEquipmentWithWeapons called but inventory is null for {character?.GetFullName()}");
-            return;
-        }
-
-        if (character == null)
-        {
-            Debug.LogWarning($"[WeaponSystem] SyncEquipmentWithWeapons called but character is null");
             return;
         }
 
         try
         {
-            Debug.Log($"[WeaponSystem] Syncing equipment with weapons for {character.GetFullName()}");
-
             // Очищаем список огнестрельного оружия (оставляем только нож)
-            int removedCount = weapons.RemoveAll(w => w != null && w.weaponType == WeaponType.Ranged);
-            Debug.Log($"[WeaponSystem] Removed {removedCount} ranged weapons, {weapons.Count} weapons remaining");
+            weapons.RemoveAll(w => w != null && w.weaponType == WeaponType.Ranged);
 
             // Проверяем экипированное оружие в руках
             ItemData leftHandWeapon = inventory.GetEquippedItem(EquipmentSlot.LeftHand);
             ItemData rightHandWeapon = inventory.GetEquippedItem(EquipmentSlot.RightHand);
-
-            Debug.Log($"[WeaponSystem] Left hand: {leftHandWeapon?.itemName ?? "empty"}, Right hand: {rightHandWeapon?.itemName ?? "empty"}");
 
             // Добавляем экипированное оружие в WeaponSystem
             if (leftHandWeapon != null && leftHandWeapon.itemType == ItemType.Weapon)
@@ -198,7 +153,6 @@ public class WeaponSystem : MonoBehaviour
                 if (rangedWeapon != null)
                 {
                     AddWeapon(rangedWeapon);
-                    Debug.Log($"[WeaponSystem] Synced left hand weapon: {rangedWeapon.weaponName} (damage: {rangedWeapon.damage}, range: {rangedWeapon.range})");
                 }
             }
 
@@ -208,22 +162,13 @@ public class WeaponSystem : MonoBehaviour
                 if (rangedWeapon != null)
                 {
                     AddWeapon(rangedWeapon);
-                    Debug.Log($"[WeaponSystem] Synced right hand weapon: {rangedWeapon.weaponName} (damage: {rangedWeapon.damage}, range: {rangedWeapon.range})");
-                }
-            }
-
-            Debug.Log($"[WeaponSystem] Sync complete. Total weapons: {weapons.Count}");
-            foreach (var weapon in weapons)
-            {
-                if (weapon != null)
-                {
-                    Debug.Log($"  - {weapon.weaponName} ({weapon.weaponType}): damage={weapon.damage}, range={weapon.range}");
                 }
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[WeaponSystem] Exception in SyncEquipmentWithWeapons for {character?.GetFullName()}: {e.Message}\n{e.StackTrace}");
+            // Критичная ошибка - оставляем
+            Debug.LogError($"[WeaponSystem] Exception in SyncEquipmentWithWeapons: {e.Message}");
         }
     }
 
@@ -239,7 +184,6 @@ public class WeaponSystem : MonoBehaviour
         string weaponKey = itemData.itemName;
         if (rangedWeaponCache.ContainsKey(weaponKey))
         {
-            Debug.Log($"[WeaponSystem] Using cached RangedWeapon: {weaponKey}, Ammo: {rangedWeaponCache[weaponKey].currentAmmo}/{rangedWeaponCache[weaponKey].magazineSize}");
             return rangedWeaponCache[weaponKey];
         }
 
@@ -257,8 +201,6 @@ public class WeaponSystem : MonoBehaviour
         // Сохраняем в кеш
         rangedWeaponCache[weaponKey] = weapon;
 
-        Debug.Log($"[WeaponSystem] Created NEW RangedWeapon: {weapon.weaponName}, Ammo: {weapon.currentAmmo}/{weapon.magazineSize}");
-
         return weapon;
     }
 
@@ -269,16 +211,10 @@ public class WeaponSystem : MonoBehaviour
     {
         if (weapon == null)
         {
-            Debug.LogWarning("[WeaponSystem] Attempted to add null weapon");
             return;
         }
 
         weapons.Add(weapon);
-
-        if (debugMode)
-        {
-            Debug.Log($"[WeaponSystem] Added {weapon.weaponName} to {character.GetFullName()}'s arsenal");
-        }
     }
 
     /// <summary>
@@ -301,11 +237,6 @@ public class WeaponSystem : MonoBehaviour
         {
             SelectBestWeapon(Vector3.zero, 5f); // Выбираем оружие для средней дистанции
         }
-
-        if (debugMode)
-        {
-            Debug.Log($"[WeaponSystem] Removed {weapon.weaponName} from {character.GetFullName()}'s arsenal");
-        }
     }
 
     /// <summary>
@@ -315,7 +246,6 @@ public class WeaponSystem : MonoBehaviour
     {
         if (weapon == null || !weapons.Contains(weapon))
         {
-            Debug.LogWarning("[WeaponSystem] Attempted to set invalid weapon as current");
             return;
         }
 
@@ -323,11 +253,6 @@ public class WeaponSystem : MonoBehaviour
         {
             currentWeapon = weapon;
             weaponSwitches++;
-
-            if (debugMode)
-            {
-                Debug.Log($"[WeaponSystem] {character.GetFullName()} switched to {weapon.weaponName}");
-            }
         }
     }
 
@@ -354,14 +279,11 @@ public class WeaponSystem : MonoBehaviour
     {
         if (weapons.Count == 0)
         {
-            Debug.LogWarning($"[WeaponSystem] No weapons available for {character.GetFullName()}!");
             return;
         }
 
         Weapon bestWeapon = null;
         float bestScore = -1f;
-
-        Debug.Log($"[WeaponSystem] {character.GetFullName()} selecting weapon for distance {distanceToTarget:F2}, available weapons: {weapons.Count}");
 
         foreach (Weapon weapon in weapons)
         {
@@ -379,21 +301,10 @@ public class WeaponSystem : MonoBehaviour
 
             if (!canConsider)
             {
-                if (debugMode)
-                {
-                    Debug.Log($"[WeaponSystem] Skipping {weapon.weaponName} - cannot attack");
-                }
                 continue;
             }
 
             float score = CalculateWeaponScore(weapon, distanceToTarget);
-
-            string ammoInfo = "";
-            if (weapon is RangedWeapon rw)
-            {
-                ammoInfo = $", Ammo: {rw.currentAmmo}/{rw.magazineSize}";
-            }
-            Debug.Log($"[WeaponSystem] {weapon.weaponName} ({weapon.weaponType}): Score = {score:F1}{ammoInfo}, Range: {weapon.range:F1}");
 
             if (score > bestScore)
             {
@@ -406,15 +317,6 @@ public class WeaponSystem : MonoBehaviour
         if (bestWeapon == null)
         {
             bestWeapon = weapons[0];
-            if (debugMode)
-            {
-                Debug.LogWarning($"[WeaponSystem] No suitable weapon found, defaulting to {bestWeapon.weaponName}");
-            }
-        }
-
-        if (bestWeapon != null)
-        {
-            Debug.Log($"[WeaponSystem] {character.GetFullName()} SELECTED {bestWeapon.weaponName} ({bestWeapon.weaponType}) with score {bestScore:F1}");
         }
 
         SetCurrentWeapon(bestWeapon);
@@ -514,7 +416,6 @@ public class WeaponSystem : MonoBehaviour
     {
         if (target == null)
         {
-            Debug.LogWarning("[WeaponSystem] Cannot attack null target");
             return;
         }
 
@@ -525,7 +426,6 @@ public class WeaponSystem : MonoBehaviour
 
         if (currentWeapon == null)
         {
-            Debug.LogWarning("[WeaponSystem] No weapon available for attack");
             return;
         }
 
@@ -535,15 +435,10 @@ public class WeaponSystem : MonoBehaviour
             if (rangedWeapon.NeedsReload() && autoReloadEnabled && !rangedWeapon.IsReloading())
             {
                 StartCoroutine(rangedWeapon.ReloadWeapon());
-                Debug.Log($"[WeaponSystem] {character.GetFullName()} auto-reloading {rangedWeapon.weaponName} (current ammo: {rangedWeapon.currentAmmo}/{rangedWeapon.magazineSize})");
                 return; // Не атакуем во время перезарядки
             }
             else if (rangedWeapon.IsReloading())
             {
-                if (debugMode)
-                {
-                    Debug.Log($"[WeaponSystem] {character.GetFullName()} is reloading {rangedWeapon.weaponName}, cannot attack");
-                }
                 return; // Не атакуем во время перезарядки
             }
         }
@@ -559,12 +454,6 @@ public class WeaponSystem : MonoBehaviour
         else if (currentWeapon.weaponType == WeaponType.Ranged)
         {
             rangedAttacks++;
-        }
-
-        if (debugMode)
-        {
-            Debug.Log($"[WeaponSystem] {character.GetFullName()} attacked {target.GetFullName()} " +
-                     $"with {currentWeapon.weaponName} at distance {distance:F1}");
         }
     }
 
@@ -642,11 +531,6 @@ public class WeaponSystem : MonoBehaviour
             {
                 ranged.ForceReload();
             }
-        }
-
-        if (debugMode)
-        {
-            Debug.Log($"[WeaponSystem] All ranged weapons reloaded for {character.GetFullName()}");
         }
     }
 

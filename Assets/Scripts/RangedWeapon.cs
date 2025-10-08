@@ -76,17 +76,12 @@ public class RangedWeapon : Weapon
         {
             if (NeedsReload())
             {
-                Debug.Log($"[RangedWeapon] {weaponName} needs reload!");
                 // Автоматически начинаем перезарядку
                 MonoBehaviour reloadMono = attacker.GetComponent<MonoBehaviour>();
                 if (reloadMono != null && !isReloading)
                 {
                     reloadMono.StartCoroutine(ReloadWeapon());
                 }
-            }
-            else if (IsBroken())
-            {
-                Debug.LogWarning($"[RangedWeapon] {weaponName} is broken and cannot fire!");
             }
             return;
         }
@@ -95,7 +90,6 @@ public class RangedWeapon : Weapon
         float timeSinceLastShot = Time.time - lastShotTime;
         if (timeSinceLastShot < GetAttackCooldown())
         {
-            Debug.Log($"[RangedWeapon] {weaponName} cooling down, {GetAttackCooldown() - timeSinceLastShot:F2}s remaining");
             return;
         }
 
@@ -112,8 +106,6 @@ public class RangedWeapon : Weapon
     /// </summary>
     private IEnumerator PerformShotCoroutine(Character attacker, Character target)
     {
-        Debug.Log($"[RangedWeapon] {attacker.GetFullName()} shoots {target.GetFullName()} with {weaponName}");
-
         // Поворачиваем стрелка к цели
         Vector3 direction = (target.transform.position - attacker.transform.position).normalized;
         direction.y = 0;
@@ -141,8 +133,6 @@ public class RangedWeapon : Weapon
         // currentAmmo--; // ОТКЛЮЧЕНО: Бесконечные патроны
         lastShotTime = Time.time;
         Use(); // Снижаем прочность
-
-        Debug.Log($"[RangedWeapon] Shot fired. Infinite ammo enabled.");
 
         yield return null;
     }
@@ -240,14 +230,11 @@ public class RangedWeapon : Weapon
         }
 
         isReloading = true;
-        Debug.Log($"[RangedWeapon] Reloading {weaponName}... ({reloadTime:F1}s)");
 
         yield return new WaitForSeconds(reloadTime);
 
         currentAmmo = magazineSize;
         isReloading = false;
-
-        Debug.Log($"[RangedWeapon] {weaponName} reloaded! Ammo: {currentAmmo}/{magazineSize}");
     }
 
     /// <summary>
@@ -257,7 +244,6 @@ public class RangedWeapon : Weapon
     {
         currentAmmo = magazineSize;
         isReloading = false;
-        Debug.Log($"[RangedWeapon] {weaponName} force reloaded! Ammo: {currentAmmo}/{magazineSize}");
     }
 
     /// <summary>

@@ -433,11 +433,6 @@ public class CharacterAI : MonoBehaviour
         if (combatSystem != null && character != null)
         {
             combatSystem.StopCombatForCharacter(character);
-            Debug.Log($"[CharacterAI] {character.GetFullName()} stopped combat due to player movement command");
-        }
-        else
-        {
-            Debug.LogWarning($"[CharacterAI] Could not stop combat - combatSystem={combatSystem}, character={character}");
         }
     }
 

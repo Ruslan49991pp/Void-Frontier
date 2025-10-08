@@ -73,10 +73,6 @@ public class LookAtCamera : MonoBehaviour
             }
         }
 
-        if (targetCamera == null)
-        {
-            Debug.LogWarning($"[LookAtCamera] No camera found for {gameObject.name}");
-        }
     }
 
     /// <summary>

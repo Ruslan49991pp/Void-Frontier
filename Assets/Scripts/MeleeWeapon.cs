@@ -29,13 +29,11 @@ public class MeleeWeapon : Weapon
     {
         if (!CanAttack())
         {
-            Debug.LogWarning($"[MeleeWeapon] {weaponName} cannot attack - weapon is broken!");
             return;
         }
 
         if (!IsTargetInRange(attacker.transform.position, target.transform.position))
         {
-            Debug.LogWarning($"[MeleeWeapon] Target is out of range for {weaponName}");
             return;
         }
 
@@ -52,8 +50,6 @@ public class MeleeWeapon : Weapon
     /// </summary>
     private IEnumerator PerformMeleeAttackCoroutine(Character attacker, Character target)
     {
-        Debug.Log($"[MeleeWeapon] {attacker.GetFullName()} attacks {target.GetFullName()} with {weaponName}");
-
         // Поворачиваем атакующего к цели
         Vector3 direction = (target.transform.position - attacker.transform.position).normalized;
         direction.y = 0;
@@ -101,8 +97,6 @@ public class MeleeWeapon : Weapon
         }
 
         attacker.transform.position = startPosition;
-
-        Debug.Log($"[MeleeWeapon] Attack completed. Damage dealt: {finalDamage:F1}");
     }
 
     /// <summary>
@@ -117,7 +111,6 @@ public class MeleeWeapon : Weapon
         if (isCritical)
         {
             baseDamage *= criticalMultiplier;
-            Debug.Log($"[MeleeWeapon] CRITICAL HIT! Damage multiplied by {criticalMultiplier}x");
         }
 
         // Добавляем вариативность урона ±10%
@@ -152,18 +145,14 @@ public class MeleeWeapon : Weapon
         // Добавляем компонент, который всегда поворачивает к камере
         effect.AddComponent<LookAtCamera>();
 
-        Debug.Log($"[MeleeWeapon] Created damage text object: {effect.name} at position {effect.transform.position}");
-
         // Анимация исчезновения
         MonoBehaviour targetMono = target.GetComponent<MonoBehaviour>();
         if (targetMono != null)
         {
-            Debug.Log($"[MeleeWeapon] Starting coroutine for {effect.name}");
             targetMono.StartCoroutine(AnimateDamageText(effect, 1.0f));
         }
         else
         {
-            Debug.Log($"[MeleeWeapon] No MonoBehaviour found, destroying {effect.name} after 1s");
             Object.Destroy(effect, 1.0f);
         }
     }
@@ -173,13 +162,9 @@ public class MeleeWeapon : Weapon
     /// </summary>
     private IEnumerator AnimateDamageText(GameObject effect, float duration)
     {
-        Debug.Log($"[MeleeWeapon] Starting damage text animation for {effect.name}, duration: {duration}s");
-
         TextMesh textMesh = effect.GetComponent<TextMesh>();
         Vector3 startPos = effect.transform.position;
         Vector3 endPos = new Vector3(startPos.x, 10f, startPos.z);
-
-        Debug.Log($"[MeleeWeapon] Animation path: {startPos} -> {endPos}");
 
         float elapsedTime = 0f;
         while (elapsedTime < duration)
@@ -187,7 +172,6 @@ public class MeleeWeapon : Weapon
             // Проверяем, что объект все еще существует
             if (effect == null || textMesh == null)
             {
-                Debug.LogWarning($"[MeleeWeapon] Damage text object was destroyed during animation");
                 yield break;
             }
 
@@ -200,26 +184,14 @@ public class MeleeWeapon : Weapon
             textMesh.color = color;
 
             elapsedTime += Time.deltaTime;
-
-            // Логируем каждые 0.5 секунды
-            if (Mathf.FloorToInt(elapsedTime * 2) > Mathf.FloorToInt((elapsedTime - Time.deltaTime) * 2))
-            {
-                Debug.Log($"[MeleeWeapon] Animation progress: {t:F2}, position: {effect.transform.position}");
-            }
-
             yield return null;
         }
-
-        Debug.Log($"[MeleeWeapon] Animation completed for {effect.name}, elapsed time: {elapsedTime:F2}s");
 
         // Принудительно уничтожаем все дочерние объекты и компоненты
         if (effect != null)
         {
-            Debug.Log($"[MeleeWeapon] Destroying damage text object: {effect.name}");
-
             // Отключаем все компоненты
             var allComponents = effect.GetComponents<Component>();
-            Debug.Log($"[MeleeWeapon] Found {allComponents.Length} components on {effect.name}");
 
             foreach (var component in allComponents)
             {
@@ -237,13 +209,11 @@ public class MeleeWeapon : Weapon
             for (int i = effect.transform.childCount - 1; i >= 0; i--)
             {
                 Transform child = effect.transform.GetChild(i);
-                Debug.Log($"[MeleeWeapon] Destroying child: {child.name}");
                 Object.Destroy(child.gameObject);
             }
 
             // Немедленно уничтожаем основной объект
             Object.DestroyImmediate(effect);
-            Debug.Log($"[MeleeWeapon] Object destruction completed");
         }
     }
 

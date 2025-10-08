@@ -21,7 +21,6 @@ public class DamageTextManager : MonoBehaviour
                 GameObject go = new GameObject("DamageTextManager");
                 instance = go.AddComponent<DamageTextManager>();
                 DontDestroyOnLoad(go);
-                Debug.Log("[DamageTextManager] Created singleton instance");
             }
             return instance;
         }
@@ -52,7 +51,6 @@ public class DamageTextManager : MonoBehaviour
         {
             activeDamageTexts.Add(damageTextObj);
             activeCoroutines.Add(animationCoroutine);
-            Debug.Log($"[DamageTextManager] Registered {damageTextObj.name}. Total active: {activeDamageTexts.Count}");
         }
     }
 
@@ -83,7 +81,6 @@ public class DamageTextManager : MonoBehaviour
             {
                 activeCoroutines.RemoveAt(index);
             }
-            Debug.Log($"[DamageTextManager] Unregistered {objName}. Total active: {activeDamageTexts.Count}");
         }
     }
 
@@ -94,7 +91,6 @@ public class DamageTextManager : MonoBehaviour
     {
         if (damageTextObj == null)
         {
-            Debug.Log("[DamageTextManager] ForceCleanupObject called with null object - skipping");
             return;
         }
 
@@ -117,13 +113,11 @@ public class DamageTextManager : MonoBehaviour
         {
             if (damageTextObj.transform == null)
             {
-                Debug.Log($"[DamageTextManager] Object {objName} already destroyed - skipping cleanup");
                 alreadyDestroyed = true;
             }
         }
         catch (System.Exception)
         {
-            Debug.Log("[DamageTextManager] Object already destroyed (exception caught) - skipping cleanup");
             alreadyDestroyed = true;
         }
 
@@ -141,13 +135,10 @@ public class DamageTextManager : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[DamageTextManager] Force cleanup: {objName}");
-
         // Останавливаем корутину если она есть
         if (index >= 0 && index < activeCoroutines.Count && activeCoroutines[index] != null)
         {
             StopCoroutine(activeCoroutines[index]);
-            Debug.Log($"[DamageTextManager] Stopped coroutine for {objName}");
         }
 
         // Принудительная очистка
@@ -161,7 +152,6 @@ public class DamageTextManager : MonoBehaviour
             {
                 activeCoroutines.RemoveAt(index);
             }
-            Debug.Log($"[DamageTextManager] Unregistered {objName}. Total active: {activeDamageTexts.Count}");
         }
     }
 
@@ -177,13 +167,11 @@ public class DamageTextManager : MonoBehaviour
         {
             if (obj.transform == null)
             {
-                Debug.Log($"[DamageTextManager] CleanupDamageTextObject: Object already destroyed");
                 return;
             }
         }
         catch (System.Exception)
         {
-            Debug.Log("[DamageTextManager] CleanupDamageTextObject: Object already destroyed (exception caught)");
             return;
         }
 
@@ -217,11 +205,10 @@ public class DamageTextManager : MonoBehaviour
 
             // Уничтожаем основной объект
             DestroyImmediate(obj);
-            Debug.Log($"[DamageTextManager] Successfully destroyed object {objName}");
         }
-        catch (System.Exception ex)
+        catch (System.Exception)
         {
-            Debug.Log($"[DamageTextManager] Exception during cleanup: {ex.Message} - object likely already destroyed");
+            // Object likely already destroyed
         }
     }
 
@@ -239,7 +226,6 @@ public class DamageTextManager : MonoBehaviour
             {
                 if (activeDamageTexts[i] == null)
                 {
-                    Debug.Log($"[DamageTextManager] Found null object at index {i}, removing from list");
                     activeDamageTexts.RemoveAt(i);
                     if (i < activeCoroutines.Count)
                     {
@@ -264,13 +250,7 @@ public class DamageTextManager : MonoBehaviour
 
             foreach (var obj in toCleanup)
             {
-                Debug.LogWarning($"[DamageTextManager] Force cleaning up old registered object: {obj.name}");
                 ForceCleanupObject(obj);
-            }
-
-            if (activeDamageTexts.Count > 0)
-            {
-                Debug.Log($"[DamageTextManager] Periodic cleanup: {activeDamageTexts.Count} active damage texts remaining");
             }
         }
     }
@@ -290,11 +270,8 @@ public class DamageTextManager : MonoBehaviour
 
             if (foundObjects.Length > 0)
             {
-                Debug.LogWarning($"[DamageTextManager] Found {foundObjects.Length} orphaned {name} objects in scene!");
-
                 foreach (var obj in foundObjects)
                 {
-                    Debug.Log($"[DamageTextManager] Force cleaning orphaned object: {obj.name} at {obj.transform.position}");
                     CleanupDamageTextObject(obj);
                 }
             }
@@ -309,7 +286,6 @@ public class DamageTextManager : MonoBehaviour
                 string text = textMesh.text;
                 if (text.StartsWith("-") && char.IsDigit(text.Length > 1 ? text[1] : '0'))
                 {
-                    Debug.LogWarning($"[DamageTextManager] Found floating damage text: '{text}' at {textMesh.transform.position}");
                     CleanupDamageTextObject(textMesh.gameObject);
                 }
             }
@@ -321,8 +297,6 @@ public class DamageTextManager : MonoBehaviour
     /// </summary>
     public void CleanupAllDamageTexts()
     {
-        Debug.Log($"[DamageTextManager] Cleaning up all {activeDamageTexts.Count} damage texts");
-
         // Останавливаем все корутины
         foreach (var coroutine in activeCoroutines)
         {
@@ -365,8 +339,6 @@ public class DamageTextManager : MonoBehaviour
     {
         if (damageTextObj == null) return;
 
-        Debug.Log($"[DamageTextManager] Starting animation for {damageTextObj.name}, duration: {duration}s");
-
         // Запускаем анимацию на менеджере, а не на пуле
         Coroutine animationCoroutine = StartCoroutine(AnimateDamageText(damageTextObj, duration));
 
@@ -384,20 +356,15 @@ public class DamageTextManager : MonoBehaviour
     {
         if (damageTextObj == null) yield break;
 
-        Debug.Log($"[DamageTextManager] Starting damage text animation for {damageTextObj.name}, duration: {duration}s");
-
         TextMesh textMesh = damageTextObj.GetComponent<TextMesh>();
         if (textMesh == null)
         {
-            Debug.LogWarning($"[DamageTextManager] No TextMesh found on {damageTextObj.name}");
             yield break;
         }
 
         Vector3 startPos = damageTextObj.transform.position;
         Vector3 endPos = new Vector3(startPos.x, 10f, startPos.z);
         Color startColor = textMesh.color;
-
-        Debug.Log($"[DamageTextManager] Animation path: {startPos} -> {endPos}");
 
         float elapsedTime = 0f;
         while (elapsedTime < duration)
@@ -407,13 +374,11 @@ public class DamageTextManager : MonoBehaviour
             {
                 if (damageTextObj == null || damageTextObj.transform == null)
                 {
-                    Debug.LogWarning("[DamageTextManager] damageTextObj destroyed during animation!");
                     yield break;
                 }
             }
             catch (System.Exception)
             {
-                Debug.LogWarning("[DamageTextManager] Exception accessing damageTextObj - object destroyed!");
                 yield break;
             }
 
@@ -438,29 +403,18 @@ public class DamageTextManager : MonoBehaviour
                 float scale = 1f + (0.5f * (1f - t));
                 damageTextObj.transform.localScale = Vector3.one * scale;
             }
-            catch (System.Exception ex)
+            catch (System.Exception)
             {
-                Debug.LogWarning($"[DamageTextManager] Exception during animation: {ex.Message} - stopping animation!");
                 yield break;
             }
 
             elapsedTime += Time.deltaTime;
-
-            // Логируем каждые 0.5 секунды
-            if (Mathf.FloorToInt(elapsedTime * 2) > Mathf.FloorToInt((elapsedTime - Time.deltaTime) * 2))
-            {
-                Debug.Log($"[DamageTextManager] Animation progress: {t:F2}, position: {currentPosition}, alpha: {color.a:F2}");
-            }
-
             yield return null;
         }
-
-        Debug.Log($"[DamageTextManager] Animation completed for {damageTextObj.name}, elapsed time: {elapsedTime:F2}s");
 
         // Принудительно уничтожаем через менеджер
         if (damageTextObj != null)
         {
-            Debug.Log($"[DamageTextManager] Requesting cleanup for {damageTextObj.name}");
             ForceCleanupObject(damageTextObj);
         }
     }
@@ -474,7 +428,6 @@ public class DamageTextManager : MonoBehaviour
 
         if (obj != null)
         {
-            Debug.Log($"[DamageTextManager] MANDATORY cleanup after {delay}s for {obj.name}");
             ForceCleanupObject(obj);
         }
     }

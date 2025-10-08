@@ -33,20 +33,10 @@ public class MovementController : MonoBehaviour
     
     void Update()
     {
-        // Тестовый лог раз в 2 секунды (120 кадров при 60 FPS)
-        if (Time.frameCount % 120 == 0)
-        {
-            Debug.Log($"[MovementController] Update running. Inventory open: {InventoryUI.IsAnyInventoryOpen}");
-        }
-
         // Блокируем ввод если открыт инвентарь
         if (!InventoryUI.IsAnyInventoryOpen)
         {
             HandleMovementInput();
-        }
-        else if (Input.GetMouseButtonDown(1))
-        {
-            Debug.LogWarning("[MovementController] Right click blocked - inventory is open!");
         }
     }
     
@@ -57,19 +47,15 @@ public class MovementController : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(1)) // ПКМ
         {
-            Debug.Log("[MovementController] Right mouse button clicked");
-
             // Защита от спама кликов
             if (Time.time - lastClickTime < CLICK_COOLDOWN)
             {
-                Debug.Log("[MovementController] Click ignored - cooldown active");
                 return;
             }
             lastClickTime = Time.time;
 
             // Получаем выделенных персонажей
             List<Character> selectedCharacters = GetSelectedCharacters();
-            Debug.Log($"[MovementController] Selected characters: {selectedCharacters.Count}");
 
             if (selectedCharacters.Count > 0)
             {
@@ -77,12 +63,10 @@ public class MovementController : MonoBehaviour
                 Vector3 clickWorldPos = GetMouseWorldPosition();
                 if (clickWorldPos == Vector3.zero)
                 {
-                    Debug.Log("[MovementController] Click world position is zero, ignoring");
                     return;
                 }
 
                 Vector2Int targetGridPos = gridManager.WorldToGrid(clickWorldPos);
-                Debug.Log($"[MovementController] Click at grid position: {targetGridPos}");
 
                 // Проверяем, есть ли враг под курсором
                 Character enemyUnderMouse = GetEnemyUnderMouse();
@@ -96,15 +80,11 @@ public class MovementController : MonoBehaviour
                     // EnemyTargetingSystem обработает это И прервет текущую атаку
                     if (targetGridPos == enemyGridPos)
                     {
-                        Debug.Log($"[MovementController] Click on enemy {enemyUnderMouse.GetFullName()}, letting EnemyTargetingSystem handle it");
                         return; // Позволяем EnemyTargetingSystem обработать клик на врага
                     }
-                    // Иначе клик рядом с врагом - это команда движения, продолжаем ниже
-                    Debug.Log($"[MovementController] Click near enemy {enemyUnderMouse.GetFullName()}, treating as movement command");
                 }
 
                 // Команда движения - прерываем любой бой и начинаем движение
-                Debug.Log("[MovementController] Executing movement command");
 
                 // Очистка движений только для выделенных персонажей
                 ClearMovingGroupsForSelectedCharacters(selectedCharacters);

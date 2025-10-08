@@ -177,14 +177,12 @@ public class EnemyTargetingSystem : MonoBehaviour
                 // Проверяем, мертв ли враг и можно ли его обыскать
                 if (clickedEnemy.IsDead() && clickedEnemy.CanBeSearched())
                 {
-                    Debug.Log($"[SEARCH] Opening inventory of {clickedEnemy.GetFullName()}");
                     // Обыскиваем мертвого врага
                     AssignSearchToAllies(selectedAllies, clickedEnemy);
                 }
                 else if (!clickedEnemy.IsDead())
                 {
                     // Атакуем живого врага (новую цель)
-                    Debug.Log($"[EnemyTargeting] Switching attack target to {clickedEnemy.GetFullName()}");
                     AssignAttackToAllies(selectedAllies, clickedEnemy);
                 }
             }

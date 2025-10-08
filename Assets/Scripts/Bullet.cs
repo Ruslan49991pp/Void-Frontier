@@ -63,9 +63,6 @@ public class Bullet : MonoBehaviour
 
         // Запускаем полет
         StartCoroutine(BulletFlight());
-
-        Debug.Log($"[Bullet] Initialized bullet from {shooter?.GetFullName() ?? "Unknown"} " +
-                 $"with damage {damage:F1}, speed {speed:F1}, accuracy {accuracy:F2}");
     }
 
     /// <summary>
@@ -189,8 +186,6 @@ public class Bullet : MonoBehaviour
     {
         GameObject hitObject = hit.collider.gameObject;
 
-        Debug.Log($"[Bullet] Hit object: {hitObject.name}");
-
         // Проверяем, попали ли в персонажа
         Character hitCharacter = hitObject.GetComponent<Character>();
         if (hitCharacter == null)
@@ -217,27 +212,11 @@ public class Bullet : MonoBehaviour
     /// </summary>
     private void ProcessCharacterHit(Character target, RaycastHit hit)
     {
-        Debug.Log($"[Bullet] {shooter?.GetFullName() ?? "Unknown"} hit {target.GetFullName()} " +
-                 $"with bullet for {damage:F1} damage");
-
         // Наносим урон
         target.TakeDamage(damage);
 
         // Показываем эффект попадания
         ShowHitEffect(hit.point, target);
-
-        // Проверяем, враг это или союзник
-        if (shooter != null)
-        {
-            if (target.IsEnemyWith(shooter))
-            {
-                Debug.Log($"[Bullet] Enemy hit confirmed!");
-            }
-            else if (target.IsAllyWith(shooter))
-            {
-                Debug.Log($"[Bullet] Friendly fire! {target.GetFullName()} is ally of {shooter.GetFullName()}");
-            }
-        }
 
         hasHitTarget = true;
     }
@@ -247,8 +226,6 @@ public class Bullet : MonoBehaviour
     /// </summary>
     private void ProcessObstacleHit(RaycastHit hit)
     {
-        Debug.Log($"[Bullet] Hit obstacle: {hit.collider.name}");
-
         // Показываем эффект попадания в препятствие
         ShowHitEffect(hit.point, null);
 
@@ -283,8 +260,6 @@ public class Bullet : MonoBehaviour
 
             // Добавляем компонент для поворота к камере
             damageTextObj.AddComponent<LookAtCamera>();
-
-            Debug.Log($"[Bullet] Created damage text object: {damageTextObj.name} at position {damageTextObj.transform.position}");
 
             // Анимация текста урона - СТРОГО 1 секунда через DamageTextManager чтобы избежать прерывания при уничтожении пули
             DamageTextManager.Instance.StartDamageTextAnimation(damageTextObj, 1.0f);
@@ -369,7 +344,6 @@ public class Bullet : MonoBehaviour
 
         yield return new WaitForSeconds(delay);
 
-        Debug.Log($"[Bullet] Bullet destroyed after traveling {traveledDistance:F1} units");
         Destroy(gameObject);
     }
 

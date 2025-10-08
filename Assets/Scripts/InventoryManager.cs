@@ -135,36 +135,36 @@ public class InventoryManager : MonoBehaviour
     {
         ItemData item = new ItemData();
         item.itemType = itemType;
-        item.rarity = ItemRarity.Common; // Для простоты тестирования используем обычную редкость
+        item.rarity = ItemRarity.Common;
 
         switch (itemType)
         {
             case ItemType.Weapon:
-                item.itemName = $"Test Weapon {index}";
+                item.itemName = ItemNames.WEAPON;
                 item.description = "A test weapon for combat";
                 item.damage = Random.Range(10, 30);
                 item.weight = 2.5f;
                 item.value = Random.Range(50, 150);
-                item.equipmentSlot = equipSlot; // RightHand
+                item.equipmentSlot = equipSlot;
                 break;
 
             case ItemType.Armor:
                 switch (equipSlot)
                 {
                     case EquipmentSlot.Head:
-                        item.itemName = $"Test Helmet {index}";
+                        item.itemName = ItemNames.HELMET;
                         item.description = "Protective helmet for head";
                         break;
                     case EquipmentSlot.Chest:
-                        item.itemName = $"Test Armor {index}";
+                        item.itemName = ItemNames.BODY_ARMOR;
                         item.description = "Protective chest armor";
                         break;
                     case EquipmentSlot.Legs:
-                        item.itemName = $"Test Pants {index}";
+                        item.itemName = ItemNames.PANTS;
                         item.description = "Protective leg armor";
                         break;
                     case EquipmentSlot.Feet:
-                        item.itemName = $"Test Boots {index}";
+                        item.itemName = ItemNames.BOOTS;
                         item.description = "Protective footwear";
                         break;
                 }
@@ -175,7 +175,7 @@ public class InventoryManager : MonoBehaviour
                 break;
 
             case ItemType.Medical:
-                item.itemName = $"Medkit {index}";
+                item.itemName = ItemNames.MEDKIT;
                 item.description = "Medical supplies for healing";
                 item.healing = Random.Range(15, 40);
                 item.weight = 0.5f;
@@ -184,20 +184,23 @@ public class InventoryManager : MonoBehaviour
                 break;
 
             case ItemType.Tool:
-                item.itemName = $"Tool {index}";
+                item.itemName = ItemNames.TOOL;
                 item.description = "Useful tool for various tasks";
                 item.weight = 1.5f;
                 item.value = Random.Range(20, 80);
                 break;
 
             case ItemType.Resource:
-                item.itemName = $"Resource {index}";
+                item.itemName = ItemNames.RESOURCE;
                 item.description = "Valuable crafting material";
                 item.weight = 0.3f;
                 item.value = Random.Range(10, 30);
                 item.maxStackSize = 10;
                 break;
         }
+
+        // Применяем иконку через фабрику
+        ItemFactory.ApplyIcon(item);
 
         return item;
     }

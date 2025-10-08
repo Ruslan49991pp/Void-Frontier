@@ -83,7 +83,6 @@ public class CombatSystem : MonoBehaviour
     {
         if (selectionManager == null)
         {
-            Debug.LogError("[CombatSystem] SelectionManager not found!");
             return;
         }
     }
@@ -116,8 +115,6 @@ public class CombatSystem : MonoBehaviour
             damageIndicatorMaterial.SetFloat("_Mode", 0); // Opaque
             damageIndicatorMaterial.EnableKeyword("_EMISSION");
             damageIndicatorMaterial.SetColor("_EmissionColor", new Color(0.8f, 0f, 0f, 1f));
-
-            Debug.LogWarning($"[CombatSystem] Material '{damageIndicatorMaterialName}' not found. Using fallback red material.");
         }
     }
 
@@ -249,32 +246,27 @@ public class CombatSystem : MonoBehaviour
         // Проверяем что персонаж еще существует
         if (attacker == null)
         {
-            Debug.LogWarning($"[CombatSystem] StopCombat called for null attacker");
             return;
         }
 
         if (!activeCombatants.ContainsKey(attacker))
         {
-            Debug.LogWarning($"[CombatSystem] StopCombat called for {attacker.GetFullName()} but they are not in active combatants");
             return;
         }
 
         CombatData combatData = activeCombatants[attacker];
-        Debug.Log($"[CombatSystem] Stopping combat for {attacker.GetFullName()} (was attacking {combatData.target?.GetFullName()})");
 
         // Останавливаем корутины
         if (combatData.combatCoroutine != null)
         {
             StopCoroutine(combatData.combatCoroutine);
             combatData.combatCoroutine = null;
-            Debug.Log($"[CombatSystem] Stopped combat coroutine for {attacker.GetFullName()}");
         }
 
         if (combatData.attackAnimationCoroutine != null)
         {
             StopCoroutine(combatData.attackAnimationCoroutine);
             combatData.attackAnimationCoroutine = null;
-            Debug.Log($"[CombatSystem] Stopped attack animation coroutine for {attacker.GetFullName()}");
         }
 
         // Останавливаем движение (только если персонаж еще существует)
@@ -284,14 +276,12 @@ public class CombatSystem : MonoBehaviour
             if (movement != null)
             {
                 movement.StopMovement();
-                Debug.Log($"[CombatSystem] Stopped movement for {attacker.GetFullName()}");
             }
         }
 
         // Убираем индикатор цели, если никто больше не атакует эту цель
         Character target = combatData.target;
         activeCombatants.Remove(attacker);
-        Debug.Log($"[CombatSystem] Removed {(attacker != null ? attacker.GetFullName() : "destroyed character")} from active combatants");
 
         if (target != null && enemyTargetingSystem != null)
         {
@@ -369,9 +359,6 @@ public class CombatSystem : MonoBehaviour
                         if (clearShotPosition.HasValue)
                         {
                             // Нашли позицию - двигаемся туда
-                            if (debugMode)
-                                Debug.Log($"[CombatSystem] {attacker.GetFullName()} moving to clear shot position");
-
                             movement.MoveTo(clearShotPosition.Value);
                             combatData.isPursuing = true;
 
@@ -383,9 +370,6 @@ public class CombatSystem : MonoBehaviour
                         else
                         {
                             // Не нашли позицию - подходим ближе
-                            if (debugMode)
-                                Debug.LogWarning($"[CombatSystem] {attacker.GetFullName()} can't find clear shot, moving closer");
-
                             Vector3 targetPosition = GetNearestAttackPosition(combatData.target);
                             movement.MoveTo(targetPosition);
                             combatData.isPursuing = true;
@@ -628,7 +612,6 @@ public class CombatSystem : MonoBehaviour
     {
         if (target == null || damageIndicatorMaterial == null)
         {
-            Debug.LogError($"[CombatSystem] ShowDamageIndication failed: target={target}, damageIndicatorMaterial={damageIndicatorMaterial}");
             yield break;
         }
 
@@ -696,8 +679,6 @@ public class CombatSystem : MonoBehaviour
             12
         );
 
-        Debug.Log($"[CombatSystem] Created damage text object: {damageTextObj.name} at position {damageTextObj.transform.position}");
-
         // Анимируем текст - СТРОГО 1 секунда
         Coroutine animationCoroutine = StartCoroutine(AnimateLegacyDamageText(damageTextObj, 1.0f));
 
@@ -713,14 +694,9 @@ public class CombatSystem : MonoBehaviour
     /// </summary>
     IEnumerator AnimateLegacyDamageText(GameObject damageTextObj, float duration)
     {
-        Debug.Log($"[CombatSystem] Starting damage text animation for {damageTextObj.name}, duration: {duration}s");
-
         TextMesh textMesh = damageTextObj.GetComponent<TextMesh>();
         Vector3 startPos = damageTextObj.transform.position;
         Vector3 endPos = new Vector3(startPos.x, 10f, startPos.z);
-
-        Debug.Log($"[CombatSystem] Animation path: {startPos} -> {endPos}");
-
         Color startColor = textMesh.color;
 
         float elapsedTime = 0f;
@@ -741,22 +717,12 @@ public class CombatSystem : MonoBehaviour
             damageTextObj.transform.localScale = Vector3.one * scale;
 
             elapsedTime += Time.deltaTime;
-
-            // Логируем каждые 0.5 секунды
-            if (Mathf.FloorToInt(elapsedTime * 2) > Mathf.FloorToInt((elapsedTime - Time.deltaTime) * 2))
-            {
-                Debug.Log($"[CombatSystem] Animation progress: {t:F2}, position: {damageTextObj.transform.position}, alpha: {color.a:F2}");
-            }
-
             yield return null;
         }
-
-        Debug.Log($"[CombatSystem] Animation completed for {damageTextObj.name}, elapsed time: {elapsedTime:F2}s");
 
         // Принудительно уничтожаем через менеджер
         if (damageTextObj != null)
         {
-            Debug.Log($"[CombatSystem] Requesting cleanup for {damageTextObj.name}");
             DamageTextManager.Instance.ForceCleanupObject(damageTextObj);
         }
     }
@@ -770,7 +736,6 @@ public class CombatSystem : MonoBehaviour
 
         if (obj != null)
         {
-            Debug.Log($"[CombatSystem] MANDATORY cleanup after {delay}s for {obj.name}");
             DamageTextManager.Instance.ForceCleanupObject(obj);
         }
     }
@@ -802,22 +767,16 @@ public class CombatSystem : MonoBehaviour
             if (hitCharacter == target)
             {
                 // Попали в цель - линия видимости чистая
-                if (debugMode)
-                    Debug.Log($"[CombatSystem] {attacker.GetFullName()} has CLEAR line of sight to {target.GetFullName()}");
                 return true;
             }
             else
             {
                 // Попали в препятствие
-                if (debugMode)
-                    Debug.Log($"[CombatSystem] {attacker.GetFullName()} line of sight BLOCKED by {hit.collider.name} to {target.GetFullName()}");
                 return false;
             }
         }
 
         // Ничего не попало - линия видимости чистая
-        if (debugMode)
-            Debug.Log($"[CombatSystem] {attacker.GetFullName()} has CLEAR line of sight to {target.GetFullName()} (no obstacles)");
         return true;
     }
 
@@ -885,22 +844,16 @@ public class CombatSystem : MonoBehaviour
                 if (hitCharacter == target)
                 {
                     // Нашли позицию с чистым выстрелом!
-                    if (debugMode)
-                        Debug.Log($"[CombatSystem] Found clear shot position for {attacker.GetFullName()} at {worldPos}");
                     return worldPos;
                 }
             }
             else
             {
                 // Нет препятствий - тоже подходит
-                if (debugMode)
-                    Debug.Log($"[CombatSystem] Found clear shot position for {attacker.GetFullName()} at {worldPos} (no obstacles)");
                 return worldPos;
             }
         }
 
-        if (debugMode)
-            Debug.LogWarning($"[CombatSystem] Could not find clear shot position for {attacker.GetFullName()}");
         return null;
     }
 

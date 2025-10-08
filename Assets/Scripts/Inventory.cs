@@ -517,8 +517,6 @@ public class Inventory : MonoBehaviour
         // Проверяем, есть ли предмет в инвентаре
         if (!HasItem(item, 1))
         {
-            if (debugMode)
-                Debug.LogWarning($"[Inventory] Cannot equip {item.itemName} - not in inventory");
             return false;
         }
 
@@ -528,8 +526,6 @@ public class Inventory : MonoBehaviour
             // Если не удалось снять предмет (нет места в инвентаре), не экипируем новый
             if (!UnequipItem(slot))
             {
-                if (debugMode)
-                    Debug.LogWarning($"[Inventory] Cannot unequip current item from {slot}");
                 return false;
             }
         }
@@ -537,16 +533,11 @@ public class Inventory : MonoBehaviour
         // Удаляем предмет из обычного инвентаря
         if (!RemoveItem(item, 1))
         {
-            if (debugMode)
-                Debug.LogWarning($"[Inventory] Failed to remove {item.itemName} from inventory");
             return false;
         }
 
         // Экипируем новый предмет
         equipmentSlots[slot] = new InventorySlot(item, 1);
-
-        if (debugMode)
-            Debug.Log($"[Inventory] Equipped {item.itemName} to {slot}");
 
         OnEquipmentChanged?.Invoke();
         return true;

@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 967a1fdd5db9af4459776b6fbc526386, type: 3}
+  m_Name: ItemDatabase
+  m_EditorClassIdentifier: 
+  items:
+  - itemName: Weapon
+    itemType: 0
+    icon: {fileID: 21300000, guid: 62639b2a9791da84580e1447705e3d0a, type: 3}
+  - itemName: Helmet
+    itemType: 1
+    icon: {fileID: 21300000, guid: 13fce94d83e67be418f23a9f0568b5e1, type: 3}
+  - itemName: Body Armor
+    itemType: 1
+    icon: {fileID: 21300000, guid: 5b3488ea47044de4ba7cf68897ccdd22, type: 3}
+  - itemName: Pants
+    itemType: 1
+    icon: {fileID: 0}
+  - itemName: Boots
+    itemType: 1
+    icon: {fileID: 21300000, guid: 755b7761233ae3d4b87cebddbd31dd72, type: 3}
+  - itemName: Medkit
+    itemType: 3
+    icon: {fileID: 0}
+  - itemName: Tool
+    itemType: 2
+    icon: {fileID: 0}
+  - itemName: Resource
+    itemType: 4
+    icon: {fileID: 0}
+  - itemName: Consumable
+    itemType: 5
+    icon: {fileID: 0}

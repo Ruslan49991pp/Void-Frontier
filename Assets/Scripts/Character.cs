@@ -460,11 +460,9 @@ public class Character : MonoBehaviour
             {
                 inventoryUI.SetCurrentInventory(corpseInventory, this);
                 inventoryUI.ShowInventory();
-                Debug.Log($"[SEARCH] Opened inventory of {GetFullName()}");
             }
             else
             {
-                Debug.LogWarning($"[SEARCH] InventoryUI not found for {GetFullName()}");
                 // Если нет UI, выбрасываем лут как fallback
                 DropLootOnDeath();
             }
@@ -782,17 +780,17 @@ public class Character : MonoBehaviour
         switch (itemType)
         {
             case ItemType.Weapon:
-                item.itemName = "Basic Weapon";
+                item.itemName = ItemNames.WEAPON;
                 item.description = "Simple weapon found on enemy";
                 item.damage = staticRandom.Next(5, 15);
                 item.value = staticRandom.Next(10, 50);
                 item.weight = 2f;
                 item.rarity = ItemRarity.Common;
-                item.equipmentSlot = EquipmentSlot.RightHand; // Оружие можно держать в правой руке
+                item.equipmentSlot = EquipmentSlot.RightHand;
                 break;
 
             case ItemType.Medical:
-                item.itemName = "Medkit";
+                item.itemName = ItemNames.MEDKIT;
                 item.description = "Basic medical supplies";
                 item.healing = staticRandom.Next(10, 30);
                 item.value = staticRandom.Next(15, 40);
@@ -802,7 +800,7 @@ public class Character : MonoBehaviour
                 break;
 
             case ItemType.Resource:
-                item.itemName = "Metal Scraps";
+                item.itemName = ItemNames.RESOURCE;
                 item.description = "Useful crafting material";
                 item.value = staticRandom.Next(5, 15);
                 item.weight = 0.3f;
@@ -811,7 +809,7 @@ public class Character : MonoBehaviour
                 break;
 
             case ItemType.Tool:
-                item.itemName = "Basic Tool";
+                item.itemName = ItemNames.TOOL;
                 item.description = "Simple maintenance tool";
                 item.value = staticRandom.Next(8, 25);
                 item.weight = 1f;
@@ -826,20 +824,20 @@ public class Character : MonoBehaviour
                 switch (armorSlot)
                 {
                     case EquipmentSlot.Head:
-                        item.itemName = "Basic Helmet";
-                        item.description = "Simple protective helmet";
+                        item.itemName = ItemNames.HELMET;
+                        item.description = "Protective helmet";
                         break;
                     case EquipmentSlot.Chest:
-                        item.itemName = "Basic Chest Armor";
-                        item.description = "Simple chest protection";
+                        item.itemName = ItemNames.BODY_ARMOR;
+                        item.description = "Chest protection";
                         break;
                     case EquipmentSlot.Legs:
-                        item.itemName = "Basic Leg Armor";
-                        item.description = "Simple leg protection";
+                        item.itemName = ItemNames.PANTS;
+                        item.description = "Leg protection";
                         break;
                     case EquipmentSlot.Feet:
-                        item.itemName = "Basic Boots";
-                        item.description = "Simple protective boots";
+                        item.itemName = ItemNames.BOOTS;
+                        item.description = "Protective boots";
                         break;
                 }
 
@@ -851,7 +849,7 @@ public class Character : MonoBehaviour
                 break;
 
             case ItemType.Consumable:
-                item.itemName = "Basic Consumable";
+                item.itemName = ItemNames.CONSUMABLE;
                 item.description = "Single-use item";
                 item.value = staticRandom.Next(5, 20);
                 item.weight = 0.2f;
@@ -859,6 +857,9 @@ public class Character : MonoBehaviour
                 item.rarity = ItemRarity.Common;
                 break;
         }
+
+        // Применяем иконку через фабрику
+        ItemFactory.ApplyIcon(item);
 
         return item;
     }

@@ -48,6 +48,13 @@ public class InventoryUI : MonoBehaviour
         FindSelectionManager();
         CreateSlotPrefab();
         InitializeUI();
+
+        // Скрываем инвентарь сразу после создания
+        if (!showInventoryOnStart && inventoryPanel != null)
+        {
+            inventoryPanel.gameObject.SetActive(false);
+            isInventoryVisible = false;
+        }
     }
 
     void Start()
@@ -165,6 +172,12 @@ public class InventoryUI : MonoBehaviour
 
             canvasGO.AddComponent<CanvasScaler>();
             canvasGO.AddComponent<GraphicRaycaster>();
+
+            // Скрываем Canvas сразу при создании
+            if (!showInventoryOnStart)
+            {
+                canvasGO.SetActive(false);
+            }
         }
 
         // Инициализируем систему tooltips
@@ -223,6 +236,9 @@ public class InventoryUI : MonoBehaviour
 
         // Кнопка закрытия
         CreateCloseButton(panelGO);
+
+        // Скрываем панель по умолчанию
+        panelGO.SetActive(false);
     }
 
     /// <summary>
@@ -1372,6 +1388,12 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     public void ShowInventory()
     {
+        // Активируем Canvas
+        if (mainCanvas != null)
+        {
+            mainCanvas.gameObject.SetActive(true);
+        }
+
         if (inventoryPanel != null)
         {
             inventoryPanel.gameObject.SetActive(true);
@@ -1416,6 +1438,12 @@ public class InventoryUI : MonoBehaviour
             {
                 TooltipSystem.Instance.HideTooltip();
             }
+        }
+
+        // Деактивируем весь Canvas
+        if (mainCanvas != null)
+        {
+            mainCanvas.gameObject.SetActive(false);
         }
         else
         {
