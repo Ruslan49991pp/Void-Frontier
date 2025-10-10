@@ -33,11 +33,19 @@ public class MovementController : MonoBehaviour
     
     void Update()
     {
-        // Блокируем ввод если открыт инвентарь
-        if (!InventoryUI.IsAnyInventoryOpen)
+        // Блокируем ввод если открыт инвентарь или меню паузы
+        if (!InventoryUI.IsAnyInventoryOpen && !IsGamePaused())
         {
             HandleMovementInput();
         }
+    }
+
+    /// <summary>
+    /// Проверить находится ли игра на паузе
+    /// </summary>
+    bool IsGamePaused()
+    {
+        return GamePauseManager.Instance != null && GamePauseManager.Instance.IsPaused();
     }
     
     /// <summary>

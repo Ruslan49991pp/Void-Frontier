@@ -89,8 +89,20 @@ public class CombatSystem : MonoBehaviour
 
     void Update()
     {
-        HandleCombatInput();
+        // Блокируем ввод если меню паузы активно
+        if (!IsGamePaused())
+        {
+            HandleCombatInput();
+        }
         UpdateCombatStates();
+    }
+
+    /// <summary>
+    /// Проверить находится ли игра на паузе
+    /// </summary>
+    bool IsGamePaused()
+    {
+        return GamePauseManager.Instance != null && GamePauseManager.Instance.IsPaused();
     }
 
     /// <summary>

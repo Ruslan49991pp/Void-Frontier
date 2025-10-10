@@ -27,8 +27,10 @@ public class GameUI : MonoBehaviour
     private Text enemyInfoText; // Отдельный текст для информации о врагах
     private SelectionManager selectionManager;
     private List<Button> buildingButtons = new List<Button>();
+    private List<Button> mainObjectButtons = new List<Button>();
     private Button buildModeButton;
     private Button destroyRoomButton;
+    private MainObjectPlacementSystem mainObjectSystem;
 
     // HP бар для врагов
     private GameObject enemyHealthBarContainer;
@@ -62,7 +64,23 @@ public class GameUI : MonoBehaviour
         }
 
         InitializeBuildingSystem();
+        InitializeMainObjectSystem();
         SyncBuildingDataWithShipBuildingSystem();
+    }
+
+    /// <summary>
+    /// Инициализация системы размещения главных объектов
+    /// </summary>
+    void InitializeMainObjectSystem()
+    {
+        mainObjectSystem = FindObjectOfType<MainObjectPlacementSystem>();
+        if (mainObjectSystem == null)
+        {
+            GameObject go = new GameObject("MainObjectPlacementSystem");
+            mainObjectSystem = go.AddComponent<MainObjectPlacementSystem>();
+        }
+
+        FileLogger.Log("[GameUI] MainObjectPlacementSystem initialized");
     }
 
     void Update()
@@ -162,6 +180,123 @@ public class GameUI : MonoBehaviour
 
         // Создаем кнопки для каждого типа здания
         CreateBuildingButtons(containerGO);
+
+        // Создаем секцию главных объектов
+        CreateMainObjectSection(parent);
+    }
+
+    /// <summary>
+    /// Создание секции главных объектов
+    /// </summary>
+    void CreateMainObjectSection(GameObject parent)
+    {
+        // Заголовок для главных объектов (под списком модулей)
+        GameObject objTitleGO = new GameObject("MainObjectTitle");
+        objTitleGO.transform.SetParent(parent.transform, false);
+
+        RectTransform objTitleRect = objTitleGO.AddComponent<RectTransform>();
+        objTitleRect.anchorMin = new Vector2(0.05f, 0.38f);
+        objTitleRect.anchorMax = new Vector2(0.95f, 0.45f);
+        objTitleRect.offsetMin = Vector2.zero;
+        objTitleRect.offsetMax = Vector2.zero;
+
+        Text objTitleText = objTitleGO.AddComponent<Text>();
+        objTitleText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        objTitleText.fontSize = 12;
+        objTitleText.color = Color.yellow;
+        objTitleText.text = "ГЛАВНЫЕ ОБЪЕКТЫ";
+        objTitleText.alignment = TextAnchor.MiddleCenter;
+
+        // Контейнер для кнопок главных объектов
+        GameObject objContainerGO = new GameObject("MainObjectContainer");
+        objContainerGO.transform.SetParent(parent.transform, false);
+
+        RectTransform objContainerRect = objContainerGO.AddComponent<RectTransform>();
+        objContainerRect.anchorMin = new Vector2(0.05f, 0.05f);
+        objContainerRect.anchorMax = new Vector2(0.95f, 0.35f);
+        objContainerRect.offsetMin = Vector2.zero;
+        objContainerRect.offsetMax = Vector2.zero;
+
+        // Сетка для кнопок главных объектов
+        GridLayoutGroup objGridLayout = objContainerGO.AddComponent<GridLayoutGroup>();
+        objGridLayout.cellSize = new Vector2(80, 40);
+        objGridLayout.spacing = new Vector2(5, 5);
+        objGridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        objGridLayout.constraintCount = 3; // 3 колонки
+        objGridLayout.childAlignment = TextAnchor.MiddleCenter;
+
+        // Создаем кнопки для главных объектов
+        CreateMainObjectButtons(objContainerGO);
+    }
+
+    /// <summary>
+    /// Создание кнопок для главных объектов
+    /// </summary>
+    void CreateMainObjectButtons(GameObject parent)
+    {
+        mainObjectButtons.Clear();
+
+        if (buildingSystem == null || buildingSystem.availableMainObjects.Count == 0)
+        {
+            FileLogger.Log("[GameUI] No main objects available");
+            return;
+        }
+
+        for (int i = 0; i < buildingSystem.availableMainObjects.Count; i++)
+        {
+            MainObjectData objData = buildingSystem.availableMainObjects[i];
+            GameObject buttonGO = new GameObject($"MainObj_{i}");
+            buttonGO.transform.SetParent(parent.transform, false);
+
+            // Фон кнопки
+            Image buttonImage = buttonGO.AddComponent<Image>();
+            buttonImage.color = new Color(0.4f, 0.3f, 0.2f, 1f);
+
+            Button button = buttonGO.AddComponent<Button>();
+            button.image = buttonImage;
+
+            // Текст кнопки
+            GameObject textGO = new GameObject("Text");
+            textGO.transform.SetParent(buttonGO.transform, false);
+
+            Text buttonText = textGO.AddComponent<Text>();
+            buttonText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            buttonText.fontSize = 9;
+            buttonText.color = Color.white;
+            buttonText.text = $"{objData.objectName}\nHP:{objData.maxHealth}\n{objData.cost}$";
+            buttonText.alignment = TextAnchor.MiddleCenter;
+
+            RectTransform textRect = textGO.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = new Vector2(5, 5);
+            textRect.offsetMax = new Vector2(-5, -5);
+
+            // Добавляем обработчик клика
+            int index = i;
+            button.onClick.AddListener(() => OnMainObjectButtonClick(index));
+
+            mainObjectButtons.Add(button);
+
+            FileLogger.Log($"[GameUI] Created main object button: {objData.objectName}");
+        }
+    }
+
+    /// <summary>
+    /// Обработчик клика на кнопку главного объекта
+    /// </summary>
+    void OnMainObjectButtonClick(int index)
+    {
+        if (mainObjectSystem == null || buildingSystem == null) return;
+
+        if (index >= 0 && index < buildingSystem.availableMainObjects.Count)
+        {
+            MainObjectData objData = buildingSystem.availableMainObjects[index];
+            FileLogger.Log($"[GameUI] Main object button clicked: {objData.objectName}");
+
+            // Запускаем режим размещения главного объекта
+            mainObjectSystem.StartPlacement(objData);
+        }
     }
     
     /// <summary>

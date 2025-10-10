@@ -1082,4 +1082,80 @@ public class RoomInfo : MonoBehaviour
     public string roomName;
     public string roomType;
     public int roomRotation; // поворот комнаты в градусах (0, 90, 180, 270)
+
+    [Header("Main Object")]
+    public ModuleMainObject mainObject; // Ссылка на главный объект в комнате
+    public MainObjectType currentMainObjectType = MainObjectType.None; // Тип текущего главного объекта
+
+    [Header("Room Health")]
+    public float maxWallHealth = 500f;
+    public float currentWallHealth;
+
+    void Start()
+    {
+        currentWallHealth = maxWallHealth;
+    }
+
+    /// <summary>
+    /// Проверить, можно ли установить главный объект
+    /// </summary>
+    public bool CanPlaceMainObject()
+    {
+        return mainObject == null && currentMainObjectType == MainObjectType.None;
+    }
+
+    /// <summary>
+    /// Установить главный объект
+    /// </summary>
+    public bool SetMainObject(ModuleMainObject obj)
+    {
+        if (!CanPlaceMainObject())
+        {
+            FileLogger.Log($"[RoomInfo] Cannot place main object in room {roomName} - already has one");
+            return false;
+        }
+
+        mainObject = obj;
+        currentMainObjectType = obj.objectType;
+        obj.parentRoom = gameObject;
+        obj.roomGridPosition = gridPosition;
+
+        FileLogger.Log($"[RoomInfo] Main object {obj.objectName} placed in room {roomName}");
+        return true;
+    }
+
+    /// <summary>
+    /// Нанести урон стенам комнаты
+    /// </summary>
+    public void TakeDamage(float damage)
+    {
+        currentWallHealth -= damage;
+        FileLogger.Log($"[RoomInfo] Room {roomName} walls took {damage} damage. Health: {currentWallHealth}/{maxWallHealth}");
+
+        if (currentWallHealth <= 0)
+        {
+            DestroyRoom();
+        }
+    }
+
+    /// <summary>
+    /// Уничтожить комнату
+    /// </summary>
+    void DestroyRoom()
+    {
+        FileLogger.Log($"[RoomInfo] Room {roomName} walls destroyed!");
+
+        // Уничтожаем главный объект если он есть
+        if (mainObject != null)
+        {
+            Destroy(mainObject.gameObject);
+        }
+
+        // Уничтожаем саму комнату через систему строительства
+        ShipBuildingSystem buildingSystem = FindObjectOfType<ShipBuildingSystem>();
+        if (buildingSystem != null)
+        {
+            buildingSystem.DeleteRoom(gameObject);
+        }
+    }
 }

@@ -67,8 +67,8 @@ public class SelectionManager : MonoBehaviour
     
     void Update()
     {
-        // Блокируем ввод если открыт инвентарь
-        if (!InventoryUI.IsAnyInventoryOpen)
+        // Блокируем ввод если открыт инвентарь или меню паузы
+        if (!InventoryUI.IsAnyInventoryOpen && !IsGamePaused())
         {
             HandleMouseInput();
             UpdateSelectionBox();
@@ -76,6 +76,14 @@ public class SelectionManager : MonoBehaviour
         }
 
         UpdateSelectionIndicatorPositions();
+    }
+
+    /// <summary>
+    /// Проверить находится ли игра на паузе
+    /// </summary>
+    bool IsGamePaused()
+    {
+        return GamePauseManager.Instance != null && GamePauseManager.Instance.IsPaused();
     }
     
     /// <summary>

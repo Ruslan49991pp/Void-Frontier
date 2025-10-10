@@ -22,11 +22,18 @@ public class GamePauseManager : MonoBehaviour
     {
         get
         {
-            if (instance == null)
+            // Проверяем что instance не уничтожен
+            if (instance == null || instance.gameObject == null)
             {
-                GameObject pauseManagerObj = new GameObject("GamePauseManager");
-                instance = pauseManagerObj.AddComponent<GamePauseManager>();
-                DontDestroyOnLoad(pauseManagerObj);
+                // Пытаемся найти существующий в сцене
+                instance = FindObjectOfType<GamePauseManager>();
+
+                if (instance == null)
+                {
+                    GameObject pauseManagerObj = new GameObject("GamePauseManager");
+                    instance = pauseManagerObj.AddComponent<GamePauseManager>();
+                    // Не используем DontDestroyOnLoad - объект будет пересоздаваться в каждой сцене
+                }
             }
             return instance;
         }
@@ -38,7 +45,8 @@ public class GamePauseManager : MonoBehaviour
         if (instance == null)
         {
             instance = this;
-            DontDestroyOnLoad(gameObject);
+            // Не используем DontDestroyOnLoad для GamePauseManager
+            // Он будет пересоздаваться в каждой сцене через GameInitializer
         }
         else if (instance != this)
         {
@@ -48,12 +56,10 @@ public class GamePauseManager : MonoBehaviour
 
     void Start()
     {
-        // Подписываемся на события строительства если есть BuildingSystem
-        var buildingSystem = FindObjectOfType<ShipBuildingSystem>();
-        if (buildingSystem != null)
-        {
-            // Будем слушать изменения режима строительства через GameUI
-        }
+        FileLogger.Log("[GamePauseManager] Start called");
+
+        // Не инициализируем PauseMenuManager здесь - он будет создан через GameInitializer
+        // Это предотвращает создание объектов в OnDestroy при закрытии сцены
     }
 
     /// <summary>
@@ -131,21 +137,7 @@ public class GamePauseManager : MonoBehaviour
 
     void Update()
     {
-        // Горячие клавиши для паузы (для отладки)
-        if (Input.GetKeyDown(KeyCode.P))
-        {
-            TogglePause();
-        }
-
-        // ESC для выхода из режима строительства
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            var gameUI = FindObjectOfType<GameUI>();
-            if (gameUI != null)
-            {
-                // ESC обрабатывается в ShipBuildingSystem
-            }
-        }
+        // ESC теперь обрабатывается в PauseMenuManager
     }
 
     void OnDestroy()
@@ -154,6 +146,11 @@ public class GamePauseManager : MonoBehaviour
         {
             // Восстанавливаем нормальное время при уничтожении
             Time.timeScale = 1f;
+
+            // Очищаем события чтобы не создавать новые объекты
+            OnPauseStateChanged = null;
+
+            instance = null;
         }
     }
 }

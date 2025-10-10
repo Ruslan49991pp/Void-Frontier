@@ -66,8 +66,8 @@ public class CameraController : MonoBehaviour
         if (buildingSystem == null)
             TryFindBuildingSystem();
 
-        // Блокируем ввод если открыт инвентарь
-        if (!InventoryUI.IsAnyInventoryOpen)
+        // Блокируем ввод если открыт инвентарь или игра на паузе
+        if (!InventoryUI.IsAnyInventoryOpen && !IsGamePaused())
         {
             HandleInput();
         }
@@ -78,15 +78,18 @@ public class CameraController : MonoBehaviour
 
     void LateUpdate()
     {
-        // Блокируем зум если открыт инвентарь
-        if (!InventoryUI.IsAnyInventoryOpen)
+        // Блокируем зум если открыт инвентарь или игра на паузе
+        if (!InventoryUI.IsAnyInventoryOpen && !IsGamePaused())
         {
             // Обрабатываем зум после того, как ShipBuildingSystem обработал ввод
             HandleZoom();
         }
 
-        // ������ ���������� ������ � ������� ������� (используем unscaledDeltaTime для работы во время паузы)
-        transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime, Mathf.Infinity, Time.unscaledDeltaTime);
+        // Камера движется плавно только если игра не на паузе
+        if (!IsGamePaused())
+        {
+            transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime, Mathf.Infinity, Time.unscaledDeltaTime);
+        }
     }
 
     void HandleInput()
@@ -270,5 +273,13 @@ public class CameraController : MonoBehaviour
     {
         focusTarget = t;
         if (t != null) offsetFromFocus = transform.position - t.position;
+    }
+
+    /// <summary>
+    /// Проверить находится ли игра на паузе
+    /// </summary>
+    bool IsGamePaused()
+    {
+        return GamePauseManager.Instance != null && GamePauseManager.Instance.IsPaused();
     }
 }

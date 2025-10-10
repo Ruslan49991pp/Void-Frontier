@@ -10,110 +10,88 @@ public class GameInitializer : MonoBehaviour
     public bool autoInitializeCharacterIcons = true;
     public bool autoInitializeEnemyTargeting = true;
     public bool autoInitializeInventory = true;
+    public bool autoInitializePauseSystem = true;
 
     void Awake()
     {
-
-
         if (autoInitializeBootstrap)
         {
-
             EnsureBootstrapManager();
         }
-        else
+
+        if (autoInitializePauseSystem)
         {
-
+            EnsurePauseSystem();
         }
-
-
     }
 
     void Start()
     {
-
-
         if (autoInitializeResolution)
         {
-
             EnsureResolutionManager();
         }
 
         if (autoInitializeUI)
         {
-
             EnsureGameUI();
         }
 
         if (autoInitializeEventSystem)
         {
-
             EnsureEventSystem();
         }
 
         if (autoInitializeCharacterIcons)
         {
-
             EnsureSimpleCharacterIconsUI();
         }
 
         if (autoInitializeEnemyTargeting)
         {
-
             EnsureEnemyTargetingSystem();
             EnsureTargetingInstructions();
         }
 
         if (autoInitializeInventory)
         {
-
             EnsureInventoryManager();
         }
 
         // Создаем простой дебаг дисплей
-
         GameObject simpleDebugGO = new GameObject("SimpleDebugDisplay");
         simpleDebugGO.AddComponent<SimpleDebugDisplay>();
 
         // Создаем дебаг монитор
-
         GameObject debugMonitorGO = new GameObject("DebugSystemMonitor");
         debugMonitorGO.AddComponent<DebugSystemMonitor>();
 
         // Создаем инструкции по отладке
-
         GameObject debugInstructionsGO = new GameObject("DebugInstructions");
         debugInstructionsGO.AddComponent<DebugInstructions>();
 
         // Удаляем кнопки Center
-
         GameObject removerGO = new GameObject("RemoveCenterButtons");
         removerGO.AddComponent<RemoveCenterButtons>();
 
         // Добавляем тестовый спавнер персонажей
-
         GameObject spawnerGO = new GameObject("CharacterSpawnerTest");
         spawnerGO.AddComponent<CharacterSpawnerTest>();
 
         // Добавляем тестовый спавнер врагов
-
         GameObject enemySpawnerGO = new GameObject("EnemySpawnerTest");
         enemySpawnerGO.AddComponent<EnemySpawnerTest>();
 
         // Добавляем систему обновления персонажей
-
         GameObject refreshGO = new GameObject("CharacterRefreshTest");
         refreshGO.AddComponent<CharacterRefreshTest>();
 
         // Добавляем отладчик структуры SKM_Character
-
         GameObject debuggerGO = new GameObject("SKMCharacterDebugger");
         debuggerGO.AddComponent<SKMCharacterDebugger>();
 
         // Добавляем UI для тестирования HP
-
         EnsureHPTestUI();
-
-
     }
 
     /// <summary>
@@ -126,6 +104,26 @@ public class GameInitializer : MonoBehaviour
         {
             GameObject bootstrapManagerGO = new GameObject("BootstrapManager");
             bootstrapManager = bootstrapManagerGO.AddComponent<BootstrapManager>();
+        }
+    }
+
+    /// <summary>
+    /// Убедиться что система паузы инициализирована
+    /// </summary>
+    void EnsurePauseSystem()
+    {
+        FileLogger.Log("[GameInitializer] Initializing pause system");
+
+        // Инициализируем GamePauseManager
+        if (GamePauseManager.Instance != null)
+        {
+            FileLogger.Log("[GameInitializer] GamePauseManager initialized");
+        }
+
+        // Инициализируем PauseMenuManager
+        if (PauseMenuManager.Instance != null)
+        {
+            FileLogger.Log("[GameInitializer] PauseMenuManager initialized");
         }
     }
 
@@ -174,22 +172,11 @@ public class GameInitializer : MonoBehaviour
     /// </summary>
     void EnsureSimpleCharacterIconsUI()
     {
-
-
         SimpleCharacterIconsUI characterIconsUI = FindObjectOfType<SimpleCharacterIconsUI>();
         if (characterIconsUI == null)
         {
-
             GameObject characterIconsUIGO = new GameObject("SimpleCharacterIconsUI");
             characterIconsUI = characterIconsUIGO.AddComponent<SimpleCharacterIconsUI>();
-
-
-
-        }
-        else
-        {
-
-
         }
     }
 
@@ -203,11 +190,6 @@ public class GameInitializer : MonoBehaviour
         {
             GameObject hpTestUIGO = new GameObject("HPTestUI");
             hpTestUI = hpTestUIGO.AddComponent<HPTestUI>();
-
-        }
-        else
-        {
-
         }
     }
 
@@ -221,11 +203,6 @@ public class GameInitializer : MonoBehaviour
         {
             GameObject enemyTargetingGO = new GameObject("EnemyTargetingSystem");
             enemyTargetingSystem = enemyTargetingGO.AddComponent<EnemyTargetingSystem>();
-
-        }
-        else
-        {
-
         }
     }
 
@@ -239,11 +216,6 @@ public class GameInitializer : MonoBehaviour
         {
             GameObject instructionsGO = new GameObject("TargetingInstructions");
             targetingInstructions = instructionsGO.AddComponent<TargetingInstructions>();
-
-        }
-        else
-        {
-
         }
     }
 

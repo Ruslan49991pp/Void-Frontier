@@ -21,6 +21,9 @@ public class ShipBuildingSystem : MonoBehaviour
     [Header("Room Types")]
     public List<RoomData> availableRooms = new List<RoomData>();
 
+    [Header("Main Objects")]
+    public List<MainObjectData> availableMainObjects = new List<MainObjectData>();
+
     [Header("Preview Settings")]
     public Material previewMaterial;
     public LayerMask groundLayerMask = 1;
@@ -108,41 +111,74 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Создание стандартных типов комнат
+    /// Создание стандартных типов комнат (теперь только формы/размеры)
     /// </summary>
     void CreateDefaultRooms()
     {
         if (availableRooms.Count == 0)
         {
-            // Коридор 4x10
-            RoomData corridor = new RoomData();
-            corridor.roomName = "Коридор";
-            corridor.roomType = "Corridor";
-            corridor.size = new Vector2Int(4, 10);
-            corridor.cost = 80;
-            corridor.previewColor = Color.cyan;
-            corridor.prefab = null; // Будем создавать через RoomBuilder
-            availableRooms.Add(corridor);
+            // Маленький модуль 4x4
+            RoomData smallModule = new RoomData();
+            smallModule.roomName = "Малый модуль";
+            smallModule.roomType = "Module";
+            smallModule.size = new Vector2Int(4, 4);
+            smallModule.cost = 40;
+            smallModule.previewColor = Color.cyan;
+            smallModule.prefab = null;
+            availableRooms.Add(smallModule);
 
-            // Ангар 10x10
-            RoomData hangar = new RoomData();
-            hangar.roomName = "Ангар";
-            hangar.roomType = "Hangar";
-            hangar.size = new Vector2Int(10, 10);
-            hangar.cost = 200;
-            hangar.previewColor = Color.blue;
-            hangar.prefab = null; // Будем создавать через RoomBuilder
-            availableRooms.Add(hangar);
+            // Средний модуль 6x6
+            RoomData mediumModule = new RoomData();
+            mediumModule.roomName = "Средний модуль";
+            mediumModule.roomType = "Module";
+            mediumModule.size = new Vector2Int(6, 6);
+            mediumModule.cost = 80;
+            mediumModule.previewColor = Color.blue;
+            mediumModule.prefab = null;
+            availableRooms.Add(mediumModule);
 
-            // Жилой модуль 6x10
-            RoomData livingRoom = new RoomData();
-            livingRoom.roomName = "Жилой модуль";
-            livingRoom.roomType = "Living";
-            livingRoom.size = new Vector2Int(6, 10);
-            livingRoom.cost = 120;
-            livingRoom.previewColor = Color.green;
-            livingRoom.prefab = null; // Будем создавать через RoomBuilder
-            availableRooms.Add(livingRoom);
+            // Большой модуль 8x8
+            RoomData largeModule = new RoomData();
+            largeModule.roomName = "Большой модуль";
+            largeModule.roomType = "Module";
+            largeModule.size = new Vector2Int(8, 8);
+            largeModule.cost = 120;
+            largeModule.previewColor = Color.green;
+            largeModule.prefab = null;
+            availableRooms.Add(largeModule);
+        }
+
+        // Создаем список доступных главных объектов
+        if (availableMainObjects.Count == 0)
+        {
+            // Система жизнеобеспечения
+            MainObjectData lifeSupport = new MainObjectData(
+                "Система жизнеобеспечения",
+                MainObjectType.LifeSupport,
+                200f,
+                100
+            );
+            availableMainObjects.Add(lifeSupport);
+
+            // Рука-манипулятор
+            MainObjectData manipulatorArm = new MainObjectData(
+                "Рука-манипулятор",
+                MainObjectType.ManipulatorArm,
+                150f,
+                80
+            );
+            availableMainObjects.Add(manipulatorArm);
+
+            // Реакторная установка
+            MainObjectData reactor = new MainObjectData(
+                "Реакторная установка",
+                MainObjectType.ReactorInstallation,
+                300f,
+                200
+            );
+            availableMainObjects.Add(reactor);
+
+            FileLogger.Log($"[ShipBuildingSystem] Created {availableMainObjects.Count} main object types");
         }
     }
 
@@ -808,12 +844,6 @@ public class ShipBuildingSystem : MonoBehaviour
     /// </summary>
     void HandleCommonBuildingInput()
     {
-        // ESC - выйти из режима строительства
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            SetBuildMode(false);
-        }
-
         // Q и E - поворот комнаты (только в фазе размещения комнаты)
         if (currentPhase == BuildingPhase.PlacingRoom)
         {
@@ -1818,8 +1848,8 @@ public class ShipBuildingSystem : MonoBehaviour
             TryDeleteRoom();
         }
 
-        // ПКМ или ESC - выйти из режима удаления (только если мышь НЕ над UI для ПКМ)
-        if ((Input.GetMouseButtonDown(1) && !isPointerOverUI) || Input.GetKeyDown(KeyCode.Escape))
+        // ПКМ - выйти из режима удаления (только если мышь НЕ над UI)
+        if (Input.GetMouseButtonDown(1) && !isPointerOverUI)
         {
             ToggleDeletionMode();
         }
