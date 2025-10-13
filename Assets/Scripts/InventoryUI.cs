@@ -85,12 +85,6 @@ public class InventoryUI : MonoBehaviour
 
     void Update()
     {
-        // Переключение инвентаря по клавише
-        if (Input.GetKeyDown(toggleKey))
-        {
-            ToggleInventory();
-        }
-
         // Обработка клика мыши для снятия выделения слота
         if (Input.GetMouseButtonDown(0))
         {
@@ -254,49 +248,6 @@ public class InventoryUI : MonoBehaviour
 
         // Инициализируем систему tooltips
         TooltipSystem.Instance.gameObject.transform.SetParent(transform, false);
-
-        CreateToggleButton();
-    }
-
-
-    /// <summary>
-    /// Создание кнопки переключения инвентаря
-    /// </summary>
-    void CreateToggleButton()
-    {
-        GameObject buttonGO = new GameObject("InventoryToggleButton");
-        buttonGO.transform.SetParent(mainCanvas.transform, false);
-
-        RectTransform buttonRect = buttonGO.AddComponent<RectTransform>();
-        buttonRect.anchorMin = new Vector2(1, 1);
-        buttonRect.anchorMax = new Vector2(1, 1);
-        buttonRect.pivot = new Vector2(1, 1);
-        buttonRect.anchoredPosition = new Vector2(-10, -10);
-        buttonRect.sizeDelta = new Vector2(60, 30);
-
-        Image buttonBg = buttonGO.AddComponent<Image>();
-        buttonBg.color = new Color(0.2f, 0.5f, 0.8f, 0.8f);
-
-        inventoryToggleButton = buttonGO.AddComponent<Button>();
-        inventoryToggleButton.image = buttonBg;
-        inventoryToggleButton.onClick.AddListener(ToggleInventory);
-
-        // Текст кнопки
-        GameObject textGO = new GameObject("Text");
-        textGO.transform.SetParent(buttonGO.transform, false);
-
-        RectTransform textRect = textGO.AddComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-
-        Text buttonText = textGO.AddComponent<Text>();
-        buttonText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        buttonText.fontSize = 10;
-        buttonText.color = Color.white;
-        buttonText.text = "I";
-        buttonText.alignment = TextAnchor.MiddleCenter;
     }
 
     /// <summary>

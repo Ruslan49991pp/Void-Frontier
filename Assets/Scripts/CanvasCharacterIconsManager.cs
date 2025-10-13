@@ -19,6 +19,7 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         public Image avatarImage;
         public TextMeshProUGUI nameLabel;
         public Button button;
+        public Button inventoryButton;
         public float lastClickTime;
     }
 
@@ -133,6 +134,27 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         Character capturedCharacter = character;
         iconData.button.onClick.AddListener(() => OnIconClicked(capturedCharacter));
 
+        // Находим и привязываем кнопку инвентаря
+        Transform inventoryButtonTransform = iconGO.transform.Find("InventoryButton");
+        if (inventoryButtonTransform != null)
+        {
+            iconData.inventoryButton = inventoryButtonTransform.GetComponent<Button>();
+            if (iconData.inventoryButton != null)
+            {
+                // Добавляем обработчик для открытия инвентаря конкретного персонажа
+                iconData.inventoryButton.onClick.AddListener(() => OnInventoryButtonClicked(capturedCharacter));
+                Debug.Log($"[CanvasCharacterIconsManager] Inventory button attached for {character.GetFullName()}");
+            }
+            else
+            {
+                Debug.LogWarning($"[CanvasCharacterIconsManager] InventoryButton found but has no Button component for {character.GetFullName()}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[CanvasCharacterIconsManager] InventoryButton not found in portrait for {character.GetFullName()}");
+        }
+
         characterIcons[character] = iconData;
     }
 
@@ -170,6 +192,42 @@ public class CanvasCharacterIconsManager : MonoBehaviour
                 cameraController.CenterOnTarget();
             }
         }
+    }
+
+    /// <summary>
+    /// Обработчик клика по кнопке инвентаря конкретного персонажа
+    /// </summary>
+    void OnInventoryButtonClicked(Character character)
+    {
+        if (character == null)
+        {
+            Debug.LogWarning("[CanvasCharacterIconsManager] OnInventoryButtonClicked: character is null");
+            return;
+        }
+
+        Debug.Log($"[CanvasCharacterIconsManager] Inventory button clicked for {character.GetFullName()}");
+
+        // Находим InventoryUI в сцене
+        InventoryUI inventoryUI = FindObjectOfType<InventoryUI>();
+        if (inventoryUI == null)
+        {
+            Debug.LogError("[CanvasCharacterIconsManager] InventoryUI not found in scene");
+            return;
+        }
+
+        // Получаем инвентарь персонажа
+        Inventory inventory = character.GetInventory();
+        if (inventory == null)
+        {
+            Debug.LogWarning($"[CanvasCharacterIconsManager] Character {character.GetFullName()} has no inventory");
+            return;
+        }
+
+        // Открываем инвентарь персонажа
+        inventoryUI.SetCurrentInventory(inventory, character);
+        inventoryUI.ShowInventory();
+
+        Debug.Log($"[CanvasCharacterIconsManager] Opened inventory for {character.GetFullName()}");
     }
 
     void OnSelectionChanged(List<GameObject> selectedObjects)
