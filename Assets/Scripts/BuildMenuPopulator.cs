@@ -1,238 +1,103 @@
-using System.Collections.Generic;
 using UnityEngine;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 /// <summary>
-/// Заполняет BuildMenuPanel слотами строительства из ShipBuildingSystem
+/// Размещает 2 префаба в BuildMenuPanel: BuildSlot и Del_BuildSlot
 /// </summary>
 public class BuildMenuPopulator : MonoBehaviour
 {
-    [Header("References")]
-    [Tooltip("Префаб слота строительства")]
+    [Header("Prefabs")]
+    [Tooltip("Префаб BuildSlot")]
     public GameObject buildSlotPrefab;
 
-    [Tooltip("Content контейнер для слотов")]
-    public RectTransform contentContainer;
-
-    private ShipBuildingSystem buildingSystem;
-    private List<GameObject> createdSlots = new List<GameObject>();
-
-    private bool isInitialized = false;
-
-    void Awake()
-    {
-        Debug.Log($"[BuildMenuPopulator] Awake called on {gameObject.name}");
-    }
+    [Tooltip("Префаб Del_BuildSlot")]
+    public GameObject delBuildSlotPrefab;
 
     void Start()
     {
         Debug.Log($"[BuildMenuPopulator] Start called on {gameObject.name}");
-        Initialize();
-    }
 
-    void OnEnable()
-    {
-        Debug.Log($"[BuildMenuPopulator] OnEnable called on {gameObject.name}");
-
-        // Если уже инициализированы, просто обновляем слоты
-        if (isInitialized && buildingSystem != null && contentContainer != null && buildSlotPrefab != null)
+        // Находим Content контейнер
+        Transform contentTransform = transform.Find("ObjectsGrid/Viewport/Content");
+        if (contentTransform == null)
         {
-            PopulateSlots();
-        }
-    }
-
-    void Initialize()
-    {
-        if (isInitialized)
-        {
-            Debug.Log("[BuildMenuPopulator] Already initialized, skipping");
+            Debug.LogError("[BuildMenuPopulator] Content not found at ObjectsGrid/Viewport/Content!");
             return;
         }
 
-        Debug.Log("[BuildMenuPopulator] Initializing...");
-
-        // Находим ShipBuildingSystem в сцене
-        buildingSystem = FindObjectOfType<ShipBuildingSystem>();
-        if (buildingSystem == null)
-        {
-            Debug.LogError("[BuildMenuPopulator] ShipBuildingSystem not found in scene! Please create a GameObject with ShipBuildingSystem component manually.");
-            return;
-        }
-
-        Debug.Log("[BuildMenuPopulator] ShipBuildingSystem found in scene");
-
-        // Находим Content контейнер если не назначен
-        if (contentContainer == null)
-        {
-            contentContainer = FindContentContainer();
-        }
-
-        if (contentContainer == null)
-        {
-            Debug.LogError("[BuildMenuPopulator] Content container not found!");
-            return;
-        }
-
-        // Проверяем префаб
+        // Автоматически загружаем префабы если не назначены
+        #if UNITY_EDITOR
         if (buildSlotPrefab == null)
         {
-            Debug.LogError("[BuildMenuPopulator] BuildSlot prefab not assigned!");
+            Debug.Log("[BuildMenuPopulator] BuildSlot prefab not assigned, searching...");
+            buildSlotPrefab = LoadPrefabByName("BuildSlot", "Assets/Prefabs/UI/");
+            if (buildSlotPrefab != null)
+            {
+                Debug.Log($"[BuildMenuPopulator] Found and loaded BuildSlot prefab");
+            }
+        }
+
+        if (delBuildSlotPrefab == null)
+        {
+            Debug.Log("[BuildMenuPopulator] Del_BuildSlot prefab not assigned, searching...");
+            delBuildSlotPrefab = LoadPrefabByName("Del_BuildSlot", "Assets/Prefabs/UI/Buildings/");
+            if (delBuildSlotPrefab != null)
+            {
+                Debug.Log($"[BuildMenuPopulator] Found and loaded Del_BuildSlot prefab");
+            }
+        }
+        #endif
+
+        // Проверяем префабы
+        if (buildSlotPrefab == null)
+        {
+            Debug.LogError("[BuildMenuPopulator] BuildSlot prefab not assigned and could not be found!");
             return;
         }
 
-        isInitialized = true;
+        if (delBuildSlotPrefab == null)
+        {
+            Debug.LogError("[BuildMenuPopulator] Del_BuildSlot prefab not assigned and could not be found!");
+            return;
+        }
 
-        // Заполняем слотами
-        PopulateSlots();
+        // Просто создаем 2 префаба в Content
+        GameObject buildSlot = Instantiate(buildSlotPrefab, contentTransform);
+        buildSlot.name = "BuildSlot";
+        Debug.Log($"[BuildMenuPopulator] Created BuildSlot");
+
+        GameObject delBuildSlot = Instantiate(delBuildSlotPrefab, contentTransform);
+        delBuildSlot.name = "Del_BuildSlot";
+        Debug.Log($"[BuildMenuPopulator] Created Del_BuildSlot");
 
         Debug.Log("[BuildMenuPopulator] Initialized successfully!");
     }
 
+    #if UNITY_EDITOR
     /// <summary>
-    /// Найти Content контейнер
+    /// Загружает префаб по имени из указанной директории
     /// </summary>
-    RectTransform FindContentContainer()
+    GameObject LoadPrefabByName(string prefabName, string searchPath)
     {
-        // Ищем BuildMenuPanel
-        GameObject buildMenuPanel = GameObject.Find("BuildMenuPanel");
-        if (buildMenuPanel == null)
-        {
-            Debug.LogError("[BuildMenuPopulator] BuildMenuPanel not found!");
-            return null;
-        }
+        string[] guids = AssetDatabase.FindAssets($"{prefabName} t:Prefab", new[] { searchPath });
 
-        // Ищем Content внутри BuildMenuPanel
-        Transform contentTransform = buildMenuPanel.transform.Find("ObjectsGrid/Viewport/Content");
-        if (contentTransform == null)
+        foreach (string guid in guids)
         {
-            // Пробуем альтернативные пути
-            contentTransform = buildMenuPanel.transform.Find("Scroll View/Viewport/Content");
-            if (contentTransform == null)
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+            if (prefab != null && prefab.name == prefabName)
             {
-                contentTransform = buildMenuPanel.transform.Find("Content");
-                if (contentTransform == null)
-                {
-                    contentTransform = FindChildRecursive(buildMenuPanel.transform, "Content");
-                }
+                Debug.Log($"[BuildMenuPopulator] Loaded prefab from: {path}");
+                return prefab;
             }
         }
 
-        if (contentTransform != null)
-        {
-            Debug.Log($"[BuildMenuPopulator] Found Content at: {GetFullPath(contentTransform)}");
-            return contentTransform.GetComponent<RectTransform>();
-        }
-
-        Debug.LogError("[BuildMenuPopulator] Content not found in BuildMenuPanel!");
+        Debug.LogWarning($"[BuildMenuPopulator] Prefab '{prefabName}' not found in '{searchPath}'");
         return null;
     }
-
-    /// <summary>
-    /// Рекурсивный поиск дочернего объекта по имени
-    /// </summary>
-    Transform FindChildRecursive(Transform parent, string name)
-    {
-        foreach (Transform child in parent)
-        {
-            if (child.name == name)
-                return child;
-
-            Transform found = FindChildRecursive(child, name);
-            if (found != null)
-                return found;
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// Получить полный путь трансформа
-    /// </summary>
-    string GetFullPath(Transform transform)
-    {
-        string path = transform.name;
-        Transform current = transform.parent;
-        while (current != null)
-        {
-            path = current.name + "/" + path;
-            current = current.parent;
-        }
-        return path;
-    }
-
-    /// <summary>
-    /// Заполнить Content слотами
-    /// </summary>
-    void PopulateSlots()
-    {
-        // Очищаем старые слоты если есть
-        ClearSlots();
-
-        // Получаем список доступных комнат
-        List<RoomData> availableRooms = buildingSystem.GetAvailableRooms();
-
-        if (availableRooms == null || availableRooms.Count == 0)
-        {
-            Debug.LogWarning("[BuildMenuPopulator] No available rooms found in ShipBuildingSystem! Make sure availableRooms list is populated.");
-            return;
-        }
-
-        Debug.Log($"[BuildMenuPopulator] Found {availableRooms.Count} available rooms");
-
-        // Создаем слот для каждой комнаты
-        for (int i = 0; i < availableRooms.Count; i++)
-        {
-            RoomData roomData = availableRooms[i];
-            if (roomData != null)
-            {
-                CreateSlot(i, roomData);
-            }
-            else
-            {
-                Debug.LogWarning($"[BuildMenuPopulator] Room at index {i} is null, skipping");
-            }
-        }
-
-        Debug.Log($"[BuildMenuPopulator] Created {createdSlots.Count} build slots");
-    }
-
-    /// <summary>
-    /// Создать один слот
-    /// </summary>
-    void CreateSlot(int index, RoomData roomData)
-    {
-        GameObject slotObj = Instantiate(buildSlotPrefab, contentContainer);
-        slotObj.name = $"BuildSlot_{roomData.roomName}";
-
-        BuildSlotUI slotUI = slotObj.GetComponent<BuildSlotUI>();
-        if (slotUI != null)
-        {
-            slotUI.SetData(index, roomData);
-        }
-        else
-        {
-            Debug.LogWarning($"[BuildMenuPopulator] BuildSlotUI component not found on slot {slotObj.name}");
-        }
-
-        createdSlots.Add(slotObj);
-        Debug.Log($"[BuildMenuPopulator] Created slot: {roomData.roomName} (index: {index})");
-    }
-
-    /// <summary>
-    /// Очистить все слоты
-    /// </summary>
-    void ClearSlots()
-    {
-        foreach (GameObject slot in createdSlots)
-        {
-            if (slot != null)
-            {
-                Destroy(slot);
-            }
-        }
-        createdSlots.Clear();
-    }
-
-    void OnDestroy()
-    {
-        ClearSlots();
-    }
+    #endif
 }

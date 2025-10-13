@@ -1878,6 +1878,26 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
+    /// Удалить комнату по позиции на сетке
+    /// </summary>
+    public bool DeleteRoom(Vector2Int position)
+    {
+        // Ищем комнату в указанной позиции
+        foreach (GameObject room in builtRooms)
+        {
+            RoomInfo roomInfo = room.GetComponent<RoomInfo>();
+            if (roomInfo != null && roomInfo.gridPosition == position)
+            {
+                DeleteRoom(room);
+                return true;
+            }
+        }
+
+        Debug.LogWarning($"[ShipBuildingSystem] No room found at position {position}");
+        return false;
+    }
+
+    /// <summary>
     /// Удалить комнату
     /// </summary>
     public void DeleteRoom(GameObject room)

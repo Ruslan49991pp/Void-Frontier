@@ -103,7 +103,8 @@
       "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_inventory_drag_fix.log\")",
       "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_drag_canvas_fix.log\")",
       "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_dragdrop_duplication_fix.log\")",
-      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_inventory_button_update.log\")"
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_inventory_button_update.log\")",
+      "Bash(del \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\Editor\\CreateDelBuildSlotPrefab.cs\")"
     ],
     "deny": [],
     "ask": []
