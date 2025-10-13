@@ -44,7 +44,6 @@ public class ItemIconManager : MonoBehaviour
         if (itemDatabase != null)
         {
             ItemFactory.Initialize(itemDatabase);
-            Debug.Log("ItemIconManager: ItemFactory инициализирована в Awake");
         }
         else
         {
@@ -67,46 +66,23 @@ public class ItemIconManager : MonoBehaviour
     {
         if (itemDatabase == null)
         {
-            Debug.LogWarning("ItemDatabase не назначена!");
             return;
         }
 
-        Debug.Log("=== Начало применения иконок ===");
-
         // Находим все Inventory компоненты в сцене
         Inventory[] inventories = FindObjectsOfType<Inventory>();
-        Debug.Log($"Найдено инвентарей в сцене: {inventories.Length}");
-
-        int updatedCount = 0;
-        int totalItems = 0;
-        int skippedCount = 0;
 
         foreach (Inventory inventory in inventories)
         {
-            Debug.Log($"Обрабатываем инвентарь: {inventory.gameObject.name}");
-
             // Обрабатываем все слоты инвентаря
             var allSlots = inventory.GetAllSlots();
             if (allSlots != null)
             {
-                Debug.Log($"  Слотов в инвентаре: {allSlots.Count}");
                 foreach (InventorySlot slot in allSlots)
                 {
                     if (slot != null && !slot.IsEmpty() && slot.itemData != null)
                     {
-                        totalItems++;
-                        Debug.Log($"  Предмет: '{slot.itemData.itemName}' (Тип: {slot.itemData.itemType})");
-
-                        if (ApplyIconToItem(slot.itemData))
-                        {
-                            updatedCount++;
-                            Debug.Log($"    ✓ Иконка применена");
-                        }
-                        else
-                        {
-                            skippedCount++;
-                            Debug.Log($"    ✗ Иконка НЕ применена (не найдена в базе)");
-                        }
+                        ApplyIconToItem(slot.itemData);
                     }
                 }
             }
@@ -115,34 +91,16 @@ public class ItemIconManager : MonoBehaviour
             var equipmentSlots = inventory.GetAllEquipmentSlots();
             if (equipmentSlots != null)
             {
-                Debug.Log($"  Слотов экипировки: {equipmentSlots.Count}");
                 foreach (var kvp in equipmentSlots)
                 {
                     InventorySlot slot = kvp.Value;
                     if (slot != null && !slot.IsEmpty() && slot.itemData != null)
                     {
-                        totalItems++;
-                        Debug.Log($"  Экипировано: '{slot.itemData.itemName}' (Тип: {slot.itemData.itemType}, Слот: {kvp.Key})");
-
-                        if (ApplyIconToItem(slot.itemData))
-                        {
-                            updatedCount++;
-                            Debug.Log($"    ✓ Иконка применена");
-                        }
-                        else
-                        {
-                            skippedCount++;
-                            Debug.Log($"    ✗ Иконка НЕ применена (не найдена в базе)");
-                        }
+                        ApplyIconToItem(slot.itemData);
                     }
                 }
             }
         }
-
-        Debug.Log("=== Результат ===");
-        Debug.Log($"Всего предметов: {totalItems}");
-        Debug.Log($"Иконки применены: {updatedCount}");
-        Debug.Log($"Пропущено (не найдено): {skippedCount}");
     }
 
     /// <summary>

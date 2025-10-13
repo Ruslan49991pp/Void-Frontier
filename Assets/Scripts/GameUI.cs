@@ -48,24 +48,26 @@ public class GameUI : MonoBehaviour
     
     void Awake()
     {
-        InitializeUI();
-        FindSelectionManager();
+        // ПОЛНОСТЬЮ ОТКЛЮЧЕНО: Не используем динамический UI
+        // InitializeUI();
+        // FindSelectionManager();
     }
-    
+
     void Start()
     {
-        if (selectionManager != null)
-        {
-            selectionManager.OnSelectionChanged += OnSelectionChanged;
-        }
-        else
-        {
-            FileLogger.Log("[GameUI] WARNING: SelectionManager is null! Cannot subscribe to OnSelectionChanged");
-        }
+        // ПОЛНОСТЬЮ ОТКЛЮЧЕНО: Не используем динамический UI
+        // if (selectionManager != null)
+        // {
+        //     selectionManager.OnSelectionChanged += OnSelectionChanged;
+        // }
+        // else
+        // {
+        //     FileLogger.Log("[GameUI] WARNING: SelectionManager is null! Cannot subscribe to OnSelectionChanged");
+        // }
 
-        InitializeBuildingSystem();
-        InitializeMainObjectSystem();
-        SyncBuildingDataWithShipBuildingSystem();
+        // InitializeBuildingSystem();
+        // InitializeMainObjectSystem();
+        // SyncBuildingDataWithShipBuildingSystem();
     }
 
     /// <summary>
@@ -85,8 +87,9 @@ public class GameUI : MonoBehaviour
 
     void Update()
     {
-        // Обновляем HP бар в реальном времени для выделенного врага
-        UpdateSelectedEnemyHealthBar();
+        // ОТКЛЮЧЕНО: Старая система отображения HP врагов
+        // Теперь используется SelectionInfoDisplay на SelectionInfoPanel
+        // UpdateSelectedEnemyHealthBar();
     }
     
     /// <summary>
@@ -339,11 +342,11 @@ public class GameUI : MonoBehaviour
         // Создаем кнопку разрушения комнаты в области информации
         CreateDestroyRoomButton(infoAreaGO);
 
-        // Создаем HP бар для врагов
-        CreateEnemyHealthBar(infoAreaGO);
+        // ВРЕМЕННО ОТКЛЮЧЕНО: Создаем HP бар для врагов (используется SelectionInfoPanel)
+        // CreateEnemyHealthBar(infoAreaGO);
 
-        // Создаем отдельный текст для информации о врагах
-        CreateEnemyInfoText(infoAreaGO);
+        // ВРЕМЕННО ОТКЛЮЧЕНО: Создаем отдельный текст для информации о врагах (используется SelectionInfoPanel)
+        // CreateEnemyInfoText(infoAreaGO);
     }
     
     /// <summary>
@@ -365,8 +368,11 @@ public class GameUI : MonoBehaviour
         Image actionBg = actionAreaGO.AddComponent<Image>();
         actionBg.color = new Color(0.05f, 0.05f, 0.1f, 0.5f);
 
-        // Создаем область для выбора комнат строительства
-        CreateBuildingSelectionArea(actionAreaGO);
+        // ВРЕМЕННО СКРЫТО: Создаем область для выбора комнат строительства
+        // CreateBuildingSelectionArea(actionAreaGO);
+
+        // Временно скрываем всю панель действий
+        actionAreaGO.SetActive(false);
     }
 
     /// <summary>
@@ -1078,8 +1084,8 @@ public class GameUI : MonoBehaviour
             {
                 destroyRoomButton.gameObject.SetActive(false);
             }
-            // Скрываем HP бар
-            UpdateEnemyHealthBar(null);
+            // ОТКЛЮЧЕНО: Скрытие HP бара старой системой
+            // UpdateEnemyHealthBar(null);
             return;
         }
 
@@ -1119,8 +1125,8 @@ public class GameUI : MonoBehaviour
             {
                 destroyRoomButton.gameObject.SetActive(true);
             }
-            // Скрываем HP бар для комнат
-            UpdateEnemyHealthBar(null);
+            // ОТКЛЮЧЕНО: Скрытие HP бара для комнат
+            // UpdateEnemyHealthBar(null);
         }
         else
         {
@@ -1172,9 +1178,9 @@ public class GameUI : MonoBehaviour
 
 
 
-                        // Обновляем HP бар для врага
-
-                        UpdateEnemyHealthBar(character);
+                        // ОТКЛЮЧЕНО: Обновление HP бара старой системой
+                        // Теперь используется SelectionInfoDisplay
+                        // UpdateEnemyHealthBar(character);
 
                         // Скрываем кнопку разрушения для персонажей
                         if (destroyRoomButton != null)
@@ -1194,8 +1200,8 @@ public class GameUI : MonoBehaviour
                             enemyInfoText.gameObject.SetActive(false);
                         }
 
-                        // Скрываем HP бар для союзников
-                        UpdateEnemyHealthBar(null);
+                        // ОТКЛЮЧЕНО: Скрытие HP бара для союзников
+                        // UpdateEnemyHealthBar(null);
                     }
                 }
                 else
@@ -1238,8 +1244,8 @@ public class GameUI : MonoBehaviour
                             enemyInfoText.gameObject.SetActive(false);
                         }
 
-                        // Скрываем HP бар для предметов
-                        UpdateEnemyHealthBar(null);
+                        // ОТКЛЮЧЕНО: Скрытие HP бара для предметов
+                        // UpdateEnemyHealthBar(null);
                     }
                     else
                     {
@@ -1273,8 +1279,8 @@ public class GameUI : MonoBehaviour
                                 enemyInfoText.gameObject.SetActive(false);
                             }
 
-                            // Скрываем HP бар для обычных объектов
-                            UpdateEnemyHealthBar(null);
+                            // ОТКЛЮЧЕНО: Скрытие HP бара для обычных объектов
+                            // UpdateEnemyHealthBar(null);
                         }
                         else
                         {
@@ -1286,8 +1292,8 @@ public class GameUI : MonoBehaviour
                                 enemyInfoText.gameObject.SetActive(false);
                             }
 
-                            // Скрываем HP бар для обычных объектов
-                            UpdateEnemyHealthBar(null);
+                            // ОТКЛЮЧЕНО: Скрытие HP бара для обычных объектов
+                            // UpdateEnemyHealthBar(null);
                         }
                     }
                 }
@@ -1363,8 +1369,8 @@ public class GameUI : MonoBehaviour
             {
                 destroyRoomButton.gameObject.SetActive(false);
             }
-            // Скрываем HP бар для множественного выделения
-            UpdateEnemyHealthBar(null);
+            // ОТКЛЮЧЕНО: Скрытие HP бара для множественного выделения
+            // UpdateEnemyHealthBar(null);
         }
     }
 

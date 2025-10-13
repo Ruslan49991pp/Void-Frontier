@@ -13,7 +13,6 @@ public static class ItemFactory
     public static void Initialize(ItemDatabase database)
     {
         itemDatabase = database;
-        Debug.Log($"ItemFactory инициализирована. База содержит {(database != null ? database.items.Count : 0)} предметов");
     }
 
     /// <summary>
@@ -54,11 +53,6 @@ public static class ItemFactory
         if (icon != null)
         {
             item.icon = icon;
-            Debug.Log($"ItemFactory: Применена иконка '{icon.name}' для предмета '{item.itemName}'");
-        }
-        else
-        {
-            Debug.LogWarning($"ItemFactory: Иконка не найдена для предмета '{item.itemName}' (Тип: {item.itemType})");
         }
     }
 

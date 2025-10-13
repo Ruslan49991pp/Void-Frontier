@@ -504,6 +504,7 @@ public class Inventory : MonoBehaviour
 
     /// <summary>
     /// Экипировать предмет
+    /// ВАЖНО: Этот метод НЕ удаляет предмет из инвентаря - это должно делать вызывающий код!
     /// </summary>
     public bool EquipItem(ItemData item)
     {
@@ -514,26 +515,15 @@ public class Inventory : MonoBehaviour
         if (!equipmentSlots.ContainsKey(slot))
             return false;
 
-        // Проверяем, есть ли предмет в инвентаре
-        if (!HasItem(item, 1))
-        {
-            return false;
-        }
-
-        // Если слот занят, снимаем предыдущий предмет
+        // Если слот уже занят, снимаем предыдущий предмет и возвращаем его в инвентарь
         if (!equipmentSlots[slot].IsEmpty())
         {
-            // Если не удалось снять предмет (нет места в инвентаре), не экипируем новый
+            // Снимаем текущий предмет (это автоматически добавит его в инвентарь)
             if (!UnequipItem(slot))
             {
+                // Не хватает места в инвентаре для замены
                 return false;
             }
-        }
-
-        // Удаляем предмет из обычного инвентаря
-        if (!RemoveItem(item, 1))
-        {
-            return false;
         }
 
         // Экипируем новый предмет

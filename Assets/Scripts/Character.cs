@@ -82,6 +82,9 @@ public class Character : MonoBehaviour
     private CharacterAI characterAI;
     private Inventory characterInventory;
     
+    // Статическое событие для уведомления о создании персонажа игрока
+    public static event System.Action<Character> OnPlayerCharacterSpawned;
+
     void Awake()
     {
         // Находим renderer если не назначен
@@ -98,18 +101,18 @@ public class Character : MonoBehaviour
 
         // Находим главную камеру
         mainCamera = Camera.main;
-        
+
         // Добавляем LocationObjectInfo для интеграции с системой выделения
         var objectInfo = GetComponent<LocationObjectInfo>();
         if (objectInfo == null)
         {
             objectInfo = gameObject.AddComponent<LocationObjectInfo>();
         }
-        
+
         // ВСЕГДА генерируем новые данные персонажа для каждого экземпляра
         // Это предотвращает дублирование данных из префаба
         GenerateRandomCharacter();
-        
+
         // Настраиваем LocationObjectInfo
         objectInfo.objectType = "Character";
         objectInfo.objectName = GetFullName();
@@ -138,6 +141,16 @@ public class Character : MonoBehaviour
 
         // Ждем следующий кадр для правильной инициализации инвентаря
         StartCoroutine(DelayedInventorySetup());
+    }
+
+    void Start()
+    {
+        // Уведомляем систему иконок о создании персонажа игрока
+        if (IsPlayerCharacter() && OnPlayerCharacterSpawned != null)
+        {
+            Debug.Log($"[Character] Player character spawned: {GetFullName()}");
+            OnPlayerCharacterSpawned.Invoke(this);
+        }
     }
 
     void Update()
@@ -371,6 +384,15 @@ public class Character : MonoBehaviour
 
         // Делаем персонажа доступным для обыска
         MakeSearchable();
+
+        // ВАЖНО: Делаем коллайдер триггером чтобы пули проходили сквозь тело
+        // Bullet.cs использует QueryTriggerInteraction.Ignore, поэтому триггеры игнорируются
+        // SelectionManager использует QueryTriggerInteraction.Collide, поэтому труп можно кликать
+        Collider characterCollider = GetComponent<Collider>();
+        if (characterCollider != null)
+        {
+            characterCollider.isTrigger = true;
+        }
     }
 
     /// <summary>
@@ -552,7 +574,15 @@ public class Character : MonoBehaviour
     /// </summary>
     public void SetFaction(Faction faction)
     {
+        Faction oldFaction = characterData.faction;
         characterData.faction = faction;
+
+        // Если персонаж перешел в фракцию игрока, уведомляем систему иконок
+        if (oldFaction != Faction.Player && faction == Faction.Player && OnPlayerCharacterSpawned != null)
+        {
+            Debug.Log($"[Character] Character {GetFullName()} joined player faction");
+            OnPlayerCharacterSpawned.Invoke(this);
+        }
     }
 
     /// <summary>

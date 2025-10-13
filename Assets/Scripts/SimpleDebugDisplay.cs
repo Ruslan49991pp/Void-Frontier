@@ -77,7 +77,7 @@ public class SimpleDebugDisplay : MonoBehaviour
         MovementController movementController = FindObjectOfType<MovementController>();
         info.AppendLine($"MovementController: {(movementController != null ? "✓" : "✗")}");
 
-        SimpleCharacterIconsUI iconsUI = FindObjectOfType<SimpleCharacterIconsUI>();
+        CanvasCharacterIconsManager iconsUI = FindObjectOfType<CanvasCharacterIconsManager>();
         info.AppendLine($"CharacterIconsUI: {(iconsUI != null ? "✓" : "✗")}");
 
         GridManager gridManager = FindObjectOfType<GridManager>();

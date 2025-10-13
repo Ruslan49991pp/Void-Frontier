@@ -116,7 +116,7 @@ public class DebugInstructions : MonoBehaviour
         }
 
         // Character Icons
-        SimpleCharacterIconsUI iconsUI = FindObjectOfType<SimpleCharacterIconsUI>();
+        CanvasCharacterIconsManager iconsUI = FindObjectOfType<CanvasCharacterIconsManager>();
         if (iconsUI != null)
         {
         }

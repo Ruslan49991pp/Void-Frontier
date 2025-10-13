@@ -116,7 +116,9 @@ public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         currentSlot = slot;
 
-        if (slot == null || slot.IsEmpty())
+        bool isEmpty = slot == null || slot.IsEmpty();
+
+        if (isEmpty)
         {
             // Пустой слот
             SetEmptySlot();
@@ -140,6 +142,7 @@ public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         {
             itemIcon.sprite = null;
             itemIcon.color = Color.clear;
+            itemIcon.enabled = false; // Отключаем пустую иконку
         }
 
         if (quantityText != null)
@@ -160,12 +163,20 @@ public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             {
                 itemIcon.sprite = slot.itemData.icon;
                 itemIcon.color = Color.white;
+                itemIcon.enabled = true; // Явно включаем
             }
             else
             {
                 // Создаем простую иконку на основе типа предмета
                 itemIcon.sprite = CreateSimpleIcon(slot.itemData);
                 itemIcon.color = slot.itemData.GetRarityColor();
+                itemIcon.enabled = true; // Явно включаем
+            }
+
+            // Проверяем GameObject активен
+            if (!itemIcon.gameObject.activeSelf)
+            {
+                itemIcon.gameObject.SetActive(true);
             }
         }
 
@@ -336,6 +347,17 @@ public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     }
 
     /// <summary>
+    /// Установить Canvas для drag операций (если не был установлен автоматически)
+    /// </summary>
+    public void SetDragCanvas(Canvas canvas)
+    {
+        if (canvas != null)
+        {
+            dragCanvas = canvas;
+        }
+    }
+
+    /// <summary>
     /// Получить уникальный идентификатор слота для drag and drop
     /// Для обычных слотов: slotIndex (0-19)
     /// Для слотов экипировки: 1000 + equipmentSlot (1001-1006)
@@ -440,27 +462,64 @@ public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (dragCanvas == null || currentSlot == null || currentSlot.IsEmpty())
             return;
 
-        // Создаем объект для иконки
+        // Создаем контейнер для иконки
         dragIcon = new GameObject("DragIcon");
         dragIcon.transform.SetParent(dragCanvas.transform, false);
+        RectTransform dragRect = dragIcon.AddComponent<RectTransform>();
+        dragRect.sizeDelta = new Vector2(70, 70); // Увеличенный размер для лучшей видимости
 
-        // Добавляем Image компонент
-        Image dragImage = dragIcon.AddComponent<Image>();
+        // Добавляем фон (полупрозрачный квадрат)
+        GameObject backgroundGO = new GameObject("Background");
+        backgroundGO.transform.SetParent(dragIcon.transform, false);
+        RectTransform bgRect = backgroundGO.AddComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+
+        Image bgImage = backgroundGO.AddComponent<Image>();
+        bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.9f); // Темный полупрозрачный фон
+
+        // Добавляем рамку для выделения
+        GameObject borderGO = new GameObject("Border");
+        borderGO.transform.SetParent(dragIcon.transform, false);
+        RectTransform borderRect = borderGO.AddComponent<RectTransform>();
+        borderRect.anchorMin = Vector2.zero;
+        borderRect.anchorMax = Vector2.one;
+        borderRect.offsetMin = new Vector2(2, 2);
+        borderRect.offsetMax = new Vector2(-2, -2);
+
+        UnityEngine.UI.Outline outline = borderGO.AddComponent<UnityEngine.UI.Outline>();
+        outline.effectColor = new Color(1f, 1f, 1f, 0.8f);
+        outline.effectDistance = new Vector2(2, -2);
+
+        // Добавляем иконку предмета
+        GameObject iconGO = new GameObject("Icon");
+        iconGO.transform.SetParent(dragIcon.transform, false);
+        RectTransform iconRect = iconGO.AddComponent<RectTransform>();
+        iconRect.anchorMin = Vector2.zero;
+        iconRect.anchorMax = Vector2.one;
+        iconRect.offsetMin = new Vector2(5, 5);
+        iconRect.offsetMax = new Vector2(-5, -5);
+
+        Image dragImage = iconGO.AddComponent<Image>();
+        dragImage.preserveAspect = true;
 
         // Копируем иконку из текущего слота
         if (itemIcon != null && itemIcon.sprite != null)
         {
             dragImage.sprite = itemIcon.sprite;
-            dragImage.color = itemIcon.color;
+            dragImage.color = Color.white; // Яркая иконка
         }
 
-        // Настраиваем размер и позицию
-        RectTransform dragRect = dragIcon.GetComponent<RectTransform>();
-        dragRect.sizeDelta = new Vector2(60, 60);
+        // Добавляем Shadow для глубины
+        UnityEngine.UI.Shadow shadow = iconGO.AddComponent<UnityEngine.UI.Shadow>();
+        shadow.effectColor = new Color(0, 0, 0, 0.8f);
+        shadow.effectDistance = new Vector2(3, -3);
 
-        // Делаем иконку полупрозрачной
+        // Настраиваем прозрачность всего контейнера
         CanvasGroup dragCanvasGroup = dragIcon.AddComponent<CanvasGroup>();
-        dragCanvasGroup.alpha = 0.8f;
+        dragCanvasGroup.alpha = 0.95f; // Почти непрозрачная для лучшей видимости
         dragCanvasGroup.blocksRaycasts = false;
 
         // Перемещаем на передний план

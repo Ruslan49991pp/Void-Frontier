@@ -11,6 +11,7 @@ public class GameInitializer : MonoBehaviour
     public bool autoInitializeEnemyTargeting = true;
     public bool autoInitializeInventory = true;
     public bool autoInitializePauseSystem = true;
+    public bool autoInitializeSelectionInfoDisplay = true;
 
     void Awake()
     {
@@ -32,10 +33,11 @@ public class GameInitializer : MonoBehaviour
             EnsureResolutionManager();
         }
 
-        if (autoInitializeUI)
-        {
-            EnsureGameUI();
-        }
+        // ОТКЛЮЧЕНО: Не используем динамически генерируемый UI
+        // if (autoInitializeUI)
+        // {
+        //     EnsureGameUI();
+        // }
 
         if (autoInitializeEventSystem)
         {
@@ -44,7 +46,7 @@ public class GameInitializer : MonoBehaviour
 
         if (autoInitializeCharacterIcons)
         {
-            EnsureSimpleCharacterIconsUI();
+            EnsureCanvasCharacterIconsManager();
         }
 
         if (autoInitializeEnemyTargeting)
@@ -58,21 +60,27 @@ public class GameInitializer : MonoBehaviour
             EnsureInventoryManager();
         }
 
-        // Создаем простой дебаг дисплей
-        GameObject simpleDebugGO = new GameObject("SimpleDebugDisplay");
-        simpleDebugGO.AddComponent<SimpleDebugDisplay>();
+        if (autoInitializeSelectionInfoDisplay)
+        {
+            EnsureSelectionInfoDisplay();
+        }
 
-        // Создаем дебаг монитор
-        GameObject debugMonitorGO = new GameObject("DebugSystemMonitor");
-        debugMonitorGO.AddComponent<DebugSystemMonitor>();
+        // ОТКЛЮЧЕНО: Весь динамический UI не используется
+        // // Создаем простой дебаг дисплей
+        // GameObject simpleDebugGO = new GameObject("SimpleDebugDisplay");
+        // simpleDebugGO.AddComponent<SimpleDebugDisplay>();
 
-        // Создаем инструкции по отладке
-        GameObject debugInstructionsGO = new GameObject("DebugInstructions");
-        debugInstructionsGO.AddComponent<DebugInstructions>();
+        // // Создаем дебаг монитор
+        // GameObject debugMonitorGO = new GameObject("DebugSystemMonitor");
+        // debugMonitorGO.AddComponent<DebugSystemMonitor>();
 
-        // Удаляем кнопки Center
-        GameObject removerGO = new GameObject("RemoveCenterButtons");
-        removerGO.AddComponent<RemoveCenterButtons>();
+        // // Создаем инструкции по отладке
+        // GameObject debugInstructionsGO = new GameObject("DebugInstructions");
+        // debugInstructionsGO.AddComponent<DebugInstructions>();
+
+        // // Удаляем кнопки Center
+        // GameObject removerGO = new GameObject("RemoveCenterButtons");
+        // removerGO.AddComponent<RemoveCenterButtons>();
 
         // Добавляем тестовый спавнер персонажей
         GameObject spawnerGO = new GameObject("CharacterSpawnerTest");
@@ -82,16 +90,21 @@ public class GameInitializer : MonoBehaviour
         GameObject enemySpawnerGO = new GameObject("EnemySpawnerTest");
         enemySpawnerGO.AddComponent<EnemySpawnerTest>();
 
-        // Добавляем систему обновления персонажей
-        GameObject refreshGO = new GameObject("CharacterRefreshTest");
-        refreshGO.AddComponent<CharacterRefreshTest>();
+        // // Добавляем систему обновления персонажей
+        // GameObject refreshGO = new GameObject("CharacterRefreshTest");
+        // refreshGO.AddComponent<CharacterRefreshTest>();
 
-        // Добавляем отладчик структуры SKM_Character
-        GameObject debuggerGO = new GameObject("SKMCharacterDebugger");
-        debuggerGO.AddComponent<SKMCharacterDebugger>();
+        // // Добавляем отладчик структуры SKM_Character
+        // GameObject debuggerGO = new GameObject("SKMCharacterDebugger");
+        // debuggerGO.AddComponent<SKMCharacterDebugger>();
 
-        // Добавляем UI для тестирования HP
-        EnsureHPTestUI();
+        // ОТКЛЮЧЕНО: Не используем динамический UI
+        // // Добавляем UI для тестирования HP
+        // EnsureHPTestUI();
+
+        // // ВРЕМЕННО: Скрываем панель строительства
+        // GameObject hideActionAreaGO = new GameObject("HideActionArea");
+        // hideActionAreaGO.AddComponent<HideActionArea>();
     }
 
     /// <summary>
@@ -168,15 +181,24 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что SimpleCharacterIconsUI существует в сцене
+    /// Убедиться что CanvasCharacterIconsManager существует в сцене
     /// </summary>
-    void EnsureSimpleCharacterIconsUI()
+    void EnsureCanvasCharacterIconsManager()
     {
-        SimpleCharacterIconsUI characterIconsUI = FindObjectOfType<SimpleCharacterIconsUI>();
-        if (characterIconsUI == null)
+        CanvasCharacterIconsManager iconManager = FindObjectOfType<CanvasCharacterIconsManager>();
+        if (iconManager == null)
         {
-            GameObject characterIconsUIGO = new GameObject("SimpleCharacterIconsUI");
-            characterIconsUI = characterIconsUIGO.AddComponent<SimpleCharacterIconsUI>();
+            GameObject iconManagerGO = new GameObject("CanvasCharacterIconsManager");
+            iconManager = iconManagerGO.AddComponent<CanvasCharacterIconsManager>();
+
+            // Загружаем префаб CharacterPortrait
+            GameObject prefab = Resources.Load<GameObject>("Prefabs/UI/CharacterPortrait");
+            if (prefab == null)
+            {
+                // Пробуем без папки Resources
+                prefab = UnityEngine.Object.FindObjectOfType<GameObject>();
+            }
+            iconManager.characterPortraitPrefab = prefab;
         }
     }
 
@@ -229,6 +251,100 @@ public class GameInitializer : MonoBehaviour
         {
             GameObject inventoryManagerGO = new GameObject("InventoryManager");
             inventoryManager = inventoryManagerGO.AddComponent<InventoryManager>();
+        }
+    }
+
+    /// <summary>
+    /// Убедиться что SelectionInfoDisplay существует в сцене и правильно настроен
+    /// </summary>
+    void EnsureSelectionInfoDisplay()
+    {
+        FileLogger.Log("[GameInitializer] Ensuring SelectionInfoDisplay exists");
+
+        // Ищем SelectionInfoDisplay в сцене
+        SelectionInfoDisplay selectionInfoDisplay = FindObjectOfType<SelectionInfoDisplay>();
+
+        if (selectionInfoDisplay == null)
+        {
+            FileLogger.Log("[GameInitializer] SelectionInfoDisplay not found in scene, looking for SelectionInfoPanel");
+
+            // Ищем SelectionInfoPanel на Canvas_MainUI
+            GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>(true);
+            GameObject selectionInfoPanel = null;
+
+            foreach (GameObject obj in allObjects)
+            {
+                if (obj.name == "SelectionInfoPanel")
+                {
+                    selectionInfoPanel = obj;
+                    FileLogger.Log($"[GameInitializer] Found SelectionInfoPanel: {obj.name}");
+                    break;
+                }
+            }
+
+            if (selectionInfoPanel != null)
+            {
+                FileLogger.Log($"[GameInitializer] SelectionInfoPanel active state: {selectionInfoPanel.activeSelf}");
+
+                // Добавляем компонент SelectionInfoDisplay если его нет
+                selectionInfoDisplay = selectionInfoPanel.GetComponent<SelectionInfoDisplay>();
+                if (selectionInfoDisplay == null)
+                {
+                    // Активируем панель перед добавлением компонента чтобы вызвался Awake()
+                    bool wasActive = selectionInfoPanel.activeSelf;
+                    if (!wasActive)
+                    {
+                        selectionInfoPanel.SetActive(true);
+                        FileLogger.Log("[GameInitializer] Activated SelectionInfoPanel to add component");
+                    }
+
+                    selectionInfoDisplay = selectionInfoPanel.AddComponent<SelectionInfoDisplay>();
+                    FileLogger.Log("[GameInitializer] Added SelectionInfoDisplay component to SelectionInfoPanel");
+
+                    // Деактивируем панель обратно если была неактивной
+                    if (!wasActive)
+                    {
+                        selectionInfoPanel.SetActive(false);
+                        FileLogger.Log("[GameInitializer] Deactivated SelectionInfoPanel after adding component");
+                    }
+                }
+                else
+                {
+                    FileLogger.Log("[GameInitializer] SelectionInfoDisplay component already exists on SelectionInfoPanel");
+
+                    // Активируем панель на момент инициализации чтобы вызвался Awake() и Start()
+                    if (!selectionInfoPanel.activeSelf)
+                    {
+                        selectionInfoPanel.SetActive(true);
+                        FileLogger.Log("[GameInitializer] Temporarily activated SelectionInfoPanel to initialize component");
+
+                        // Деактивируем панель обратно после небольшой задержки
+                        // Используем корутину на GameInitializer (активном объекте)
+                        StartCoroutine(DeactivatePanelAfterDelay(selectionInfoPanel, 0.1f));
+                    }
+                }
+            }
+            else
+            {
+                FileLogger.LogError("[GameInitializer] SelectionInfoPanel not found in scene!");
+            }
+        }
+        else
+        {
+            FileLogger.Log("[GameInitializer] SelectionInfoDisplay found in scene");
+        }
+    }
+
+    /// <summary>
+    /// Корутина для деактивации панели после задержки
+    /// </summary>
+    System.Collections.IEnumerator DeactivatePanelAfterDelay(GameObject panel, float delay)
+    {
+        yield return new UnityEngine.WaitForSeconds(delay);
+        if (panel != null)
+        {
+            panel.SetActive(false);
+            FileLogger.Log("[GameInitializer] Deactivated SelectionInfoPanel after initialization");
         }
     }
 }

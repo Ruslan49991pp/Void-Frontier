@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 /// <summary>
 /// UI для отображения и управления инвентарем
@@ -16,9 +17,9 @@ public class InventoryUI : MonoBehaviour
     public RectTransform slotsContainer;
     public Text inventoryStatsText;
     public Text characterNameText;
+    public TMP_Text characterNameTextTMP; // TextMeshPro версия
 
     [Header("Equipment Display")]
-    public RectTransform equipmentContainer;
     public Dictionary<EquipmentSlot, InventorySlotUI> equipmentSlotUIs;
 
     [Header("Settings")]
@@ -27,6 +28,10 @@ public class InventoryUI : MonoBehaviour
     public int slotsPerRow = 5;
     public Vector2 slotSize = new Vector2(60, 60);
     public Vector2 slotSpacing = new Vector2(5, 5);
+    public int defaultInventorySlots = 24; // Количество слотов по умолчанию
+
+    [Header("Prefabs")]
+    public GameObject itemSlotPrefab; // Префаб ItemSlot
 
     // Внутренние переменные
     private bool isInventoryVisible = false;
@@ -34,7 +39,7 @@ public class InventoryUI : MonoBehaviour
     private List<InventorySlotUI> slotUIElements = new List<InventorySlotUI>();
     private SelectionManager selectionManager;
     private InventorySlotUI selectedSlotUI;
-    private GameObject humanImageContainer;
+    private RectTransform contentPanel; // Content панель для спавна слотов
 
     // Статическое свойство для проверки открытого инвентаря
     public static bool IsAnyInventoryOpen { get; private set; } = false;
@@ -162,436 +167,97 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     void InitializeUI()
     {
-        // Создаем главный Canvas если его нет
-        if (mainCanvas == null)
+        // Ищем существующий Canvas_MainUI и Inventory внутри него
+        GameObject mainUICanvas = GameObject.Find("Canvas_MainUI");
+        if (mainUICanvas != null)
         {
-            GameObject canvasGO = new GameObject("InventoryUI_Canvas");
-            mainCanvas = canvasGO.AddComponent<Canvas>();
-            mainCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            mainCanvas.sortingOrder = 200; // Поверх игрового UI
+            mainCanvas = mainUICanvas.GetComponent<Canvas>();
 
-            canvasGO.AddComponent<CanvasScaler>();
-            canvasGO.AddComponent<GraphicRaycaster>();
-
-            // Скрываем Canvas сразу при создании
-            if (!showInventoryOnStart)
+            // Ищем существующий Inventory объект по полному пути
+            Transform windowsTransform = mainUICanvas.transform.Find("Windows");
+            if (windowsTransform != null)
             {
-                canvasGO.SetActive(false);
+                Transform inventoryTransform = windowsTransform.Find("Inventory");
+                if (inventoryTransform != null)
+                {
+                    inventoryPanel = inventoryTransform.GetComponent<RectTransform>();
+
+                    // Ищем Content панель для спавна ItemSlot
+                    Transform itemsAreaTransform = inventoryTransform.Find("ItemsArea");
+                    if (itemsAreaTransform != null)
+                    {
+                        Transform viewportTransform = itemsAreaTransform.Find("Viewport");
+                        if (viewportTransform != null)
+                        {
+                            Transform contentTransform = viewportTransform.Find("Content");
+                            if (contentTransform != null)
+                            {
+                                contentPanel = contentTransform.GetComponent<RectTransform>();
+                            }
+                        }
+                    }
+
+                    // Ищем Character name Text и CloseButton внутри Inventory
+                    Transform headerTransform = inventoryTransform.Find("Header ");
+                    if (headerTransform != null)
+                    {
+                        // Находим Character name
+                        Transform characterNameTransform = headerTransform.Find("Character name");
+                        if (characterNameTransform != null)
+                        {
+                            // Пробуем найти TextMeshPro компонент (приоритет)
+                            characterNameTextTMP = characterNameTransform.GetComponent<TMP_Text>();
+                            if (characterNameTextTMP == null)
+                            {
+                                // Если нет TMP, пробуем обычный Text
+                                characterNameText = characterNameTransform.GetComponent<Text>();
+                            }
+                        }
+
+                        // Находим и привязываем CloseButton
+                        Transform closeButtonTransform = headerTransform.Find("CloseButton");
+                        if (closeButtonTransform != null)
+                        {
+                            Button closeButton = closeButtonTransform.GetComponent<Button>();
+                            if (closeButton != null)
+                            {
+                                // Очищаем существующие обработчики (если есть) и добавляем наш
+                                closeButton.onClick.RemoveAllListeners();
+                                closeButton.onClick.AddListener(HideInventory);
+                            }
+                        }
+                    }
+
+                    // Ищем и инициализируем EquipmentPanel
+                    InitializeEquipmentPanel(inventoryTransform);
+
+                    // Скрываем панель по умолчанию
+                    if (!showInventoryOnStart)
+                    {
+                        inventoryPanel.gameObject.SetActive(false);
+                    }
+                }
+                else
+                {
+                    Debug.LogError("InventoryUI: Inventory object not found in Canvas_MainUI/Windows!");
+                }
             }
+            else
+            {
+                Debug.LogError("InventoryUI: Windows object not found in Canvas_MainUI!");
+            }
+        }
+        else
+        {
+            Debug.LogError("InventoryUI: Canvas_MainUI not found in scene!");
         }
 
         // Инициализируем систему tooltips
         TooltipSystem.Instance.gameObject.transform.SetParent(transform, false);
 
-        CreateInventoryPanel();
         CreateToggleButton();
     }
 
-    /// <summary>
-    /// Создание панели инвентаря
-    /// </summary>
-    void CreateInventoryPanel()
-    {
-
-        GameObject panelGO = new GameObject("InventoryPanel");
-        panelGO.transform.SetParent(mainCanvas.transform, false);
-
-        inventoryPanel = panelGO.AddComponent<RectTransform>();
-        inventoryPanel.anchorMin = new Vector2(0.1f, 0.1f);  // Увеличиваем размер панели
-        inventoryPanel.anchorMax = new Vector2(0.9f, 0.9f);
-        inventoryPanel.offsetMin = Vector2.zero;
-        inventoryPanel.offsetMax = Vector2.zero;
-
-
-
-        // Фон панели (полупрозрачный темный)
-        Image panelBg = panelGO.AddComponent<Image>();
-        panelBg.color = new Color(0.1f, 0.1f, 0.15f, 0.95f);
-
-        // Создаем изображение человека (будет перенесено на задний план)
-        CreateHumanImageContainer(panelGO);
-
-        // Добавляем CanvasGroup для блокировки рейкастов
-        CanvasGroup canvasGroup = panelGO.AddComponent<CanvasGroup>();
-        canvasGroup.blocksRaycasts = true;
-        canvasGroup.interactable = true;
-
-        // Заголовок
-        CreateInventoryHeader(panelGO);
-
-        // Контейнер для слотов инвентаря (слева)
-        CreateSlotsContainer(panelGO);
-
-        // Контейнер для экипировки (справа, поверх изображения человека)
-        CreateEquipmentContainer(panelGO);
-
-        // Перемещаем изображение человека на задний план после создания всех слотов
-        MoveHumanImageToBackground();
-
-        // ВРЕМЕННО ОТКЛЮЧАЕМ панель информации о предмете
-        // CreateItemInfoPanel(panelGO);
-
-        // Статистика инвентаря
-        CreateInventoryStats(panelGO);
-
-        // Кнопка закрытия
-        CreateCloseButton(panelGO);
-
-        // Скрываем панель по умолчанию
-        panelGO.SetActive(false);
-    }
-
-    /// <summary>
-    /// Создание заголовка инвентаря
-    /// </summary>
-    void CreateInventoryHeader(GameObject parent)
-    {
-        GameObject headerGO = new GameObject("Header");
-        headerGO.transform.SetParent(parent.transform, false);
-
-        RectTransform headerRect = headerGO.AddComponent<RectTransform>();
-        headerRect.anchorMin = new Vector2(0, 0.9f);
-        headerRect.anchorMax = new Vector2(1, 1);
-        headerRect.offsetMin = Vector2.zero;
-        headerRect.offsetMax = Vector2.zero;
-
-        Text headerText = headerGO.AddComponent<Text>();
-        headerText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        headerText.fontSize = 18;
-        headerText.color = Color.white;
-        headerText.text = "ИНВЕНТАРЬ";
-        headerText.alignment = TextAnchor.MiddleCenter;
-
-        // Создаем текст с именем персонажа
-        GameObject characterNameGO = new GameObject("CharacterName");
-        characterNameGO.transform.SetParent(parent.transform, false);
-
-        RectTransform characterNameRect = characterNameGO.AddComponent<RectTransform>();
-        characterNameRect.anchorMin = new Vector2(0, 0.85f);
-        characterNameRect.anchorMax = new Vector2(1, 0.9f);
-        characterNameRect.offsetMin = Vector2.zero;
-        characterNameRect.offsetMax = Vector2.zero;
-
-        characterNameText = characterNameGO.AddComponent<Text>();
-        characterNameText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        characterNameText.fontSize = 14;
-        characterNameText.color = new Color(0.8f, 0.8f, 1f, 1f); // Светло-голубой цвет
-        characterNameText.text = "Персонаж";
-        characterNameText.alignment = TextAnchor.MiddleCenter;
-    }
-
-    /// <summary>
-    /// Создание контейнера с изображением человека (справа)
-    /// </summary>
-    void CreateHumanImageContainer(GameObject parent)
-    {
-
-        humanImageContainer = new GameObject("HumanImageContainer");
-        humanImageContainer.transform.SetParent(parent.transform, false);
-
-        RectTransform humanContainer = humanImageContainer.AddComponent<RectTransform>();
-        humanContainer.anchorMin = new Vector2(0.6f, 0.15f);  // Справа
-        humanContainer.anchorMax = new Vector2(0.95f, 0.85f);
-        humanContainer.offsetMin = Vector2.zero;
-        humanContainer.offsetMax = Vector2.zero;
-
-
-
-        // Загружаем изображение человека
-
-        Sprite humanSprite = Resources.Load<Sprite>("I_man");
-
-        // Пробуем альтернативные пути
-        if (humanSprite == null)
-        {
-
-            humanSprite = Resources.Load<Sprite>("Resources/I_man");
-        }
-
-        if (humanSprite != null)
-        {
-
-            Image humanImage = humanImageContainer.AddComponent<Image>();
-            humanImage.sprite = humanSprite;
-            humanImage.type = Image.Type.Simple;
-            humanImage.preserveAspect = true;
-            humanImage.color = new Color(1f, 1f, 1f, 0.8f);
-            humanImage.raycastTarget = false; // Отключаем рейкасты для изображения человека
-
-        }
-        else
-        {
-
-
-            // Проверяем что есть в ресурсах
-            Sprite[] allSprites = Resources.LoadAll<Sprite>("");
-
-            for (int i = 0; i < allSprites.Length; i++)
-            {
-
-            }
-        }
-    }
-
-    /// <summary>
-    /// Переместить изображение человека на задний план
-    /// </summary>
-    void MoveHumanImageToBackground()
-    {
-        if (humanImageContainer != null)
-        {
-            // Перемещаем на первую позицию в иерархии (задний план)
-            humanImageContainer.transform.SetAsFirstSibling();
-
-        }
-    }
-
-    /// <summary>
-    /// Создание контейнера для экипировки (поверх изображения человека)
-    /// </summary>
-    void CreateEquipmentContainer(GameObject parent)
-    {
-
-        GameObject containerGO = new GameObject("EquipmentContainer");
-        containerGO.transform.SetParent(parent.transform, false);
-
-        equipmentContainer = containerGO.AddComponent<RectTransform>();
-        equipmentContainer.anchorMin = new Vector2(0.6f, 0.15f);  // Справа, поверх изображения человека
-        equipmentContainer.anchorMax = new Vector2(0.95f, 0.85f);
-        equipmentContainer.offsetMin = Vector2.zero;
-        equipmentContainer.offsetMax = Vector2.zero;
-
-
-
-        // Создаем слоты экипировки в позициях частей тела человека
-        CreateEquipmentSlot(containerGO, EquipmentSlot.LeftHand, new Vector2(0.15f, 0.55f)); // Левая рука
-        CreateEquipmentSlot(containerGO, EquipmentSlot.RightHand, new Vector2(0.85f, 0.55f)); // Правая рука
-        CreateEquipmentSlot(containerGO, EquipmentSlot.Head, new Vector2(0.5f, 0.9f)); // Голова
-        CreateEquipmentSlot(containerGO, EquipmentSlot.Chest, new Vector2(0.5f, 0.7f)); // Грудь
-        CreateEquipmentSlot(containerGO, EquipmentSlot.Legs, new Vector2(0.5f, 0.45f)); // Ноги
-        CreateEquipmentSlot(containerGO, EquipmentSlot.Feet, new Vector2(0.5f, 0.15f)); // Ступни
-
-
-
-        // Перемещаем контейнер экипировки на передний план для видимости
-        if (containerGO != null)
-        {
-            containerGO.transform.SetAsLastSibling();
-            containerGO.SetActive(true); // Принудительно активируем
-
-            // Проверяем все компоненты Image в контейнере
-            Image containerImage = containerGO.GetComponent<Image>();
-            if (containerImage != null)
-            {
-                containerImage.enabled = true;
-
-            }
-
-
-        }
-
-        // Принудительно обновляем layout и проверяем видимость слотов
-        Canvas.ForceUpdateCanvases();
-
-        // Проверяем, что все слоты активны и видимы
-        foreach (var kvp in equipmentSlotUIs)
-        {
-            InventorySlotUI slotUI = kvp.Value;
-            if (slotUI != null)
-            {
-                // Также принудительно перемещаем каждый слот на передний план
-                slotUI.transform.SetAsLastSibling();
-            }
-        }
-    }
-
-    /// <summary>
-    /// Создание слота экипировки
-    /// </summary>
-    void CreateEquipmentSlot(GameObject parent, EquipmentSlot slot, Vector2 normalizedPosition)
-    {
-
-
-        GameObject slotGO = Instantiate(slotPrefab, parent.transform);
-        slotGO.SetActive(true);
-        slotGO.name = $"EquipmentSlot_{slot}";
-
-        RectTransform slotRect = slotGO.GetComponent<RectTransform>();
-
-        // Сначала устанавливаем pivot для корректной привязки
-        slotRect.pivot = new Vector2(0.5f, 0.5f);
-
-        // Устанавливаем якорные точки
-        slotRect.anchorMin = normalizedPosition;
-        slotRect.anchorMax = normalizedPosition;
-
-        // Обнуляем позицию и устанавливаем размер
-        slotRect.anchoredPosition = Vector2.zero;
-        slotRect.sizeDelta = new Vector2(60, 60);
-
-        // Принудительно обновляем layout
-        Canvas.ForceUpdateCanvases();
-
-
-
-
-
-        InventorySlotUI slotUI = slotGO.GetComponent<InventorySlotUI>();
-        if (slotUI != null)
-        {
-            slotUI.SetEquipmentSlot(slot);
-            slotUI.SetSlotIndex((int)slot); // Используем индекс слота экипировки
-            slotUI.OnSlotClicked += OnEquipmentSlotClicked;
-            slotUI.OnSlotRightClicked += OnEquipmentSlotRightClicked;
-            slotUI.OnSlotDoubleClicked += OnEquipmentSlotDoubleClicked; // Добавляем обработчик двойного клика
-            slotUI.OnSlotDragAndDrop += OnSlotDragAndDrop; // Используем общий обработчик
-            equipmentSlotUIs[slot] = slotUI;
-
-
-            // Делаем слоты экипировки максимально видимыми
-            Image slotImage = slotUI.backgroundImage;
-            if (slotImage != null)
-            {
-                slotImage.color = new Color(0.8f, 0.8f, 0.9f, 1.0f); // Очень яркий цвет
-                slotImage.raycastTarget = true;
-                slotImage.enabled = true; // Явно включаем компонент
-
-            }
-
-            // Проверяем основной Image компонент слота
-            Image mainImage = slotUI.GetComponent<Image>();
-            if (mainImage != null)
-            {
-                mainImage.color = new Color(0.7f, 0.7f, 0.8f, 1.0f); // Яркий фон
-                mainImage.raycastTarget = true;
-                mainImage.enabled = true;
-
-            }
-
-            // Принудительно включаем все Image компоненты в слоте
-            Image[] allImages = slotUI.GetComponentsInChildren<Image>();
-            foreach (Image img in allImages)
-            {
-                img.enabled = true;
-                img.color = new Color(img.color.r, img.color.g, img.color.b, 1.0f); // Убираем прозрачность
-
-            }
-
-        }
-        else
-        {
-
-        }
-    }
-
-    /// <summary>
-    /// Создание контейнера для слотов инвентаря
-    /// </summary>
-    void CreateSlotsContainer(GameObject parent)
-    {
-
-        GameObject containerGO = new GameObject("SlotsContainer");
-        containerGO.transform.SetParent(parent.transform, false);
-
-        slotsContainer = containerGO.AddComponent<RectTransform>();
-        slotsContainer.anchorMin = new Vector2(0.05f, 0.15f);  // Слева, занимает большую часть экрана
-        slotsContainer.anchorMax = new Vector2(0.55f, 0.85f);  // До изображения человека
-        slotsContainer.offsetMin = Vector2.zero;
-        slotsContainer.offsetMax = Vector2.zero;
-
-
-
-        // Фон контейнера
-        Image containerBg = containerGO.AddComponent<Image>();
-        containerBg.color = new Color(0.05f, 0.05f, 0.1f, 0.8f);
-
-        // Сетка для слотов
-        GridLayoutGroup gridLayout = containerGO.AddComponent<GridLayoutGroup>();
-        gridLayout.cellSize = new Vector2(60, 60); // Увеличиваем размер ячеек
-        gridLayout.spacing = new Vector2(5, 5); // Больше отступы для лучшего вида
-        gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        gridLayout.constraintCount = 5; // 5 колонок для классического размещения 5x4
-        gridLayout.childAlignment = TextAnchor.UpperLeft;
-        gridLayout.padding = new RectOffset(5, 5, 5, 5);
-
-
-    }
-
-
-    /// <summary>
-    /// Создание статистики инвентаря
-    /// </summary>
-    void CreateInventoryStats(GameObject parent)
-    {
-        GameObject statsGO = new GameObject("InventoryStats");
-        statsGO.transform.SetParent(parent.transform, false);
-
-        RectTransform statsRect = statsGO.AddComponent<RectTransform>();
-        statsRect.anchorMin = new Vector2(0.05f, 0.05f);
-        statsRect.anchorMax = new Vector2(0.95f, 0.25f);
-        statsRect.offsetMin = Vector2.zero;
-        statsRect.offsetMax = Vector2.zero;
-
-        // Фон статистики
-        Image statsBg = statsGO.AddComponent<Image>();
-        statsBg.color = new Color(0.05f, 0.1f, 0.05f, 0.8f);
-
-        // Текст статистики
-        GameObject textGO = new GameObject("StatsText");
-        textGO.transform.SetParent(statsGO.transform, false);
-
-        RectTransform textRect = textGO.AddComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = new Vector2(10, 10);
-        textRect.offsetMax = new Vector2(-10, -10);
-
-        inventoryStatsText = textGO.AddComponent<Text>();
-        inventoryStatsText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        inventoryStatsText.fontSize = 12;
-        inventoryStatsText.color = Color.white;
-        inventoryStatsText.text = "Статистика инвентаря";
-        inventoryStatsText.alignment = TextAnchor.UpperLeft;
-    }
-
-    /// <summary>
-    /// Создание кнопки закрытия
-    /// </summary>
-    void CreateCloseButton(GameObject parent)
-    {
-        GameObject buttonGO = new GameObject("CloseButton");
-        buttonGO.transform.SetParent(parent.transform, false);
-
-        RectTransform buttonRect = buttonGO.AddComponent<RectTransform>();
-        buttonRect.anchorMin = new Vector2(0.9f, 0.9f);
-        buttonRect.anchorMax = new Vector2(1, 1);
-        buttonRect.offsetMin = new Vector2(-30, -30);
-        buttonRect.offsetMax = Vector2.zero;
-
-        Image buttonBg = buttonGO.AddComponent<Image>();
-        buttonBg.color = new Color(0.8f, 0.2f, 0.2f, 1f);
-
-        Button closeButton = buttonGO.AddComponent<Button>();
-        closeButton.image = buttonBg;
-        closeButton.onClick.AddListener(HideInventory);
-
-        // Текст кнопки
-        GameObject textGO = new GameObject("Text");
-        textGO.transform.SetParent(buttonGO.transform, false);
-
-        RectTransform textRect = textGO.AddComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-
-        Text buttonText = textGO.AddComponent<Text>();
-        buttonText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        buttonText.fontSize = 14;
-        buttonText.color = Color.white;
-        buttonText.text = "×";
-        buttonText.alignment = TextAnchor.MiddleCenter;
-    }
 
     /// <summary>
     /// Создание кнопки переключения инвентаря
@@ -634,6 +300,145 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
+    /// Инициализация EquipmentPanel и привязка к существующим слотам
+    /// </summary>
+    void InitializeEquipmentPanel(Transform inventoryTransform)
+    {
+        // Ищем слоты экипировки в Canvas_MainUI (с родителями)
+        GameObject canvasMainUI = GameObject.Find("Canvas_MainUI");
+        if (canvasMainUI == null)
+        {
+            Debug.LogWarning("InventoryUI: Canvas_MainUI not found for equipment slots");
+            return;
+        }
+
+        Debug.Log("InventoryUI: Searching for equipment slots in Canvas_MainUI hierarchy...");
+
+        // Ищем слоты по их реальным именам и привязываем к соответствующему EquipmentSlot
+        BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Helmet", EquipmentSlot.Head);
+        BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Armor", EquipmentSlot.Chest);
+        BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Weapon", EquipmentSlot.RightHand);
+        BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Pants", EquipmentSlot.Legs);
+        BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Boots", EquipmentSlot.Feet);
+
+        Debug.Log($"InventoryUI: Bound {equipmentSlotUIs.Count} equipment slots from Canvas_MainUI");
+    }
+
+    /// <summary>
+    /// Привязать существующий слот экипировки к системе (рекурсивный поиск)
+    /// </summary>
+    void BindEquipmentSlotInHierarchy(Transform parent, string slotName, EquipmentSlot equipmentSlot)
+    {
+        // Рекурсивный поиск слота в иерархии
+        Transform slotTransform = FindTransformRecursive(parent, slotName);
+
+        if (slotTransform == null)
+        {
+            Debug.LogWarning($"InventoryUI: Equipment slot '{slotName}' not found in Canvas_MainUI hierarchy");
+            return;
+        }
+
+        GameObject slotGO = slotTransform.gameObject;
+        Debug.Log($"InventoryUI: Found equipment slot '{slotName}' at path: {GetGameObjectPath(slotGO)}");
+
+        // Получаем или добавляем InventorySlotUI компонент
+        InventorySlotUI slotUI = slotGO.GetComponent<InventorySlotUI>();
+        if (slotUI == null)
+        {
+            // Находим компоненты для инициализации InventorySlotUI
+            Image background = slotGO.GetComponent<Image>();
+            Debug.Log($"InventoryUI: Equipment slot '{slotName}' - Found background Image: {background != null}");
+
+            // Ищем Icon внутри слота
+            Transform iconTransform = slotTransform.Find("Icon");
+            Image iconImage = iconTransform != null ? iconTransform.GetComponent<Image>() : null;
+            Debug.Log($"InventoryUI: Equipment slot '{slotName}' - Found Icon transform: {iconTransform != null}, Icon Image: {iconImage != null}");
+
+            // Если Icon не найден, логируем все дочерние объекты
+            if (iconTransform == null)
+            {
+                Debug.LogWarning($"InventoryUI: Icon not found in '{slotName}', listing children:");
+                foreach (Transform child in slotTransform)
+                {
+                    Debug.Log($"  - Child: {child.name}");
+                }
+            }
+
+            // Для Text используем пустую ссылку (можно добавить QuantityText если нужно)
+            Text quantityText = null;
+
+            // Получаем или добавляем Button компонент
+            Button button = slotGO.GetComponent<Button>();
+            if (button == null)
+            {
+                button = slotGO.AddComponent<Button>();
+                button.transition = Selectable.Transition.None;
+            }
+
+            // Добавляем и инициализируем InventorySlotUI
+            slotUI = slotGO.AddComponent<InventorySlotUI>();
+            slotUI.Initialize(background, iconImage, quantityText, button);
+            Debug.Log($"InventoryUI: Initialized InventorySlotUI for '{slotName}' - itemIcon field is {(slotUI.itemIcon != null ? "set" : "NULL")}");
+        }
+        else
+        {
+            Debug.Log($"InventoryUI: InventorySlotUI already exists on '{slotName}' - itemIcon field is {(slotUI.itemIcon != null ? "set" : "NULL")}");
+        }
+
+        // Настраиваем слот для экипировки
+        slotUI.SetEquipmentSlot(equipmentSlot);
+        slotUI.SetSlotIndex((int)equipmentSlot);
+
+        // Подписываемся на события
+        slotUI.OnSlotClicked += OnEquipmentSlotClicked;
+        slotUI.OnSlotRightClicked += OnEquipmentSlotRightClicked;
+        slotUI.OnSlotDoubleClicked += OnEquipmentSlotDoubleClicked;
+        slotUI.OnSlotDragAndDrop += OnSlotDragAndDrop;
+
+        // Сохраняем в словарь
+        equipmentSlotUIs[equipmentSlot] = slotUI;
+
+        Debug.Log($"InventoryUI: Bound equipment slot '{slotName}' to {equipmentSlot}");
+    }
+
+    /// <summary>
+    /// Рекурсивный поиск Transform по имени
+    /// </summary>
+    Transform FindTransformRecursive(Transform parent, string name)
+    {
+        // Проверяем текущий объект
+        if (parent.name == name)
+            return parent;
+
+        // Проверяем всех детей
+        foreach (Transform child in parent)
+        {
+            Transform result = FindTransformRecursive(child, name);
+            if (result != null)
+                return result;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Получить полный путь GameObject в иерархии
+    /// </summary>
+    string GetGameObjectPath(GameObject obj)
+    {
+        string path = obj.name;
+        Transform current = obj.transform.parent;
+
+        while (current != null)
+        {
+            path = current.name + "/" + path;
+            current = current.parent;
+        }
+
+        return path;
+    }
+
+    /// <summary>
     /// Обработчик изменения выделения
     /// </summary>
     void OnSelectionChanged(List<GameObject> selectedObjects)
@@ -666,17 +471,14 @@ public class InventoryUI : MonoBehaviour
 
         currentInventory = inventory;
 
-        // Обновляем имя персонажа
-        if (characterNameText != null)
+        // Обновляем имя персонажа (используем TMP_Text если доступен, иначе обычный Text)
+        if (characterNameTextTMP != null)
         {
-            if (character != null)
-            {
-                characterNameText.text = character.GetFullName();
-            }
-            else
-            {
-                characterNameText.text = "Персонаж";
-            }
+            characterNameTextTMP.text = character != null ? character.GetFullName() : "Персонаж";
+        }
+        else if (characterNameText != null)
+        {
+            characterNameText.text = character != null ? character.GetFullName() : "Персонаж";
         }
 
         // Подписываемся на события нового инвентаря
@@ -698,21 +500,72 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     void CreateInventorySlots()
     {
-        if (currentInventory == null || slotsContainer == null) return;
+        // Используем Content панель если она найдена, иначе fallback на slotsContainer
+        RectTransform targetContainer = contentPanel != null ? contentPanel : slotsContainer;
+
+        if (targetContainer == null)
+        {
+            Debug.LogWarning("InventoryUI: No container found for inventory slots!");
+            return;
+        }
 
         // Удаляем существующие слоты
         ClearSlotUIElements();
 
-        // Создаем новые слоты
-        for (int i = 0; i < currentInventory.maxSlots; i++)
+        // Всегда создаем 24 слота в Content (независимо от maxSlots в Inventory)
+        int slotCount = defaultInventorySlots;
+
+        // Загружаем префаб ItemSlot если не назначен
+        GameObject prefabToUse = itemSlotPrefab;
+        if (prefabToUse == null)
         {
-            GameObject slotGO = Instantiate(slotPrefab, slotsContainer);
+            prefabToUse = Resources.Load<GameObject>("Prefabs/UI/ItemSlot");
+            if (prefabToUse == null)
+            {
+                // Fallback на программно созданный префаб
+                prefabToUse = slotPrefab;
+            }
+        }
+
+        if (prefabToUse == null)
+        {
+            Debug.LogError("InventoryUI: No slot prefab available!");
+            return;
+        }
+
+        // Создаем новые слоты
+        for (int i = 0; i < slotCount; i++)
+        {
+            GameObject slotGO = Instantiate(prefabToUse, targetContainer);
             slotGO.SetActive(true);
-            slotGO.name = $"Slot_{i}";
+            slotGO.name = $"ItemSlot_{i}";
 
             InventorySlotUI slotUI = slotGO.GetComponent<InventorySlotUI>();
             if (slotUI != null)
             {
+                // Проверяем, нужна ли инициализация (если префаб не был инициализирован)
+                if (slotUI.backgroundImage == null || slotUI.itemIcon == null)
+                {
+                    // Ищем компоненты для инициализации
+                    Image background = slotGO.GetComponent<Image>();
+                    Transform iconTransform = slotGO.transform.Find("Icon");
+                    if (iconTransform == null)
+                        iconTransform = slotGO.transform.Find("ItemIcon");
+
+                    Image iconImage = iconTransform != null ? iconTransform.GetComponent<Image>() : null;
+
+                    Transform quantityTransform = slotGO.transform.Find("QuantityText");
+                    Text quantityText = quantityTransform != null ? quantityTransform.GetComponent<Text>() : null;
+
+                    Button button = slotGO.GetComponent<Button>();
+
+                    // Инициализируем слот
+                    slotUI.Initialize(background, iconImage, quantityText, button);
+                }
+
+                // Устанавливаем Canvas для drag & drop операций
+                slotUI.SetDragCanvas(mainCanvas);
+
                 slotUI.SetSlotIndex(i);
                 slotUI.OnSlotClicked += OnSlotClicked;
                 slotUI.OnSlotRightClicked += OnSlotRightClicked;
@@ -813,14 +666,21 @@ public class InventoryUI : MonoBehaviour
         if (currentInventory == null) return;
 
         var equipmentSlots = currentInventory.GetAllEquipmentSlots();
+        Debug.Log($"InventoryUI: UpdateEquipmentDisplay called, found {equipmentSlots.Count} equipment slots in inventory");
+
         foreach (var kvp in equipmentSlotUIs)
         {
             EquipmentSlot slotType = kvp.Key;
             InventorySlotUI slotUI = kvp.Value;
 
+            Debug.Log($"InventoryUI: Checking equipment slot UI for {slotType}, itemIcon is {(slotUI.itemIcon != null ? "set" : "NULL")}");
+
             if (equipmentSlots.ContainsKey(slotType))
             {
                 InventorySlot slot = equipmentSlots[slotType];
+                bool isEmpty = slot == null || slot.IsEmpty();
+                Debug.Log($"InventoryUI: Equipment slot {slotType} - isEmpty: {isEmpty}, slot.itemData: {(slot != null && slot.itemData != null ? slot.itemData.itemName : "NULL")}");
+
                 slotUI.UpdateSlot(slot);
 
                 // Принудительно делаем слот видимым после обновления
@@ -951,6 +811,16 @@ public class InventoryUI : MonoBehaviour
                 // Для оружия проверяем доступные слоты рук
                 if (item.itemType == ItemType.Weapon)
                 {
+                    // ПРОВЕРКА: сначала проверяем ВСЕ слоты рук на наличие такого же предмета
+                    ItemData rightHandItem = currentInventory.GetEquippedItem(EquipmentSlot.RightHand);
+                    ItemData leftHandItem = currentInventory.GetEquippedItem(EquipmentSlot.LeftHand);
+
+                    if ((rightHandItem != null && rightHandItem.itemName == item.itemName) ||
+                        (leftHandItem != null && leftHandItem.itemName == item.itemName))
+                    {
+                        return;
+                    }
+
                     EquipmentSlot targetSlot = FindAvailableWeaponSlot();
                     if (targetSlot != EquipmentSlot.None)
                     {
@@ -960,7 +830,8 @@ public class InventoryUI : MonoBehaviour
 
                         if (currentInventory.EquipItem(item))
                         {
-                            currentInventory.RemoveItem(item, 1);
+                            // ВАЖНО: удаляем предмет из конкретного слота, а не первый найденный!
+                            currentInventory.RemoveItemFromSlot(slotIndex, 1);
 
                             // Обновляем визуалы заблокированных слотов
                             UpdateEquipmentSlotVisuals();
@@ -976,7 +847,7 @@ public class InventoryUI : MonoBehaviour
                     }
                     else
                     {
-
+                        // Оба слота рук заняты
                     }
                 }
                 else
@@ -988,9 +859,17 @@ public class InventoryUI : MonoBehaviour
                         return;
                     }
 
+                    // ПРОВЕРКА: не экипирован ли уже такой же предмет (по имени) в целевом слоте
+                    ItemData equippedItem = currentInventory.GetEquippedItem(item.equipmentSlot);
+                    if (equippedItem != null && equippedItem.itemName == item.itemName)
+                    {
+                        return;
+                    }
+
                     if (currentInventory.EquipItem(item))
                     {
-                        currentInventory.RemoveItem(item, 1);
+                        // ВАЖНО: удаляем предмет из конкретного слота, а не первый найденный!
+                        currentInventory.RemoveItemFromSlot(slotIndex, 1);
 
                         // Снимаем выделение с пустого слота
                         ClearSlotSelection();
@@ -1160,11 +1039,13 @@ public class InventoryUI : MonoBehaviour
     {
         EquipmentSlot equipSlot = (EquipmentSlot)equipSlotId;
 
+        Debug.Log($"[DragDrop] Inventory to Equipment: slot {fromSlot} -> {equipSlot}");
 
         InventorySlot fromInventorySlot = currentInventory.GetSlot(fromSlot);
         if (fromInventorySlot != null && !fromInventorySlot.IsEmpty())
         {
             ItemData item = fromInventorySlot.itemData;
+            Debug.Log($"[DragDrop] Item: {item.itemName}, type: {item.itemType}, equipSlot: {item.equipmentSlot}");
 
 
             // Проверяем совместимость
@@ -1189,8 +1070,32 @@ public class InventoryUI : MonoBehaviour
                 // Check if the slot is blocked (e.g., second hand when weapon is already equipped)
                 if (currentInventory.IsEquipmentSlotBlocked(equipSlot))
                 {
-
+                    Debug.Log($"[DragDrop] Target slot {equipSlot} is blocked, aborting");
                     return;
+                }
+
+                // ПРОВЕРКА: для оружия проверяем ВСЕ слоты рук, для остальных - целевой слот
+                if (item.itemType == ItemType.Weapon)
+                {
+                    ItemData rightHandItem = currentInventory.GetEquippedItem(EquipmentSlot.RightHand);
+                    ItemData leftHandItem = currentInventory.GetEquippedItem(EquipmentSlot.LeftHand);
+
+                    if ((rightHandItem != null && rightHandItem.itemName == item.itemName) ||
+                        (leftHandItem != null && leftHandItem.itemName == item.itemName))
+                    {
+                        Debug.Log($"[DragDrop] Same weapon already equipped, aborting");
+                        return;
+                    }
+                }
+                else
+                {
+                    // Для не-оружия проверяем только целевой слот
+                    ItemData equippedItem = currentInventory.GetEquippedItem(equipSlot);
+                    if (equippedItem != null && equippedItem.itemName == item.itemName)
+                    {
+                        Debug.Log($"[DragDrop] Same item already equipped in target slot, aborting");
+                        return;
+                    }
                 }
 
                 // Temporarily change the item's equipment slot to match the target
@@ -1203,31 +1108,33 @@ public class InventoryUI : MonoBehaviour
                 // Экипируем предмет
                 if (currentInventory.EquipItem(item))
                 {
-                    currentInventory.RemoveItem(item, 1);
-
+                    Debug.Log($"[DragDrop] Successfully equipped {item.itemName} to {equipSlot}");
+                    // ВАЖНО: удаляем предмет из конкретного слота, а не первый найденный!
+                    currentInventory.RemoveItemFromSlot(fromSlot, 1);
 
                     // Update UI to show blocked slots
                     UpdateEquipmentSlotVisuals();
                 }
                 else
                 {
+                    Debug.Log($"[DragDrop] Failed to equip {item.itemName}");
                     // Restore original slot if equipping failed
                     if (item.itemType == ItemType.Weapon)
                     {
                         item.equipmentSlot = originalSlot;
                     }
-
                 }
             }
             else
             {
+                Debug.Log($"[DragDrop] Item cannot be equipped to target slot {equipSlot}");
                 if (item.equipmentSlot == EquipmentSlot.None)
                 {
-
+                    Debug.Log($"[DragDrop] Item has no equipment slot");
                 }
                 else
                 {
-
+                    Debug.Log($"[DragDrop] Item slot {item.equipmentSlot} does not match target {equipSlot}");
                 }
             }
         }
@@ -1240,17 +1147,18 @@ public class InventoryUI : MonoBehaviour
     {
         EquipmentSlot equipSlot = (EquipmentSlot)equipSlotId;
 
+        Debug.Log($"[DragDrop] Equipment to Inventory: {equipSlot} -> slot {toSlot}");
 
         // UnequipItem автоматически добавляет предмет в инвентарь, поэтому дополнительно добавлять не нужно
         if (currentInventory.UnequipItem(equipSlot))
         {
-
+            Debug.Log($"[DragDrop] Successfully unequipped from {equipSlot}");
             // Update UI to show unblocked slots
             UpdateEquipmentSlotVisuals();
         }
         else
         {
-
+            Debug.Log($"[DragDrop] Failed to unequip from {equipSlot}");
         }
     }
 
@@ -1262,17 +1170,38 @@ public class InventoryUI : MonoBehaviour
         EquipmentSlot fromEquipSlot = (EquipmentSlot)fromEquipSlotId;
         EquipmentSlot toEquipSlot = (EquipmentSlot)toEquipSlotId;
 
+        Debug.Log($"[DragDrop] Equipment to Equipment: {fromEquipSlot} -> {toEquipSlot}");
 
         ItemData fromItem = currentInventory.GetEquippedItem(fromEquipSlot);
         ItemData toItem = currentInventory.GetEquippedItem(toEquipSlot);
 
         if (fromItem == null)
         {
-
+            Debug.Log($"[DragDrop] Source slot {fromEquipSlot} is empty, aborting");
             return;
         }
 
-        // Снимаем предметы
+        Debug.Log($"[DragDrop] From item: {fromItem.itemName}, equipSlot: {fromItem.equipmentSlot}");
+        Debug.Log($"[DragDrop] To item: {(toItem != null ? toItem.itemName : "NULL")}, target slot: {toEquipSlot}");
+
+        // ВАЖНО: UnequipItem автоматически добавляет предметы в инвентарь!
+        // Поэтому нам НЕ нужно вызывать AddItem если экипировка не удалась
+
+        // Проверяем, можно ли выполнить обмен ПЕРЕД снятием предметов
+        bool canEquipFromToTarget = (fromItem.equipmentSlot == toEquipSlot);
+        bool canEquipToToSource = (toItem != null && toItem.equipmentSlot == fromEquipSlot);
+
+        Debug.Log($"[DragDrop] Can equip fromItem to target: {canEquipFromToTarget}");
+        Debug.Log($"[DragDrop] Can equip toItem to source: {canEquipToToSource}");
+
+        // Если ни один предмет не может быть экипирован в целевой слот, отменяем операцию
+        if (!canEquipFromToTarget && !canEquipToToSource)
+        {
+            Debug.Log($"[DragDrop] Incompatible slots, aborting drag operation");
+            return; // Не снимаем предметы, если обмен невозможен
+        }
+
+        // Снимаем предметы (они автоматически попадут в инвентарь)
         currentInventory.UnequipItem(fromEquipSlot);
         if (toItem != null)
         {
@@ -1280,31 +1209,29 @@ public class InventoryUI : MonoBehaviour
         }
 
         // Пытаемся экипировать в новые слоты
-        bool fromItemEquipped = false;
-        bool toItemEquipped = false;
-
-        // Предметы с None не могут быть экипированы
-        if (fromItem.equipmentSlot != EquipmentSlot.None && fromItem.equipmentSlot == toEquipSlot)
+        if (canEquipFromToTarget)
         {
-            fromItemEquipped = currentInventory.EquipItem(fromItem);
+            Debug.Log($"[DragDrop] Trying to equip {fromItem.itemName} to {toEquipSlot}");
+            if (currentInventory.EquipItem(fromItem))
+            {
+                Debug.Log($"[DragDrop] Successfully equipped {fromItem.itemName}");
+                // Удаляем из инвентаря, так как экипировка удалась
+                currentInventory.RemoveItem(fromItem, 1);
+            }
         }
 
-        if (toItem != null && toItem.equipmentSlot != EquipmentSlot.None && toItem.equipmentSlot == fromEquipSlot)
+        if (toItem != null && canEquipToToSource)
         {
-            toItemEquipped = currentInventory.EquipItem(toItem);
+            Debug.Log($"[DragDrop] Trying to equip {toItem.itemName} to {fromEquipSlot}");
+            if (currentInventory.EquipItem(toItem))
+            {
+                Debug.Log($"[DragDrop] Successfully equipped {toItem.itemName}");
+                // Удаляем из инвентаря, так как экипировка удалась
+                currentInventory.RemoveItem(toItem, 1);
+            }
         }
 
-        // Если не удалось экипировать, добавляем в инвентарь
-        if (!fromItemEquipped)
-        {
-            currentInventory.AddItem(fromItem, 1);
-        }
-        if (toItem != null && !toItemEquipped)
-        {
-            currentInventory.AddItem(toItem, 1);
-        }
-
-
+        Debug.Log($"[DragDrop] Equipment swap completed");
     }
 
 
@@ -1359,27 +1286,46 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     public void ToggleInventory()
     {
-        // Если нет текущего инвентаря, попробуем найти любого персонажа игрока для демо
-        if (currentInventory == null)
-        {
-            Character[] allCharacters = FindObjectsOfType<Character>();
-            foreach (Character character in allCharacters)
-            {
-                if (character.IsPlayerCharacter())
-                {
-                    SetCurrentInventory(character.GetInventory(), character);
-                    break;
-                }
-            }
-        }
-
+        // Если инвентарь открыт, всегда позволяем его закрыть
         if (isInventoryVisible)
         {
             HideInventory();
+            return;
         }
-        else
+
+        // Для открытия инвентаря нужен выделенный персонаж
+        if (selectionManager == null)
         {
-            ShowInventory();
+            selectionManager = FindObjectOfType<SelectionManager>();
+        }
+
+        if (selectionManager != null)
+        {
+            List<GameObject> selectedObjects = selectionManager.GetSelectedObjects();
+
+            // Проверяем, есть ли выделенный персонаж игрока
+            Character selectedCharacter = null;
+            foreach (GameObject obj in selectedObjects)
+            {
+                Character character = obj.GetComponent<Character>();
+                if (character != null && character.IsPlayerCharacter())
+                {
+                    selectedCharacter = character;
+                    break;
+                }
+            }
+
+            // Если есть выделенный персонаж игрока, открываем его инвентарь
+            if (selectedCharacter != null)
+            {
+                SetCurrentInventory(selectedCharacter.GetInventory(), selectedCharacter);
+                ShowInventory();
+            }
+            else
+            {
+                // Нет выделенного персонажа - не открываем инвентарь
+                Debug.LogWarning("Невозможно открыть инвентарь: не выделен ни один персонаж");
+            }
         }
     }
 
@@ -1388,12 +1334,7 @@ public class InventoryUI : MonoBehaviour
     /// </summary>
     public void ShowInventory()
     {
-        // Активируем Canvas
-        if (mainCanvas != null)
-        {
-            mainCanvas.gameObject.SetActive(true);
-        }
-
+        // Активируем только панель Inventory, не весь Canvas
         if (inventoryPanel != null)
         {
             inventoryPanel.gameObject.SetActive(true);
@@ -1438,12 +1379,6 @@ public class InventoryUI : MonoBehaviour
             {
                 TooltipSystem.Instance.HideTooltip();
             }
-        }
-
-        // Деактивируем весь Canvas
-        if (mainCanvas != null)
-        {
-            mainCanvas.gameObject.SetActive(false);
         }
         else
         {

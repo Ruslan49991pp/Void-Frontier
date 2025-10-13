@@ -27,7 +27,7 @@ public class DebugSystemMonitor : MonoBehaviour
     private EnemyTargetingSystem targetingSystem;
     private MovementController movementController;
     private GameInitializer gameInitializer;
-    private SimpleCharacterIconsUI characterIcons;
+    private CanvasCharacterIconsManager characterIcons;
 
     void Start()
     {
@@ -187,7 +187,7 @@ public class DebugSystemMonitor : MonoBehaviour
         targetingSystem = FindObjectOfType<EnemyTargetingSystem>();
         movementController = FindObjectOfType<MovementController>();
         gameInitializer = FindObjectOfType<GameInitializer>();
-        characterIcons = FindObjectOfType<SimpleCharacterIconsUI>();
+        characterIcons = FindObjectOfType<CanvasCharacterIconsManager>();
 
     }
 
@@ -283,13 +283,13 @@ public class DebugSystemMonitor : MonoBehaviour
         info.AppendLine("=== CHARACTER ICONS ===");
         if (characterIcons != null)
         {
-            info.AppendLine($"✓ SimpleCharacterIconsUI: ACTIVE");
+            info.AppendLine($"✓ CanvasCharacterIconsManager: ACTIVE");
             info.AppendLine($"  Enabled: {characterIcons.enabled}");
             info.AppendLine($"  GameObject Active: {characterIcons.gameObject.activeInHierarchy}");
         }
         else
         {
-            info.AppendLine("✗ SimpleCharacterIconsUI: MISSING");
+            info.AppendLine("✗ CanvasCharacterIconsManager: MISSING");
         }
         info.AppendLine();
 

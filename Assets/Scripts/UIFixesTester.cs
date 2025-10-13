@@ -51,8 +51,8 @@ public class UIFixesTester : MonoBehaviour
 
     void LogUIComponents()
     {
-        // Проверяем CharacterIconsPanel
-        CharacterIconsPanel iconsPanel = FindObjectOfType<CharacterIconsPanel>();
+        // Проверяем CanvasCharacterIconsManager
+        CanvasCharacterIconsManager iconsPanel = FindObjectOfType<CanvasCharacterIconsManager>();
         if (iconsPanel != null)
         {
 

@@ -189,7 +189,9 @@ public class SelectionManager : MonoBehaviour
         // Отпускание ЛКМ
         if (Input.GetMouseButtonUp(0) && isMousePressed)
         {
-
+            // Проверяем, был ли клик по UI элементу
+            bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
+                                   UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
             if (isBoxSelecting)
             {
@@ -199,10 +201,9 @@ public class SelectionManager : MonoBehaviour
                 isBoxSelecting = false;
                 selectionBoxUI.SetActive(false);
             }
-            else
+            else if (!isPointerOverUI)
             {
-
-                // Обычное клик-выделение
+                // Обычное клик-выделение - только если НЕ кликнули по UI
                 PerformClickSelection(mouseDownPosition);
             }
             isMousePressed = false;
@@ -312,15 +313,8 @@ public class SelectionManager : MonoBehaviour
     {
         Ray ray = playerCamera.ScreenPointToRay(mousePosition);
 
-
-
-        FileLogger.Log($"DEBUG: PerformClickSelection at mouse position: {mousePosition}");
-
         // Используем RaycastAll чтобы получить все объекты на луче, включая триггеры
         RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask, QueryTriggerInteraction.Collide);
-
-
-        FileLogger.Log($"DEBUG: Raycast found {hits.Length} hits with layer mask: {selectableLayerMask}");
 
         if (hits.Length > 0)
         {
@@ -329,16 +323,11 @@ public class SelectionManager : MonoBehaviour
             {
                 GameObject hitObject = rayHit.collider.gameObject;
 
-
-                FileLogger.Log($"DEBUG: Hit object: {hitObject.name} on layer {hitObject.layer}");
-
                 // Исключаем системные объекты из выделения
                 if (hitObject.name.Contains("Bounds") || hitObject.name.Contains("Grid") ||
                     hitObject.name.Contains("Location") && !hitObject.name.Contains("Test") ||
                     hitObject.name.Contains("Plane"))
                 {
-
-                    FileLogger.Log($"DEBUG: Skipping system object: {hitObject.name}");
                     continue;
                 }
 
@@ -356,11 +345,8 @@ public class SelectionManager : MonoBehaviour
                     }
                 }
 
-                // Debug logging disabled
                 if (character != null)
                 {
-
-                    FileLogger.Log($"DEBUG: Found Character: {hitObject.name}");
 
                     // Для персонажей поддерживаем Ctrl+клик для множественного выделения только у союзников
                     // Врагов можно выделять только по одному для просмотра информации
@@ -375,10 +361,8 @@ public class SelectionManager : MonoBehaviour
                     }
                     else
                     {
-
                         // Врагов всегда выделяем по одному (очищаем предыдущее выделение)
                         ClearSelection();
-                        FileLogger.Log($"DEBUG: Selecting enemy for info view: {hitObject.name}");
                     }
 
 
@@ -390,8 +374,6 @@ public class SelectionManager : MonoBehaviour
                 Item item = hitObject.GetComponent<Item>();
                 if (item != null)
                 {
-                    FileLogger.Log($"DEBUG: Found Item: {hitObject.name}");
-
                     // Предметы выделяем по одному
                     ClearSelection();
                     ToggleSelection(hitObject);
@@ -401,7 +383,6 @@ public class SelectionManager : MonoBehaviour
                 LocationObjectInfo objectInfo = hitObject.GetComponent<LocationObjectInfo>();
                 if (objectInfo != null)
                 {
-                    FileLogger.Log($"DEBUG: Found LocationObjectInfo on {hitObject.name}: {objectInfo.objectName}");
                     GameObject targetObject = hitObject;
 
                     // Проверяем, является ли это полом комнаты
@@ -422,14 +403,10 @@ public class SelectionManager : MonoBehaviour
         }
 
         // Если мы дошли до этого места, значит не найдено подходящих объектов
-
-        FileLogger.Log($"DEBUG: No selectable objects found. Running room component check...");
-
         // Попробуем исправить компоненты комнат если их не было найдено
         CheckAndFixRoomComponents();
 
         // Это считается кликом в пустое место - всегда очищаем выделение
-
         ClearSelection();
     }
     
@@ -728,8 +705,6 @@ public class SelectionManager : MonoBehaviour
         // Ищем все объекты с RoomInfo
         RoomInfo[] allRooms = FindObjectsOfType<RoomInfo>();
 
-        FileLogger.Log($"DEBUG: CheckAndFixRoomComponents found {allRooms.Length} rooms");
-
         foreach (RoomInfo roomInfo in allRooms)
         {
             GameObject roomObj = roomInfo.gameObject;
@@ -753,8 +728,6 @@ public class SelectionManager : MonoBehaviour
                     locationInfo.objectType = roomInfo.roomType;
                     locationInfo.health = 500f;
                     locationInfo.isDestructible = true;
-
-                    FileLogger.Log($"Added missing LocationObjectInfo to floor of room: {roomInfo.roomName}");
                 }
 
                 // Проверяем наличие RoomFloorMarker на полу
@@ -763,8 +736,6 @@ public class SelectionManager : MonoBehaviour
                 {
                     floorMarker = floor.AddComponent<RoomFloorMarker>();
                     floorMarker.parentRoom = roomObj;
-
-                    FileLogger.Log($"Added missing RoomFloorMarker to floor of room: {roomInfo.roomName}");
                 }
 
                 // Проверяем наличие коллайдера на полу
@@ -773,8 +744,6 @@ public class SelectionManager : MonoBehaviour
                 {
                     floorCollider = floor.AddComponent<BoxCollider>();
                     floorCollider.isTrigger = false; // Не триггер для raycast
-
-                    FileLogger.Log($"Added missing BoxCollider to floor of room: {roomInfo.roomName}");
                 }
             }
             // Для маленьких комнат - проверяем SelectionFloor
@@ -791,8 +760,6 @@ public class SelectionManager : MonoBehaviour
                     locationInfo.objectType = roomInfo.roomType;
                     locationInfo.health = 500f;
                     locationInfo.isDestructible = true;
-
-                    FileLogger.Log($"Added missing LocationObjectInfo to SelectionFloor of room: {roomInfo.roomName}");
                 }
 
                 // Проверяем наличие RoomFloorMarker
@@ -801,8 +768,6 @@ public class SelectionManager : MonoBehaviour
                 {
                     floorMarker = selectionFloor.AddComponent<RoomFloorMarker>();
                     floorMarker.parentRoom = roomObj;
-
-                    FileLogger.Log($"Added missing RoomFloorMarker to SelectionFloor of room: {roomInfo.roomName}");
                 }
 
                 // Проверяем наличие коллайдера
@@ -811,8 +776,6 @@ public class SelectionManager : MonoBehaviour
                 {
                     selectionCollider = selectionFloor.AddComponent<BoxCollider>();
                     selectionCollider.isTrigger = false;
-
-                    FileLogger.Log($"Added missing BoxCollider to SelectionFloor of room: {roomInfo.roomName}");
                 }
             }
         }
