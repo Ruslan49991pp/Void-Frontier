@@ -44,33 +44,27 @@ public class SelectionInfoDisplay : MonoBehaviour
 
     void Awake()
     {
-        Debug.Log("[SelectionInfoDisplay] Awake called");
 
         // Находим SelectionManager в сцене
         selectionManager = FindObjectOfType<SelectionManager>();
-        Debug.Log($"[SelectionInfoDisplay] SelectionManager found: {selectionManager != null}");
 
         // Автоматически находим UI элементы если не назначены
         if (selectionInfoPanel == null)
         {
             selectionInfoPanel = gameObject;
-            Debug.Log($"[SelectionInfoDisplay] Using self as selectionInfoPanel: {selectionInfoPanel.name}");
         }
         else
         {
-            Debug.Log($"[SelectionInfoDisplay] selectionInfoPanel assigned: {selectionInfoPanel.name}");
         }
 
         // ИСПРАВЛЕНИЕ: Пытаемся найти EnemyPortrait правильно
         // Если enemyPortrait указывает на Avatar, ищем родительский EnemyPortrait
         if (enemyPortrait != null && enemyPortrait.name == "Avatar")
         {
-            Debug.LogWarning($"[SelectionInfoDisplay] enemyPortrait points to Avatar, looking for parent EnemyPortrait");
             Transform parent = enemyPortrait.transform.parent;
             if (parent != null && parent.name == "EnemyPortrait")
             {
                 enemyPortrait = parent.gameObject;
-                Debug.Log($"[SelectionInfoDisplay] Fixed: enemyPortrait now points to {enemyPortrait.name}");
             }
         }
 
@@ -81,7 +75,6 @@ public class SelectionInfoDisplay : MonoBehaviour
             if (enemyPortraitTransform != null)
             {
                 enemyPortrait = enemyPortraitTransform.gameObject;
-                Debug.Log($"[SelectionInfoDisplay] Found EnemyPortrait: {enemyPortrait.name}");
             }
             else
             {
@@ -90,7 +83,6 @@ public class SelectionInfoDisplay : MonoBehaviour
         }
         else
         {
-            Debug.Log($"[SelectionInfoDisplay] EnemyPortrait assigned: {enemyPortrait.name}");
         }
 
         // Автопоиск UI элементов внутри EnemyPortrait
@@ -99,11 +91,9 @@ public class SelectionInfoDisplay : MonoBehaviour
             if (healthBarPlane == null)
             {
                 Transform healthBarTransform = FindTransformRecursive(enemyPortrait.transform, "HealthBar_Plane");
-                Debug.Log($"[SelectionInfoDisplay] HealthBar_Plane found: {healthBarTransform != null}");
                 if (healthBarTransform != null)
                 {
                     healthBarPlane = healthBarTransform.gameObject;
-                    Debug.Log($"[SelectionInfoDisplay] healthBarPlane assigned: {healthBarPlane.name}");
                 }
                 else
                 {
@@ -117,7 +107,6 @@ public class SelectionInfoDisplay : MonoBehaviour
                 if (nameLabelTransform != null)
                 {
                     nameLabel = nameLabelTransform.GetComponent<TMP_Text>();
-                    Debug.Log($"[SelectionInfoDisplay] NameLabel found: {nameLabel != null}");
                 }
             }
 
@@ -127,7 +116,6 @@ public class SelectionInfoDisplay : MonoBehaviour
                 if (raceLabelTransform != null)
                 {
                     raceLabel = raceLabelTransform.GetComponent<TMP_Text>();
-                    Debug.Log($"[SelectionInfoDisplay] RaceLabel found: {raceLabel != null}");
                 }
             }
 
@@ -140,7 +128,6 @@ public class SelectionInfoDisplay : MonoBehaviour
                     if (imageTransform != null)
                     {
                         avatarImage = imageTransform.GetComponent<Image>();
-                        Debug.Log($"[SelectionInfoDisplay] Avatar Image found: {avatarImage != null}");
                     }
                 }
             }
@@ -159,14 +146,11 @@ public class SelectionInfoDisplay : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("[SelectionInfoDisplay] Start called");
 
         // Подписываемся на события выделения
         if (selectionManager != null)
         {
-            Debug.Log("[SelectionInfoDisplay] Subscribing to OnSelectionChanged event");
             selectionManager.OnSelectionChanged += OnSelectionChanged;
-            Debug.Log("[SelectionInfoDisplay] Successfully subscribed to OnSelectionChanged");
         }
         else
         {
@@ -204,7 +188,6 @@ public class SelectionInfoDisplay : MonoBehaviour
     /// </summary>
     void OnSelectionChanged(System.Collections.Generic.List<GameObject> selectedObjects)
     {
-        Debug.Log($"[SelectionInfoDisplay] OnSelectionChanged called, count: {selectedObjects.Count}");
 
         // Отписываемся от текущего врага
         if (currentEnemy != null)
@@ -219,13 +202,11 @@ public class SelectionInfoDisplay : MonoBehaviour
             GameObject selectedObject = selectedObjects[0];
             Character character = selectedObject.GetComponent<Character>();
 
-            Debug.Log($"[SelectionInfoDisplay] Selected object: {selectedObject.name}, has Character: {character != null}");
 
             // Проверяем, является ли выделенный объект врагом (не союзником)
             if (character != null && !character.IsPlayerCharacter())
             {
                 // Это враг - показываем панель
-                Debug.Log($"[SelectionInfoDisplay] Enemy detected: {character.GetFullName()}, showing panel");
                 currentEnemy = character;
                 SubscribeToEnemy(currentEnemy);
                 UpdateEnemyInfo();
@@ -234,12 +215,10 @@ public class SelectionInfoDisplay : MonoBehaviour
             }
             else if (character != null)
             {
-                Debug.Log($"[SelectionInfoDisplay] Not an enemy (ally), hiding panel");
             }
         }
 
         // Если не враг или ничего не выделено - скрываем панель
-        Debug.Log($"[SelectionInfoDisplay] Hiding panel");
         HidePanel();
     }
 
@@ -351,7 +330,6 @@ public class SelectionInfoDisplay : MonoBehaviour
 
             healthBarImage.color = newColor;
 
-            Debug.Log($"[SelectionInfoDisplay] UpdateHealthBar: health={currentHealth}/{maxHealth}, percent={healthPercent:F2}, scale.x={rectTransform.localScale.x}, color={newColor}");
         }
         else
         {
@@ -388,7 +366,6 @@ public class SelectionInfoDisplay : MonoBehaviour
         {
             avatarImage.sprite = enemyIcon;
             avatarImage.enabled = true;
-            Debug.Log($"[SelectionInfoDisplay] Loaded portrait '{portraitPath}' for enemy {currentEnemy.GetFullName()}");
         }
         else
         {
@@ -405,9 +382,7 @@ public class SelectionInfoDisplay : MonoBehaviour
         // Показываем весь SelectionInfoPanel
         if (selectionInfoPanel != null)
         {
-            Debug.Log($"[SelectionInfoDisplay] ShowPanel called, activating {selectionInfoPanel.name}");
             selectionInfoPanel.SetActive(true);
-            Debug.Log($"[SelectionInfoDisplay] Panel active state: {selectionInfoPanel.activeSelf}");
         }
         else
         {
@@ -426,9 +401,7 @@ public class SelectionInfoDisplay : MonoBehaviour
         // Скрываем весь SelectionInfoPanel
         if (selectionInfoPanel != null)
         {
-            Debug.Log($"[SelectionInfoDisplay] HidePanel called, deactivating {selectionInfoPanel.name}");
             selectionInfoPanel.SetActive(false);
-            Debug.Log($"[SelectionInfoDisplay] Panel active state after hiding: {selectionInfoPanel.activeSelf}");
         }
         else
         {
@@ -471,7 +444,6 @@ public class SelectionInfoDisplay : MonoBehaviour
         // Добавляем обработчик клика
         portraitButton.onClick.AddListener(OnPortraitClicked);
 
-        Debug.Log("[SelectionInfoDisplay] Portrait button setup completed");
     }
 
     /// <summary>
@@ -485,7 +457,6 @@ public class SelectionInfoDisplay : MonoBehaviour
         bool isDoubleClick = (currentTime - lastClickTime < 0.5f);
         lastClickTime = currentTime;
 
-        Debug.Log($"[SelectionInfoDisplay] Portrait clicked, isDoubleClick: {isDoubleClick}");
 
         // Двойной клик - фокус камеры на враге
         if (isDoubleClick)
@@ -495,7 +466,6 @@ public class SelectionInfoDisplay : MonoBehaviour
             {
                 cameraController.SetFocusTarget(currentEnemy.transform);
                 cameraController.CenterOnTarget();
-                Debug.Log($"[SelectionInfoDisplay] Camera focused on enemy: {currentEnemy.GetFullName()}");
             }
         }
     }

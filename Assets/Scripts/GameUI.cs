@@ -465,7 +465,7 @@ public class GameUI : MonoBehaviour
     /// </summary>
     void CreateBuildButton(GameObject parent)
     {
-        GameObject buttonGO = new GameObject("BuildButton");
+        GameObject buttonGO = new GameObject("ShipBuildButton");
         buttonGO.transform.SetParent(parent.transform, false);
 
         RectTransform buttonRect = buttonGO.AddComponent<RectTransform>();

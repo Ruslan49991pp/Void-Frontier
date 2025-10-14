@@ -195,9 +195,10 @@ public class SimplePathfinder : MonoBehaviour
                 }
             }
         }
-        
-        // Путь не найден, возвращаем прямой путь к цели
-        return new List<Vector2Int> { end };
+
+        // Путь не найден - возвращаем пустой список (НЕ прямой путь, т.к. путь заблокирован препятствиями)
+        FileLogger.LogWarning($"[PATHFINDER] ✗ No path found from {start} to {end} - target is unreachable (blocked by walls/obstacles)");
+        return new List<Vector2Int>(); // Пустой список означает что путь невозможен
     }
     
     /// <summary>
@@ -278,9 +279,21 @@ public class SimplePathfinder : MonoBehaviour
         // Персонажи не блокируют путь (другие персонажи могут проходить через них)
         bool passable = cell.objectType == "Character";
 
-        // Логируем блокировки кокпита для отладки
-        if (!passable && cell.objectType == "Cockpit")
+        // Логируем блокировки для отладки (стены, кокпит и другие препятствия)
+        if (!passable)
         {
+            if (cell.objectType == "Wall")
+            {
+                FileLogger.Log($"[PATHFINDER] ✗ Cell {pos} BLOCKED by Wall - path will avoid this cell");
+            }
+            else if (cell.objectType == "Cockpit")
+            {
+                FileLogger.Log($"[PATHFINDER] ✗ Cell {pos} BLOCKED by Cockpit");
+            }
+            else
+            {
+                FileLogger.Log($"[PATHFINDER] ✗ Cell {pos} BLOCKED by {cell.objectType}");
+            }
         }
 
         return passable;

@@ -188,7 +188,5 @@ public class GhostBlockPool : MonoBehaviour
             block.transform.SetParent(poolContainers[prefab]);
             pools[prefab].Enqueue(block);
         }
-
-        Debug.Log($"[GhostBlockPool] Prewarmed {count} blocks of {prefab.name}");
     }
 }

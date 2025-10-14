@@ -184,9 +184,9 @@ public class CharacterMovement : MonoBehaviour
         }
         else
         {
-            // Debug logging disabled
-            // Прямое движение если путь не найден
-            yield return StartCoroutine(MoveDirectly());
+            // Путь не найден - цель заблокирована препятствиями (стенами)
+            // НЕ используем прямое движение, т.к. оно игнорирует препятствия
+            FileLogger.LogWarning($"[MOVEMENT] Cannot move to target - blocked by walls/obstacles. Path not found.");
         }
         
         // Завершение движения

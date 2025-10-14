@@ -21,7 +21,6 @@ public class HideActionArea : MonoBehaviour
             if (obj.name == "ActionArea")
             {
                 obj.SetActive(false);
-                Debug.Log($"[HideActionArea] Found and hid ActionArea at path: {GetGameObjectPath(obj)}");
             }
         }
     }

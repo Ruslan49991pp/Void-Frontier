@@ -37,37 +37,31 @@ public class PlayerCharacterIconsManager : MonoBehaviour
 
     void Awake()
     {
-        Debug.Log("[PlayerCharacterIconsManager] Awake called");
 
         // Находим SelectionManager
         selectionManager = FindObjectOfType<SelectionManager>();
         if (selectionManager != null)
         {
-            Debug.Log("[PlayerCharacterIconsManager] SelectionManager found");
         }
 
         // Автопоиск контейнера если не назначен
         if (iconsContainer == null)
         {
             iconsContainer = GetComponent<RectTransform>();
-            Debug.Log($"[PlayerCharacterIconsManager] Using self as iconsContainer: {iconsContainer.name}");
         }
     }
 
     void Start()
     {
-        Debug.Log("[PlayerCharacterIconsManager] Start called");
 
         // Подписываемся на события выделения
         if (selectionManager != null)
         {
             selectionManager.OnSelectionChanged += OnSelectionChanged;
-            Debug.Log("[PlayerCharacterIconsManager] Subscribed to SelectionManager.OnSelectionChanged");
         }
 
         // Подписываемся на событие создания персонажей игрока
         Character.OnPlayerCharacterSpawned += OnPlayerCharacterSpawned;
-        Debug.Log("[PlayerCharacterIconsManager] Subscribed to Character.OnPlayerCharacterSpawned");
 
         // Проверяем, есть ли уже созданные персонажи игрока
         StartCoroutine(CheckForExistingCharacters());
@@ -78,7 +72,6 @@ public class PlayerCharacterIconsManager : MonoBehaviour
         // Ждем 1 кадр чтобы все Start() методы выполнились
         yield return null;
 
-        Debug.Log("[PlayerCharacterIconsManager] Checking for existing player characters...");
 
         Character[] allCharacters = FindObjectsOfType<Character>();
         int foundCount = 0;
@@ -87,19 +80,15 @@ public class PlayerCharacterIconsManager : MonoBehaviour
         {
             if (character.IsPlayerCharacter() && !characterIcons.ContainsKey(character))
             {
-                Debug.Log($"[PlayerCharacterIconsManager] Found existing player character: {character.GetFullName()}");
                 OnPlayerCharacterSpawned(character);
                 foundCount++;
             }
         }
 
-        Debug.Log($"[PlayerCharacterIconsManager] Found {foundCount} existing player characters");
-        Debug.Log("[PlayerCharacterIconsManager] CheckForExistingCharacters coroutine finished");
     }
 
     void OnPlayerCharacterSpawned(Character character)
     {
-        Debug.Log($"[PlayerCharacterIconsManager] OnPlayerCharacterSpawned called for {character.GetFullName()}");
 
         if (!character.IsPlayerCharacter())
         {
@@ -109,7 +98,6 @@ public class PlayerCharacterIconsManager : MonoBehaviour
 
         if (characterIcons.ContainsKey(character))
         {
-            Debug.Log($"[PlayerCharacterIconsManager] Icon for {character.GetFullName()} already exists");
             return;
         }
 
@@ -145,7 +133,6 @@ public class PlayerCharacterIconsManager : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[PlayerCharacterIconsManager] Adding icon for character: {character.GetFullName()}");
 
         if (characterPortraitPrefab == null || iconsContainer == null)
         {
@@ -205,7 +192,6 @@ public class PlayerCharacterIconsManager : MonoBehaviour
                 iconData.nameLabel = nameLabelTransform.GetComponent<TMPro.TMP_Text>();
             }
 
-            Debug.Log($"[PlayerCharacterIconsManager] Found UI elements: BG={iconData.backgroundImage != null}, Avatar={iconData.avatarImage != null}, HP={iconData.healthBarFill != null}, Name={iconData.nameLabel != null}");
 
             // Устанавливаем имя
             if (iconData.nameLabel != null)
@@ -222,7 +208,6 @@ public class PlayerCharacterIconsManager : MonoBehaviour
             // Сохраняем в словарь
             characterIcons[character] = iconData;
 
-            Debug.Log($"[PlayerCharacterIconsManager] Icon created successfully for {character.GetFullName()}");
         }
         catch (System.Exception e)
         {

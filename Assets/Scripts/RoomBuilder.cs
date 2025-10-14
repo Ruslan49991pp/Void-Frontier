@@ -1214,10 +1214,25 @@ public class RoomBuilder : MonoBehaviour
 
         // Удаляем только стены которых больше нет
         int destroyedWalls = 0;
+        GridManager gridManager = FindObjectOfType<GridManager>();
         foreach (Vector2Int key in wallsToRemove)
         {
             if (activeWalls[key] != null)
             {
+                // Освобождаем клетку в GridManager перед уничтожением стены
+                if (gridManager != null)
+                {
+                    bool freed = gridManager.FreeCell(key);
+                    if (freed)
+                    {
+                        FileLogger.Log($"[WALL] ✓ Freed GridManager cell at {key} - cell is now passable");
+                    }
+                    else
+                    {
+                        FileLogger.LogWarning($"[WALL] Could not free cell at {key} - may not have been occupied");
+                    }
+                }
+
                 DestroyImmediate(activeWalls[key]);
                 destroyedWalls++;
             }
@@ -1302,13 +1317,17 @@ public class RoomBuilder : MonoBehaviour
             // Устанавливаем стандартный размер для префаба
             wall.transform.localScale = Vector3.one;
 
-            // Убеждаемся что есть коллайдер для блокировки прохода
+            // Настраиваем коллайдер как триггер для выделения, но не для блокировки движения
+            // Движение блокируется через GridManager, а коллайдер нужен для raycast выделения
             BoxCollider collider = wall.GetComponent<BoxCollider>();
             if (collider == null)
             {
                 collider = wall.AddComponent<BoxCollider>();
             }
-            collider.isTrigger = false;
+            // Делаем триггером чтобы не блокировал физику (движение использует GridManager)
+            collider.isTrigger = true;
+            FileLogger.Log($"[WALL] Set collider to trigger mode at {wallData.position} for raycast selection");
+
 
             // Применяем материал к рендереру если есть
             Renderer renderer = wall.GetComponent<Renderer>();
@@ -1347,17 +1366,55 @@ public class RoomBuilder : MonoBehaviour
             // Материал
             wall.GetComponent<Renderer>().material = wallMaterial;
 
-            // Настраиваем коллайдер для блокировки прохода
+            // Настраиваем коллайдер как триггер (для выделения, не для физики)
             BoxCollider collider = wall.GetComponent<BoxCollider>();
-            collider.isTrigger = false;
+            if (collider != null)
+            {
+                collider.isTrigger = true; // Триггер для raycast, не блокирует физику
+                FileLogger.Log($"[WALL] Set primitive wall collider to trigger mode at {wallData.position}");
+            }
         }
 
         // Добавляем компонент для идентификации
         WallComponent wallComp = wall.AddComponent<WallComponent>();
         wallComp.wallData = wallData;
 
-        // Создаем пол под стеной
-        CreateFloorUnderWall(wall, wallData);
+        // Добавляем LocationObjectInfo для выделения и отображения информации
+        LocationObjectInfo locationInfo = wall.AddComponent<LocationObjectInfo>();
+        locationInfo.objectType = "Wall";
+        locationInfo.objectName = $"Стена ({wallData.position.x}, {wallData.position.y})";
+        locationInfo.health = 100f; // 100 HP на каждый блок стены
+        locationInfo.isDestructible = true;
+        locationInfo.canBeScavenged = false;
+        FileLogger.Log($"[WALL] Added LocationObjectInfo to wall at {wallData.position} with 100 HP");
+
+        // Добавляем WallHealthSystem для мониторинга здоровья и разрушения
+        WallHealthSystem healthSystem = wall.AddComponent<WallHealthSystem>();
+        healthSystem.wallData = wallData;
+        healthSystem.locationInfo = locationInfo;
+
+        // КРИТИЧНО: Регистрируем стену в GridManager сразу при создании
+        GridManager gridManager = FindObjectOfType<GridManager>();
+        if (gridManager != null)
+        {
+            bool registered = gridManager.OccupyCell(wallData.position, wall, "Wall");
+            if (registered)
+            {
+                FileLogger.Log($"[WALL] ✓ Registered wall in GridManager at {wallData.position} - cell is now impassable");
+            }
+            else
+            {
+                FileLogger.LogError($"[WALL] ✗ FAILED to register wall at {wallData.position} - cell may already be occupied!");
+            }
+        }
+        else
+        {
+            FileLogger.LogError("[WALL] ✗ GridManager not found - walls will NOT block movement!");
+        }
+
+        // УБРАНО: Создаем пол под стеной
+        // Floor создается только там где нет стен (в CreateCustomFloor/CreateFloor)
+        // CreateFloorUnderWall(wall, wallData);
 
         return wall;
     }
@@ -1676,5 +1733,53 @@ public class RoomInfo : MonoBehaviour
         {
             buildingSystem.DeleteRoom(gameObject);
         }
+    }
+}
+
+/// <summary>
+/// Система здоровья стен - отслеживает HP и разрушает стену при достижении 0
+/// </summary>
+public class WallHealthSystem : MonoBehaviour
+{
+    public WallData wallData;
+    public LocationObjectInfo locationInfo;
+
+    void Update()
+    {
+        // Проверяем HP каждый кадр
+        if (locationInfo != null && locationInfo.health <= 0f)
+        {
+            DestroyWall();
+        }
+    }
+
+    /// <summary>
+    /// Разрушить стену когда HP = 0
+    /// </summary>
+    void DestroyWall()
+    {
+        FileLogger.Log($"[WALL HEALTH] Wall at {wallData.position} destroyed - HP reached 0");
+
+        // Освобождаем клетку в GridManager чтобы она стала проходимой
+        GridManager gridManager = FindObjectOfType<GridManager>();
+        if (gridManager != null)
+        {
+            bool freed = gridManager.FreeCell(wallData.position);
+            if (freed)
+            {
+                FileLogger.Log($"[WALL HEALTH] ✓ Freed GridManager cell at {wallData.position} - cell is now passable");
+            }
+        }
+
+        // Удаляем стену из глобального реестра RoomBuilder
+        if (RoomBuilder.Instance != null)
+        {
+            // Получаем activeWalls dictionary через рефлексию (или делаем публичным)
+            // Для простоты просто удаляем GameObject - RoomBuilder обновится при следующем UpdateWallVisuals
+            FileLogger.Log($"[WALL HEALTH] Destroying wall GameObject at {wallData.position}");
+        }
+
+        // Уничтожаем GameObject стены
+        Destroy(gameObject);
     }
 }

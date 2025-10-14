@@ -46,7 +46,7 @@ public class GridManager : MonoBehaviour
     public bool showGrid = true;
     public bool showOccupiedCells = true;
     public bool showGridInGame = true; // Показывать грид в игре
-    public Color gridColor = Color.white;
+    public Color gridColor = new Color(1f, 1f, 1f, 0.3f); // Полупрозрачный белый
     public Color occupiedCellColor = Color.red;
     
     [Header("Characters")]
@@ -1067,16 +1067,20 @@ public class GridManager : MonoBehaviour
     {
         GameObject lineObj = new GameObject(lineName);
         lineObj.transform.SetParent(gridLinesParent.transform);
-        
+
         LineRenderer lineRenderer = lineObj.AddComponent<LineRenderer>();
-        lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
-        lineRenderer.material.color = gridColor;
-        lineRenderer.startWidth = 0.1f;
-        lineRenderer.endWidth = 0.1f;
+
+        // Используем Unlit/Transparent shader для корректной прозрачности
+        Material lineMaterial = new Material(Shader.Find("Unlit/Transparent"));
+        lineMaterial.color = gridColor;
+
+        lineRenderer.material = lineMaterial;
+        lineRenderer.startWidth = 0.03f;
+        lineRenderer.endWidth = 0.03f;
         lineRenderer.positionCount = 2;
         lineRenderer.useWorldSpace = true;
         lineRenderer.sortingOrder = -1; // Позади других объектов
-        
+
         lineRenderer.SetPosition(0, start);
         lineRenderer.SetPosition(1, end);
     }

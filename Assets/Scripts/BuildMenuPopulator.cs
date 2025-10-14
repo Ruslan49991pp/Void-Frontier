@@ -6,8 +6,10 @@ using UnityEditor;
 #endif
 
 /// <summary>
-/// Размещает 2 префаба в BuildMenuPanel: BuildSlot и Del_BuildSlot
+/// Размещает 2 префаба в ShipBuildMenuPanel: BuildSlot и Del_BuildSlot
 /// Добавляет кнопку AddBuild для подтверждения постройки
+/// ВАЖНО: Этот скрипт должен быть прикреплен ТОЛЬКО к ShipBuildMenuPanel!
+/// Для RoomBuildMenuPanel используется отдельная логика с другими кнопками.
 /// </summary>
 public class BuildMenuPopulator : MonoBehaviour
 {
@@ -28,10 +30,10 @@ public class BuildMenuPopulator : MonoBehaviour
 
     private GameObject buildSlotInstance;
     private GameObject delBuildSlotInstance;
+    private bool isInitialized = false;
 
     void Awake()
     {
-        // Находим или создаем RoomDragBuilder
         if (roomDragBuilder == null)
         {
             roomDragBuilder = FindObjectOfType<RoomDragBuilder>();
@@ -39,16 +41,18 @@ public class BuildMenuPopulator : MonoBehaviour
             {
                 GameObject rbObj = new GameObject("RoomDragBuilder");
                 roomDragBuilder = rbObj.AddComponent<RoomDragBuilder>();
-                Debug.Log("[BuildMenuPopulator] Created RoomDragBuilder");
             }
         }
     }
 
     void Start()
     {
-        Debug.Log($"[BuildMenuPopulator] Start called on {gameObject.name}");
+        if (gameObject.name != "ShipBuildMenuPanel")
+        {
+            Debug.LogWarning($"[BuildMenuPopulator] This script should ONLY be attached to ShipBuildMenuPanel! Currently attached to: {gameObject.name}. Skipping initialization.");
+            return;
+        }
 
-        // Находим Content контейнер
         Transform contentTransform = transform.Find("ObjectsGrid/Viewport/Content");
         if (contentTransform == null)
         {
@@ -56,30 +60,18 @@ public class BuildMenuPopulator : MonoBehaviour
             return;
         }
 
-        // Автоматически загружаем префабы если не назначены
         #if UNITY_EDITOR
         if (buildSlotPrefab == null)
         {
-            Debug.Log("[BuildMenuPopulator] BuildSlot prefab not assigned, searching...");
             buildSlotPrefab = LoadPrefabByName("BuildSlot", "Assets/Prefabs/UI/");
-            if (buildSlotPrefab != null)
-            {
-                Debug.Log($"[BuildMenuPopulator] Found and loaded BuildSlot prefab");
-            }
         }
 
         if (delBuildSlotPrefab == null)
         {
-            Debug.Log("[BuildMenuPopulator] Del_BuildSlot prefab not assigned, searching...");
             delBuildSlotPrefab = LoadPrefabByName("Del_BuildSlot", "Assets/Prefabs/UI/Buildings/");
-            if (delBuildSlotPrefab != null)
-            {
-                Debug.Log($"[BuildMenuPopulator] Found and loaded Del_BuildSlot prefab");
-            }
         }
         #endif
 
-        // Проверяем префабы
         if (buildSlotPrefab == null)
         {
             Debug.LogError("[BuildMenuPopulator] BuildSlot prefab not assigned and could not be found!");
@@ -92,17 +84,13 @@ public class BuildMenuPopulator : MonoBehaviour
             return;
         }
 
-        // Просто создаем 2 префаба в Content
         buildSlotInstance = Instantiate(buildSlotPrefab, contentTransform);
         buildSlotInstance.name = "BuildSlot";
-        Debug.Log($"[BuildMenuPopulator] Created BuildSlot");
 
-        // Добавляем onClick для BuildSlot - ищем Button везде в иерархии
-        Button buildSlotButton = buildSlotInstance.GetComponentInChildren<Button>(true); // includeInactive = true
+        Button buildSlotButton = buildSlotInstance.GetComponentInChildren<Button>(true);
         if (buildSlotButton != null)
         {
             buildSlotButton.onClick.AddListener(OnBuildSlotClicked);
-            Debug.Log($"[BuildMenuPopulator] BuildSlot button listener added to: {buildSlotButton.gameObject.name}");
         }
         else
         {
@@ -111,45 +99,34 @@ public class BuildMenuPopulator : MonoBehaviour
 
         delBuildSlotInstance = Instantiate(delBuildSlotPrefab, contentTransform);
         delBuildSlotInstance.name = "Del_BuildSlot";
-        Debug.Log($"[BuildMenuPopulator] Created Del_BuildSlot");
 
-        // Добавляем onClick для Del_BuildSlot - ищем Button везде в иерархии
-        Button delBuildSlotButton = delBuildSlotInstance.GetComponentInChildren<Button>(true); // includeInactive = true
+        Button delBuildSlotButton = delBuildSlotInstance.GetComponentInChildren<Button>(true);
         if (delBuildSlotButton != null)
         {
             delBuildSlotButton.onClick.AddListener(OnDelBuildSlotClicked);
-            Debug.Log($"[BuildMenuPopulator] Del_BuildSlot button listener added to: {delBuildSlotButton.gameObject.name}");
         }
         else
         {
             Debug.LogError("[BuildMenuPopulator] Del_BuildSlot prefab does not have a Button component anywhere in hierarchy!");
         }
 
-        // Ищем или создаем кнопку AddBuild
         SetupAddBuildButton();
-
-        Debug.Log("[BuildMenuPopulator] Initialized successfully!");
+        isInitialized = true;
     }
 
-    /// <summary>
-    /// Настроить кнопку AddBuild
-    /// </summary>
     void SetupAddBuildButton()
     {
         if (addBuildButton == null)
         {
-            // Ищем кнопку AddBuild в Canvas_MainUI
             GameObject canvasMainUI = GameObject.Find("Canvas_MainUI");
             if (canvasMainUI != null)
             {
-                // Ищем кнопку по имени во всей иерархии Canvas_MainUI
                 Button[] allButtons = canvasMainUI.GetComponentsInChildren<Button>(true);
                 foreach (Button btn in allButtons)
                 {
                     if (btn.gameObject.name == "AddBuild")
                     {
                         addBuildButton = btn;
-                        Debug.Log($"[BuildMenuPopulator] Found AddBuild button at path: {GetGameObjectPath(btn.gameObject)}");
                         break;
                     }
                 }
@@ -164,15 +141,11 @@ public class BuildMenuPopulator : MonoBehaviour
         if (addBuildButton != null)
         {
             addBuildButton.onClick.AddListener(OnAddBuildClicked);
-            addBuildButton.gameObject.SetActive(true); // Всегда видна
-            addBuildButton.interactable = false; // Но неактивна до готовности
-            Debug.Log("[BuildMenuPopulator] AddBuild button configured");
+            addBuildButton.gameObject.SetActive(true);
+            addBuildButton.interactable = false;
         }
     }
 
-    /// <summary>
-    /// Получить полный путь к GameObject в иерархии
-    /// </summary>
     string GetGameObjectPath(GameObject obj)
     {
         string path = obj.name;
@@ -185,13 +158,8 @@ public class BuildMenuPopulator : MonoBehaviour
         return path;
     }
 
-    /// <summary>
-    /// Обработчик клика по BuildSlot - активировать drag режим
-    /// </summary>
     void OnBuildSlotClicked()
     {
-        Debug.Log("[BuildMenuPopulator] BuildSlot clicked - activating drag mode");
-
         if (roomDragBuilder == null)
         {
             Debug.LogError("[BuildMenuPopulator] RoomDragBuilder is null!");
@@ -199,56 +167,36 @@ public class BuildMenuPopulator : MonoBehaviour
         }
 
         roomDragBuilder.ActivateDragMode();
-        Debug.Log("[BuildMenuPopulator] Drag mode activation requested");
     }
 
-    /// <summary>
-    /// Обработчик клика по AddBuild - подтвердить постройку
-    /// </summary>
     void OnAddBuildClicked()
     {
-        Debug.Log("[BuildMenuPopulator] AddBuild clicked - confirming build");
-        roomDragBuilder.ConfirmBuild();
-
-        // Делаем кнопку неактивной после подтверждения
-        if (addBuildButton != null)
-        {
-            addBuildButton.interactable = false;
-        }
+        roomDragBuilder.FinalizeBuild();
     }
 
-    /// <summary>
-    /// Обработчик клика по Del_BuildSlot - активировать/деактивировать режим удаления
-    /// </summary>
     void OnDelBuildSlotClicked()
     {
-        Debug.Log("[BuildMenuPopulator] Del_BuildSlot clicked");
-
         if (roomDragBuilder == null)
         {
             Debug.LogError("[BuildMenuPopulator] RoomDragBuilder is null!");
             return;
         }
 
-        // Проверяем, можем ли мы активировать режим удаления
-        // Режим удаления работает только когда есть preview или confirmed
-        if (!roomDragBuilder.IsReadyToConfirm() && !roomDragBuilder.IsConfirmed())
+        if (!roomDragBuilder.IsDeletionModeActive())
         {
-            Debug.LogWarning("[BuildMenuPopulator] Cannot activate deletion mode - no room preview available");
-            return;
+            roomDragBuilder.DeactivateDragMode();
         }
 
-        // Переключаем режим удаления
         roomDragBuilder.ActivateDeletionMode();
-        Debug.Log("[BuildMenuPopulator] Deletion mode activated - click on cells to delete them");
     }
 
     void Update()
     {
-        // Делаем кнопку AddBuild активной/неактивной в зависимости от состояния
-        if (addBuildButton != null)
+        if (!isInitialized) return;
+
+        if (addBuildButton != null && roomDragBuilder != null)
         {
-            bool shouldBeInteractable = roomDragBuilder != null && roomDragBuilder.IsReadyToConfirm();
+            bool shouldBeInteractable = roomDragBuilder.CanConfirmBuild();
             if (addBuildButton.interactable != shouldBeInteractable)
             {
                 addBuildButton.interactable = shouldBeInteractable;
@@ -256,28 +204,18 @@ public class BuildMenuPopulator : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Вызывается при закрытии BuildMenuPanel - финализировать постройку
-    /// </summary>
     void OnDisable()
     {
-        if (roomDragBuilder != null && roomDragBuilder.IsConfirmed())
-        {
-            Debug.Log("[BuildMenuPopulator] Panel closing - finalizing build");
-            roomDragBuilder.FinalizeBuild();
-        }
+        if (!isInitialized) return;
 
-        // Деактивируем drag режим при закрытии панели
         if (roomDragBuilder != null)
         {
             roomDragBuilder.DeactivateDragMode();
+            roomDragBuilder.DeactivateDeletionMode();
         }
     }
 
     #if UNITY_EDITOR
-    /// <summary>
-    /// Загружает префаб по имени из указанной директории
-    /// </summary>
     GameObject LoadPrefabByName(string prefabName, string searchPath)
     {
         string[] guids = AssetDatabase.FindAssets($"{prefabName} t:Prefab", new[] { searchPath });
@@ -289,7 +227,6 @@ public class BuildMenuPopulator : MonoBehaviour
 
             if (prefab != null && prefab.name == prefabName)
             {
-                Debug.Log($"[BuildMenuPopulator] Loaded prefab from: {path}");
                 return prefab;
             }
         }

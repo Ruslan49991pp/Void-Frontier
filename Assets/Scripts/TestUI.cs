@@ -44,7 +44,7 @@ public class TestUI : MonoBehaviour
 
     void CreateButton()
     {
-        GameObject buttonGO = new GameObject("BuildButton");
+        GameObject buttonGO = new GameObject("ShipBuildButton");
         buttonGO.transform.SetParent(canvas.transform, false);
 
         // RectTransform для позиционирования

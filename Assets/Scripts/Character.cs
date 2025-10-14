@@ -148,7 +148,6 @@ public class Character : MonoBehaviour
         // Уведомляем систему иконок о создании персонажа игрока
         if (IsPlayerCharacter() && OnPlayerCharacterSpawned != null)
         {
-            Debug.Log($"[Character] Player character spawned: {GetFullName()}");
             OnPlayerCharacterSpawned.Invoke(this);
         }
     }
@@ -580,7 +579,6 @@ public class Character : MonoBehaviour
         // Если персонаж перешел в фракцию игрока, уведомляем систему иконок
         if (oldFaction != Faction.Player && faction == Faction.Player && OnPlayerCharacterSpawned != null)
         {
-            Debug.Log($"[Character] Character {GetFullName()} joined player faction");
             OnPlayerCharacterSpawned.Invoke(this);
         }
     }

@@ -2,111 +2,151 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Управление кнопкой Build и панелью BuildMenu
+/// Управление кнопками Build и панелями BuildMenu (Ship и Room)
+/// Одновременно может быть открыта только одна панель
 /// </summary>
 public class BuildMenuManager : MonoBehaviour
 {
-    [Header("UI References")]
-    [Tooltip("Кнопка Build в Canvas_MainUI")]
-    public Button buildButton;
+    [Header("Ship Build UI")]
+    [Tooltip("Кнопка ShipBuildButton в Canvas_MainUI")]
+    public Button shipBuildButton;
 
-    [Tooltip("Панель BuildMenuPanel в Windows")]
-    public GameObject buildMenuPanel;
+    [Tooltip("Панель ShipBuildMenuPanel в Windows")]
+    public GameObject shipBuildMenuPanel;
 
-    [Tooltip("Кнопка Close внутри BuildMenuPanel")]
-    public Button closeButton;
+    [Tooltip("Кнопка Close внутри ShipBuildMenuPanel")]
+    public Button shipCloseButton;
+
+    [Header("Room Build UI")]
+    [Tooltip("Кнопка RoomBuildButton в Canvas_MainUI")]
+    public Button roomBuildButton;
+
+    [Tooltip("Панель RoomBuildMenuPanel в Windows")]
+    public GameObject roomBuildMenuPanel;
+
+    [Tooltip("Кнопка Close внутри RoomBuildMenuPanel")]
+    public Button roomCloseButton;
 
     void Start()
     {
-        Debug.Log("[BuildMenuManager] Start called");
-
-        // Ищем элементы автоматически если не назначены
-        if (buildButton == null)
+        if (shipBuildButton == null)
         {
-            Debug.Log("[BuildMenuManager] Searching for BuildButton...");
-            GameObject buttonObj = FindInactiveObject("BuildButton");
+            GameObject buttonObj = FindInactiveObject("ShipBuildButton");
             if (buttonObj != null)
             {
-                buildButton = buttonObj.GetComponent<Button>();
-                Debug.Log($"[BuildMenuManager] Found BuildButton: {buttonObj.name}");
+                shipBuildButton = buttonObj.GetComponent<Button>();
             }
             else
             {
-                Debug.LogError("[BuildMenuManager] BuildButton not found in scene!");
+                Debug.LogError("[BuildMenuManager] ShipBuildButton not found in scene!");
             }
         }
 
-        if (buildMenuPanel == null)
+        if (shipBuildMenuPanel == null)
         {
-            Debug.Log("[BuildMenuManager] Searching for BuildMenuPanel...");
-            buildMenuPanel = FindInactiveObject("BuildMenuPanel");
-            if (buildMenuPanel != null)
+            shipBuildMenuPanel = FindInactiveObject("ShipBuildMenuPanel");
+            if (shipBuildMenuPanel == null)
             {
-                Debug.Log($"[BuildMenuManager] Found BuildMenuPanel: {buildMenuPanel.name}, initial active state: {buildMenuPanel.activeSelf}");
-            }
-            else
-            {
-                Debug.LogError("[BuildMenuManager] BuildMenuPanel not found in scene!");
+                Debug.LogError("[BuildMenuManager] ShipBuildMenuPanel not found in scene!");
             }
         }
 
-        if (closeButton == null && buildMenuPanel != null)
+        if (shipCloseButton == null && shipBuildMenuPanel != null)
         {
-            Debug.Log("[BuildMenuManager] Searching for CloseButton...");
-            Transform closeTransform = buildMenuPanel.transform.Find("CloseButton");
+            Transform closeTransform = shipBuildMenuPanel.transform.Find("CloseButton");
             if (closeTransform != null)
             {
-                closeButton = closeTransform.GetComponent<Button>();
-                Debug.Log($"[BuildMenuManager] Found CloseButton: {closeTransform.name}");
+                shipCloseButton = closeTransform.GetComponent<Button>();
             }
             else
             {
-                Debug.LogWarning("[BuildMenuManager] CloseButton not found in BuildMenuPanel!");
+                Debug.LogWarning("[BuildMenuManager] CloseButton not found in ShipBuildMenuPanel!");
             }
         }
 
-        // Проверяем, что все элементы найдены
-        if (buildButton == null)
+        if (roomBuildButton == null)
         {
-            Debug.LogError("[BuildMenuManager] BuildButton is null - cannot continue!");
-            return;
+            GameObject buttonObj = FindInactiveObject("RoomBuildButton");
+            if (buttonObj != null)
+            {
+                roomBuildButton = buttonObj.GetComponent<Button>();
+            }
+            else
+            {
+                Debug.LogError("[BuildMenuManager] RoomBuildButton not found in scene!");
+            }
         }
 
-        if (buildMenuPanel == null)
+        if (roomBuildMenuPanel == null)
         {
-            Debug.LogError("[BuildMenuManager] BuildMenuPanel is null - cannot continue!");
-            return;
+            roomBuildMenuPanel = FindInactiveObject("RoomBuildMenuPanel");
+            if (roomBuildMenuPanel == null)
+            {
+                Debug.LogError("[BuildMenuManager] RoomBuildMenuPanel not found in scene!");
+            }
         }
 
-        if (closeButton == null)
+        if (roomCloseButton == null && roomBuildMenuPanel != null)
         {
-            Debug.LogWarning("[BuildMenuManager] CloseButton is null - close functionality will not work!");
+            Transform closeTransform = roomBuildMenuPanel.transform.Find("CloseButton");
+            if (closeTransform != null)
+            {
+                roomCloseButton = closeTransform.GetComponent<Button>();
+            }
+            else
+            {
+                Debug.LogWarning("[BuildMenuManager] CloseButton not found in RoomBuildMenuPanel!");
+            }
         }
 
-        // Привязываем обработчики
-        buildButton.onClick.AddListener(OnBuildButtonClicked);
-        Debug.Log("[BuildMenuManager] BuildButton onClick listener added");
-
-        if (closeButton != null)
+        if (shipBuildButton == null)
         {
-            closeButton.onClick.AddListener(OnCloseButtonClicked);
-            Debug.Log("[BuildMenuManager] CloseButton onClick listener added");
+            Debug.LogError("[BuildMenuManager] ShipBuildButton is null - cannot continue!");
         }
 
-        // Изначально показываем BuildButton и скрываем BuildMenuPanel
-        buildButton.gameObject.SetActive(true);
-        buildMenuPanel.SetActive(false);
-        Debug.Log($"[BuildMenuManager] Initial state set - BuildButton: visible, BuildMenuPanel: hidden");
+        if (shipBuildMenuPanel == null)
+        {
+            Debug.LogError("[BuildMenuManager] ShipBuildMenuPanel is null - cannot continue!");
+        }
 
-        Debug.Log("[BuildMenuManager] Initialized successfully!");
+        if (roomBuildButton == null)
+        {
+            Debug.LogError("[BuildMenuManager] RoomBuildButton is null - cannot continue!");
+        }
+
+        if (roomBuildMenuPanel == null)
+        {
+            Debug.LogError("[BuildMenuManager] RoomBuildMenuPanel is null - cannot continue!");
+        }
+
+        if (shipBuildButton != null)
+        {
+            shipBuildButton.onClick.AddListener(OnShipBuildButtonClicked);
+        }
+
+        if (shipCloseButton != null)
+        {
+            shipCloseButton.onClick.AddListener(OnShipCloseButtonClicked);
+        }
+
+        if (roomBuildButton != null)
+        {
+            roomBuildButton.onClick.AddListener(OnRoomBuildButtonClicked);
+        }
+
+        if (roomCloseButton != null)
+        {
+            roomCloseButton.onClick.AddListener(OnRoomCloseButtonClicked);
+        }
+
+        if (shipBuildButton != null) shipBuildButton.gameObject.SetActive(true);
+        if (shipBuildMenuPanel != null) shipBuildMenuPanel.SetActive(false);
+        if (roomBuildButton != null) roomBuildButton.gameObject.SetActive(true);
+        if (roomBuildMenuPanel != null) roomBuildMenuPanel.SetActive(false);
     }
 
-    /// <summary>
-    /// Найти объект даже если он неактивен
-    /// </summary>
     GameObject FindInactiveObject(string name)
     {
-        // Ищем среди всех объектов в сцене, включая неактивные
         GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
         foreach (GameObject obj in allObjects)
         {
@@ -118,24 +158,44 @@ public class BuildMenuManager : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// Обработчик клика по BuildButton
-    /// </summary>
-    void OnBuildButtonClicked()
+    void OnShipBuildButtonClicked()
     {
-        Debug.Log("[BuildMenuManager] BuildButton clicked");
+        OpenShipBuildMenu();
+    }
 
-        // Показываем панель меню строительства
-        buildMenuPanel.SetActive(true);
+    void OnRoomBuildButtonClicked()
+    {
+        OpenRoomBuildMenu();
+    }
 
-        // Скрываем кнопку Build
-        buildButton.gameObject.SetActive(false);
+    void OnShipCloseButtonClicked()
+    {
+        CloseShipBuildMenu();
+    }
 
-        // Ставим игру на паузу (это также заблокирует движение камеры)
+    void OnRoomCloseButtonClicked()
+    {
+        CloseRoomBuildMenu();
+    }
+
+    public void OpenShipBuildMenu()
+    {
+        if (roomBuildMenuPanel != null && roomBuildMenuPanel.activeSelf)
+        {
+            CloseRoomBuildMenu();
+        }
+
+        if (shipBuildMenuPanel != null)
+        {
+            shipBuildMenuPanel.SetActive(true);
+        }
+
+        if (shipBuildButton != null) shipBuildButton.gameObject.SetActive(false);
+        if (roomBuildButton != null) roomBuildButton.gameObject.SetActive(false);
+
         if (GamePauseManager.Instance != null)
         {
             GamePauseManager.Instance.SetBuildModePause(true);
-            Debug.Log("[BuildMenuManager] Game paused and camera blocked");
         }
         else
         {
@@ -143,50 +203,104 @@ public class BuildMenuManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Обработчик клика по CloseButton
-    /// </summary>
-    void OnCloseButtonClicked()
+    public void OpenRoomBuildMenu()
     {
-        CloseBuildMenu();
+        if (shipBuildMenuPanel != null && shipBuildMenuPanel.activeSelf)
+        {
+            CloseShipBuildMenu();
+        }
+
+        if (roomBuildMenuPanel != null)
+        {
+            roomBuildMenuPanel.SetActive(true);
+        }
+
+        if (shipBuildButton != null) shipBuildButton.gameObject.SetActive(false);
+        if (roomBuildButton != null) roomBuildButton.gameObject.SetActive(false);
+
+        if (GamePauseManager.Instance != null)
+        {
+            GamePauseManager.Instance.SetBuildModePause(true);
+        }
+        else
+        {
+            Debug.LogWarning("[BuildMenuManager] GamePauseManager not found!");
+        }
     }
 
-    /// <summary>
-    /// Закрыть меню строительства (публичный метод)
-    /// </summary>
-    public void CloseBuildMenu()
+    public void CloseShipBuildMenu()
     {
-        Debug.Log("[BuildMenuManager] Closing build menu");
+        if (shipBuildMenuPanel != null)
+        {
+            shipBuildMenuPanel.SetActive(false);
+        }
 
-        // Скрываем панель меню строительства
-        buildMenuPanel.SetActive(false);
+        if (shipBuildButton != null) shipBuildButton.gameObject.SetActive(true);
+        if (roomBuildButton != null) roomBuildButton.gameObject.SetActive(true);
 
-        // Показываем кнопку Build
-        buildButton.gameObject.SetActive(true);
-
-        // Снимаем паузу (это также разблокирует движение камеры)
         if (GamePauseManager.Instance != null)
         {
             GamePauseManager.Instance.SetBuildModePause(false);
-            Debug.Log("[BuildMenuManager] Game unpaused and camera unblocked");
         }
         else
         {
             Debug.LogWarning("[BuildMenuManager] GamePauseManager not found!");
+        }
+    }
+
+    public void CloseRoomBuildMenu()
+    {
+        if (roomBuildMenuPanel != null)
+        {
+            roomBuildMenuPanel.SetActive(false);
+        }
+
+        if (shipBuildButton != null) shipBuildButton.gameObject.SetActive(true);
+        if (roomBuildButton != null) roomBuildButton.gameObject.SetActive(true);
+
+        if (GamePauseManager.Instance != null)
+        {
+            GamePauseManager.Instance.SetBuildModePause(false);
+        }
+        else
+        {
+            Debug.LogWarning("[BuildMenuManager] GamePauseManager not found!");
+        }
+    }
+
+    public void CloseAllBuildMenus()
+    {
+        if (shipBuildMenuPanel != null && shipBuildMenuPanel.activeSelf)
+        {
+            CloseShipBuildMenu();
+        }
+
+        if (roomBuildMenuPanel != null && roomBuildMenuPanel.activeSelf)
+        {
+            CloseRoomBuildMenu();
         }
     }
 
     void OnDestroy()
     {
-        // Отписываемся от событий
-        if (buildButton != null)
+        if (shipBuildButton != null)
         {
-            buildButton.onClick.RemoveListener(OnBuildButtonClicked);
+            shipBuildButton.onClick.RemoveListener(OnShipBuildButtonClicked);
         }
 
-        if (closeButton != null)
+        if (shipCloseButton != null)
         {
-            closeButton.onClick.RemoveListener(OnCloseButtonClicked);
+            shipCloseButton.onClick.RemoveListener(OnShipCloseButtonClicked);
+        }
+
+        if (roomBuildButton != null)
+        {
+            roomBuildButton.onClick.RemoveListener(OnRoomBuildButtonClicked);
+        }
+
+        if (roomCloseButton != null)
+        {
+            roomCloseButton.onClick.RemoveListener(OnRoomCloseButtonClicked);
         }
     }
 }

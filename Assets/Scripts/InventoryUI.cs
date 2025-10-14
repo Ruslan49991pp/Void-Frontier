@@ -263,16 +263,12 @@ public class InventoryUI : MonoBehaviour
             return;
         }
 
-        Debug.Log("InventoryUI: Searching for equipment slots in Canvas_MainUI hierarchy...");
-
         // Ищем слоты по их реальным именам и привязываем к соответствующему EquipmentSlot
         BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Helmet", EquipmentSlot.Head);
         BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Armor", EquipmentSlot.Chest);
         BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Weapon", EquipmentSlot.RightHand);
         BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Pants", EquipmentSlot.Legs);
         BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Boots", EquipmentSlot.Feet);
-
-        Debug.Log($"InventoryUI: Bound {equipmentSlotUIs.Count} equipment slots from Canvas_MainUI");
     }
 
     /// <summary>
@@ -290,7 +286,6 @@ public class InventoryUI : MonoBehaviour
         }
 
         GameObject slotGO = slotTransform.gameObject;
-        Debug.Log($"InventoryUI: Found equipment slot '{slotName}' at path: {GetGameObjectPath(slotGO)}");
 
         // Получаем или добавляем InventorySlotUI компонент
         InventorySlotUI slotUI = slotGO.GetComponent<InventorySlotUI>();
@@ -298,12 +293,10 @@ public class InventoryUI : MonoBehaviour
         {
             // Находим компоненты для инициализации InventorySlotUI
             Image background = slotGO.GetComponent<Image>();
-            Debug.Log($"InventoryUI: Equipment slot '{slotName}' - Found background Image: {background != null}");
 
             // Ищем Icon внутри слота
             Transform iconTransform = slotTransform.Find("Icon");
             Image iconImage = iconTransform != null ? iconTransform.GetComponent<Image>() : null;
-            Debug.Log($"InventoryUI: Equipment slot '{slotName}' - Found Icon transform: {iconTransform != null}, Icon Image: {iconImage != null}");
 
             // Если Icon не найден, логируем все дочерние объекты
             if (iconTransform == null)
@@ -311,7 +304,7 @@ public class InventoryUI : MonoBehaviour
                 Debug.LogWarning($"InventoryUI: Icon not found in '{slotName}', listing children:");
                 foreach (Transform child in slotTransform)
                 {
-                    Debug.Log($"  - Child: {child.name}");
+                    Debug.LogWarning($"  - Child: {child.name}");
                 }
             }
 
@@ -329,11 +322,6 @@ public class InventoryUI : MonoBehaviour
             // Добавляем и инициализируем InventorySlotUI
             slotUI = slotGO.AddComponent<InventorySlotUI>();
             slotUI.Initialize(background, iconImage, quantityText, button);
-            Debug.Log($"InventoryUI: Initialized InventorySlotUI for '{slotName}' - itemIcon field is {(slotUI.itemIcon != null ? "set" : "NULL")}");
-        }
-        else
-        {
-            Debug.Log($"InventoryUI: InventorySlotUI already exists on '{slotName}' - itemIcon field is {(slotUI.itemIcon != null ? "set" : "NULL")}");
         }
 
         // Настраиваем слот для экипировки
@@ -348,8 +336,6 @@ public class InventoryUI : MonoBehaviour
 
         // Сохраняем в словарь
         equipmentSlotUIs[equipmentSlot] = slotUI;
-
-        Debug.Log($"InventoryUI: Bound equipment slot '{slotName}' to {equipmentSlot}");
     }
 
     /// <summary>
@@ -617,20 +603,15 @@ public class InventoryUI : MonoBehaviour
         if (currentInventory == null) return;
 
         var equipmentSlots = currentInventory.GetAllEquipmentSlots();
-        Debug.Log($"InventoryUI: UpdateEquipmentDisplay called, found {equipmentSlots.Count} equipment slots in inventory");
 
         foreach (var kvp in equipmentSlotUIs)
         {
             EquipmentSlot slotType = kvp.Key;
             InventorySlotUI slotUI = kvp.Value;
 
-            Debug.Log($"InventoryUI: Checking equipment slot UI for {slotType}, itemIcon is {(slotUI.itemIcon != null ? "set" : "NULL")}");
-
             if (equipmentSlots.ContainsKey(slotType))
             {
                 InventorySlot slot = equipmentSlots[slotType];
-                bool isEmpty = slot == null || slot.IsEmpty();
-                Debug.Log($"InventoryUI: Equipment slot {slotType} - isEmpty: {isEmpty}, slot.itemData: {(slot != null && slot.itemData != null ? slot.itemData.itemName : "NULL")}");
 
                 slotUI.UpdateSlot(slot);
 
@@ -990,14 +971,10 @@ public class InventoryUI : MonoBehaviour
     {
         EquipmentSlot equipSlot = (EquipmentSlot)equipSlotId;
 
-        Debug.Log($"[DragDrop] Inventory to Equipment: slot {fromSlot} -> {equipSlot}");
-
         InventorySlot fromInventorySlot = currentInventory.GetSlot(fromSlot);
         if (fromInventorySlot != null && !fromInventorySlot.IsEmpty())
         {
             ItemData item = fromInventorySlot.itemData;
-            Debug.Log($"[DragDrop] Item: {item.itemName}, type: {item.itemType}, equipSlot: {item.equipmentSlot}");
-
 
             // Проверяем совместимость
             bool canEquipToSlot = false;
@@ -1021,7 +998,6 @@ public class InventoryUI : MonoBehaviour
                 // Check if the slot is blocked (e.g., second hand when weapon is already equipped)
                 if (currentInventory.IsEquipmentSlotBlocked(equipSlot))
                 {
-                    Debug.Log($"[DragDrop] Target slot {equipSlot} is blocked, aborting");
                     return;
                 }
 
@@ -1034,7 +1010,6 @@ public class InventoryUI : MonoBehaviour
                     if ((rightHandItem != null && rightHandItem.itemName == item.itemName) ||
                         (leftHandItem != null && leftHandItem.itemName == item.itemName))
                     {
-                        Debug.Log($"[DragDrop] Same weapon already equipped, aborting");
                         return;
                     }
                 }
@@ -1044,7 +1019,6 @@ public class InventoryUI : MonoBehaviour
                     ItemData equippedItem = currentInventory.GetEquippedItem(equipSlot);
                     if (equippedItem != null && equippedItem.itemName == item.itemName)
                     {
-                        Debug.Log($"[DragDrop] Same item already equipped in target slot, aborting");
                         return;
                     }
                 }
@@ -1059,7 +1033,6 @@ public class InventoryUI : MonoBehaviour
                 // Экипируем предмет
                 if (currentInventory.EquipItem(item))
                 {
-                    Debug.Log($"[DragDrop] Successfully equipped {item.itemName} to {equipSlot}");
                     // ВАЖНО: удаляем предмет из конкретного слота, а не первый найденный!
                     currentInventory.RemoveItemFromSlot(fromSlot, 1);
 
@@ -1068,24 +1041,11 @@ public class InventoryUI : MonoBehaviour
                 }
                 else
                 {
-                    Debug.Log($"[DragDrop] Failed to equip {item.itemName}");
                     // Restore original slot if equipping failed
                     if (item.itemType == ItemType.Weapon)
                     {
                         item.equipmentSlot = originalSlot;
                     }
-                }
-            }
-            else
-            {
-                Debug.Log($"[DragDrop] Item cannot be equipped to target slot {equipSlot}");
-                if (item.equipmentSlot == EquipmentSlot.None)
-                {
-                    Debug.Log($"[DragDrop] Item has no equipment slot");
-                }
-                else
-                {
-                    Debug.Log($"[DragDrop] Item slot {item.equipmentSlot} does not match target {equipSlot}");
                 }
             }
         }
@@ -1098,18 +1058,11 @@ public class InventoryUI : MonoBehaviour
     {
         EquipmentSlot equipSlot = (EquipmentSlot)equipSlotId;
 
-        Debug.Log($"[DragDrop] Equipment to Inventory: {equipSlot} -> slot {toSlot}");
-
         // UnequipItem автоматически добавляет предмет в инвентарь, поэтому дополнительно добавлять не нужно
         if (currentInventory.UnequipItem(equipSlot))
         {
-            Debug.Log($"[DragDrop] Successfully unequipped from {equipSlot}");
             // Update UI to show unblocked slots
             UpdateEquipmentSlotVisuals();
-        }
-        else
-        {
-            Debug.Log($"[DragDrop] Failed to unequip from {equipSlot}");
         }
     }
 
@@ -1121,19 +1074,13 @@ public class InventoryUI : MonoBehaviour
         EquipmentSlot fromEquipSlot = (EquipmentSlot)fromEquipSlotId;
         EquipmentSlot toEquipSlot = (EquipmentSlot)toEquipSlotId;
 
-        Debug.Log($"[DragDrop] Equipment to Equipment: {fromEquipSlot} -> {toEquipSlot}");
-
         ItemData fromItem = currentInventory.GetEquippedItem(fromEquipSlot);
         ItemData toItem = currentInventory.GetEquippedItem(toEquipSlot);
 
         if (fromItem == null)
         {
-            Debug.Log($"[DragDrop] Source slot {fromEquipSlot} is empty, aborting");
             return;
         }
-
-        Debug.Log($"[DragDrop] From item: {fromItem.itemName}, equipSlot: {fromItem.equipmentSlot}");
-        Debug.Log($"[DragDrop] To item: {(toItem != null ? toItem.itemName : "NULL")}, target slot: {toEquipSlot}");
 
         // ВАЖНО: UnequipItem автоматически добавляет предметы в инвентарь!
         // Поэтому нам НЕ нужно вызывать AddItem если экипировка не удалась
@@ -1142,13 +1089,9 @@ public class InventoryUI : MonoBehaviour
         bool canEquipFromToTarget = (fromItem.equipmentSlot == toEquipSlot);
         bool canEquipToToSource = (toItem != null && toItem.equipmentSlot == fromEquipSlot);
 
-        Debug.Log($"[DragDrop] Can equip fromItem to target: {canEquipFromToTarget}");
-        Debug.Log($"[DragDrop] Can equip toItem to source: {canEquipToToSource}");
-
         // Если ни один предмет не может быть экипирован в целевой слот, отменяем операцию
         if (!canEquipFromToTarget && !canEquipToToSource)
         {
-            Debug.Log($"[DragDrop] Incompatible slots, aborting drag operation");
             return; // Не снимаем предметы, если обмен невозможен
         }
 
@@ -1162,10 +1105,8 @@ public class InventoryUI : MonoBehaviour
         // Пытаемся экипировать в новые слоты
         if (canEquipFromToTarget)
         {
-            Debug.Log($"[DragDrop] Trying to equip {fromItem.itemName} to {toEquipSlot}");
             if (currentInventory.EquipItem(fromItem))
             {
-                Debug.Log($"[DragDrop] Successfully equipped {fromItem.itemName}");
                 // Удаляем из инвентаря, так как экипировка удалась
                 currentInventory.RemoveItem(fromItem, 1);
             }
@@ -1173,16 +1114,12 @@ public class InventoryUI : MonoBehaviour
 
         if (toItem != null && canEquipToToSource)
         {
-            Debug.Log($"[DragDrop] Trying to equip {toItem.itemName} to {fromEquipSlot}");
             if (currentInventory.EquipItem(toItem))
             {
-                Debug.Log($"[DragDrop] Successfully equipped {toItem.itemName}");
                 // Удаляем из инвентаря, так как экипировка удалась
                 currentInventory.RemoveItem(toItem, 1);
             }
         }
-
-        Debug.Log($"[DragDrop] Equipment swap completed");
     }
 
 

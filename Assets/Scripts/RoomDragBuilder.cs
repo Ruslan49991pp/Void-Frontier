@@ -51,12 +51,21 @@ public class RoomDragBuilder : MonoBehaviour
     // Режим активен
     private bool isDragModeActive = false;
 
+    // Режим добавления клеток к существующему силуэту
+    private bool isAddingMoreCells = false;
+    private List<Vector2Int> existingPerimeter = new List<Vector2Int>(); // Сохраненный периметр до начала добавления
+    private List<Vector2Int> existingFloor = new List<Vector2Int>();     // Сохраненный пол до начала добавления
+
     // Режим удаления
     private bool isDeletionModeActive = false;
     private List<Vector2Int> deletedCells = new List<Vector2Int>();   // Удаленные клетки
     private List<GameObject> delGhostBlocks = new List<GameObject>(); // Del_Build_Ghost блоки
-    private GameObject delPreviewBlock = null;                         // Preview блок при наведении
-    private Vector2Int lastPreviewPos = Vector2Int.zero;              // Последняя позиция preview
+    private GameObject delPreviewBlock = null;                         // Preview блок при наведении (deletion)
+    private Vector2Int lastDelPreviewPos = Vector2Int.zero;           // Последняя позиция preview (deletion)
+
+    // Cursor preview для build mode
+    private GameObject buildCursorPreview = null;                      // Preview блок под курсором (build)
+    private Vector2Int lastBuildPreviewPos = Vector2Int.zero;         // Последняя позиция preview (build)
 
     // Сохраненные внутренние углы
     private List<Vector2Int> savedInnerCorners = new List<Vector2Int>(); // Внутренние углы найденные в RecalculatePerimeter
@@ -71,8 +80,8 @@ public class RoomDragBuilder : MonoBehaviour
     private HashSet<Vector2Int> cachedDelDragPositions = new HashSet<Vector2Int>();
     private Dictionary<Vector2Int, GameObject> activeDelDragBlocks = new Dictionary<Vector2Int, GameObject>();
 
-    // Флаг детального логирования (ВЫКЛЮЧЕН для производительности)
-    private const bool VERBOSE_LOGGING = false;
+    // Флаг детального логирования (ВКЛЮЧЕН для отладки)
+    private const bool DEBUG_LOGGING = true;
 
     void Start()
     {
@@ -135,7 +144,8 @@ public class RoomDragBuilder : MonoBehaviour
 
     void Update()
     {
-        if (!isDragModeActive) return;
+        // ВАЖНО: Update работает если активен drag режим ИЛИ deletion режим
+        if (!isDragModeActive && !isDeletionModeActive) return;
 
         // Проверяем, не над UI ли мышь
         bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
@@ -143,51 +153,329 @@ public class RoomDragBuilder : MonoBehaviour
 
         if (isPointerOverUI) return;
 
-        switch (currentState)
-        {
-            case DragState.Idle:
-                HandleIdleState();
-                break;
-
-            case DragState.Dragging:
-                HandleDraggingState();
-                break;
-
-            case DragState.PreviewReady:
-                // Ожидание подтверждения через кнопку AddBuild
-                break;
-
-            case DragState.Confirmed:
-                // Ожидание выхода из режима строительства
-                break;
-        }
-
-        // Обработка режима удаления
-        if (isDeletionModeActive && (currentState == DragState.PreviewReady || currentState == DragState.Confirmed))
+        // ВАЖНО: Проверяем режим deletion ПЕРЕД обработкой состояний
+        // Если deletion mode активен - обрабатываем ТОЛЬКО deletion, игнорируем build логику
+        if (isDeletionModeActive)
         {
             HandleDeletionMode();
+        }
+        else
+        {
+            // Build режим - обрабатываем состояния обычным образом
+            switch (currentState)
+            {
+                case DragState.Idle:
+                    HandleIdleState();
+                    break;
+
+                case DragState.Dragging:
+                    HandleDraggingState();
+                    break;
+
+                case DragState.PreviewReady:
+                    // В этом состоянии можно начать новый drag (для добавления клеток)
+                    // Обрабатываем клики так же как в Idle состоянии
+                    if (isDragModeActive)
+                    {
+                        // КРИТИЧНО: При клике в PreviewReady нужно активировать режим добавления клеток!
+                        if (Input.GetMouseButtonDown(0) && !isAddingMoreCells)
+                        {
+                            // Активируем режим добавления и сохраняем существующие клетки
+                            isAddingMoreCells = true;
+                            existingPerimeter.Clear();
+                            existingPerimeter.AddRange(roomPerimeter);
+                            existingFloor.Clear();
+                            existingFloor.AddRange(roomFloor);
+
+                            if (DEBUG_LOGGING)
+                            {
+                            }
+                        }
+
+                        HandleIdleState();
+                    }
+                    break;
+
+                case DragState.Confirmed:
+                    // В этом состоянии также можно начать новый drag (для добавления клеток)
+                    if (isDragModeActive)
+                    {
+                        // КРИТИЧНО: При клике в Confirmed нужно активировать режим добавления клеток!
+                        if (Input.GetMouseButtonDown(0) && !isAddingMoreCells)
+                        {
+                            // Активируем режим добавления и сохраняем существующие клетки
+                            isAddingMoreCells = true;
+                            existingPerimeter.Clear();
+                            existingPerimeter.AddRange(roomPerimeter);
+                            existingFloor.Clear();
+                            existingFloor.AddRange(roomFloor);
+
+                            if (DEBUG_LOGGING)
+                            {
+                            }
+
+                            // Меняем состояние на Idle чтобы начать новый drag
+                            currentState = DragState.Idle;
+                        }
+
+                        HandleIdleState();
+                    }
+                    break;
+            }
         }
     }
 
     /// <summary>
     /// Активировать режим drag строительства
+    /// После активации можно рисовать НЕОГРАНИЧЕННОЕ количество прямоугольников подряд без повторного нажатия кнопки
+    /// Каждый новый прямоугольник добавляется к существующему силуэту
     /// </summary>
     public void ActivateDragMode()
     {
+        if (DEBUG_LOGGING)
+        {
+        }
+
         isDragModeActive = true;
+
+        // Запоминаем, был ли активен deletion mode ДО деактивации
+        bool wasInDeletionMode = isDeletionModeActive;
+
+        // Деактивируем deletion режим если он был активен
+        if (isDeletionModeActive)
+        {
+            if (DEBUG_LOGGING)
+            {
+            }
+            DeactivateDeletionMode();
+        }
+
+        // Проверяем, есть ли уже построенный силуэт
+        // ВАЖНО: Проверяем не только currentState, но и наличие данных!
+        // Потому что при повторном клике на BuildSlot state может быть Idle, но данные есть
+        bool hasExistingRoom = (currentState == DragState.PreviewReady || currentState == DragState.Confirmed) ||
+                                (roomPerimeter.Count > 0 || roomFloor.Count > 0);
+
+        if (hasExistingRoom)
+        {
+            // Режим добавления клеток к существующему силуэту
+            isAddingMoreCells = true;
+
+            // Сохраняем существующий периметр и пол
+            existingPerimeter.Clear();
+            existingPerimeter.AddRange(roomPerimeter);
+            existingFloor.Clear();
+            existingFloor.AddRange(roomFloor);
+
+            if (DEBUG_LOGGING)
+            {
+            }
+
+            // КРИТИЧНО: Очищаем старые ghost блоки ТОЛЬКО если переключаемся с deletion mode ИЛИ из Confirmed state
+            // При удалении были созданы новые ghost блоки для периметра
+            // Если просто нажали BuildSlot второй раз - НЕ очищаем, ghost блоки должны остаться!
+            // ВАЖНО: Если в Confirmed state, нужно очистить confirmedBlocks чтобы они могли быть перестроены!
+            if (wasInDeletionMode || currentState == DragState.Confirmed)
+            {
+                if (DEBUG_LOGGING)
+                {
+                }
+
+                // Возвращаем все активные ghost блоки в pool
+                foreach (var kvp in activeGhostBlocks)
+                {
+                    if (kvp.Value != null)
+                    {
+                        GhostBlockPool.Instance.Return(kvp.Value);
+                    }
+                }
+                activeGhostBlocks.Clear();
+                ghostBlocks.Clear();
+                cachedPerimeter.Clear();
+
+                foreach (var kvp in activeFloorBlocks)
+                {
+                    if (kvp.Value != null)
+                    {
+                        GhostBlockPool.Instance.Return(kvp.Value);
+                    }
+                }
+                activeFloorBlocks.Clear();
+                ghostFloorBlocks.Clear();
+                cachedFloor.Clear();
+
+                // КРИТИЧНО: Также очищаем confirmed блоки если они есть
+                // Они будут заново созданы после merge с правильной классификацией (стена/пол)
+                // ВАЖНО: Используем DestroyImmediate() чтобы удалить блоки СРАЗУ, иначе они будут дублироваться!
+                if (DEBUG_LOGGING)
+                {
+                }
+                foreach (GameObject block in confirmedBlocks)
+                {
+                    if (block != null)
+                    {
+                        if (DEBUG_LOGGING)
+                        {
+                        }
+                        DestroyImmediate(block);
+                    }
+                }
+                confirmedBlocks.Clear();
+
+                if (DEBUG_LOGGING)
+                {
+                }
+                foreach (GameObject block in confirmedFloorBlocks)
+                {
+                    if (block != null)
+                    {
+                        if (DEBUG_LOGGING)
+                        {
+                        }
+                        DestroyImmediate(block);
+                    }
+                }
+                confirmedFloorBlocks.Clear();
+
+                // КРИТИЧНО: Также очищаем deletion preview блоки
+                // Эти блоки могут остаться если пользователь делал удаление перед добавлением
+                if (DEBUG_LOGGING)
+                {
+                }
+                foreach (var kvp in activeDelDragBlocks)
+                {
+                    if (kvp.Value != null)
+                    {
+                        if (DEBUG_LOGGING)
+                        {
+                        }
+                        GhostBlockPool.Instance.Return(kvp.Value);
+                    }
+                }
+                activeDelDragBlocks.Clear();
+                cachedDelDragPositions.Clear();
+
+                if (DEBUG_LOGGING)
+                {
+                }
+                foreach (GameObject block in delDragPreviewBlocks)
+                {
+                    if (block != null)
+                    {
+                        if (DEBUG_LOGGING)
+                        {
+                        }
+                        GhostBlockPool.Instance.Return(block);
+                    }
+                }
+                delDragPreviewBlocks.Clear();
+
+                if (DEBUG_LOGGING)
+                {
+
+                    // Дополнительная проверка - считаем сколько ghost блоков осталось на сцене
+                    int sceneGhostCount = 0;
+                    GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>();
+                    foreach (GameObject obj in allObjects)
+                    {
+                        if (obj.name.Contains("GhostBlock_") || obj.name.Contains("Add_Build_Ghost") || obj.name.Contains("Add_Floor_Ghost"))
+                        {
+                            sceneGhostCount++;
+                        }
+                    }
+                }
+
+                // КРИТИЧНО: После очистки нужно заново создать ghost блоки для существующего периметра!
+                // Иначе комната исчезнет до начала drag'а
+                if (DEBUG_LOGGING)
+                {
+                }
+
+                // Создаем ghost блоки для периметра
+                foreach (Vector2Int pos in roomPerimeter)
+                {
+                    GameObject ghostBlock = CreateGhostBlockPooled(pos, buildGhostPrefab);
+                    activeGhostBlocks[pos] = ghostBlock;
+                    ghostBlocks.Add(ghostBlock);
+                    cachedPerimeter.Add(pos);
+                }
+
+                // Создаем ghost блоки для пола
+                if (floorGhostPrefab != null)
+                {
+                    foreach (Vector2Int pos in roomFloor)
+                    {
+                        GameObject floorBlock = CreateGhostBlockPooled(pos, floorGhostPrefab);
+                        activeFloorBlocks[pos] = floorBlock;
+                        ghostFloorBlocks.Add(floorBlock);
+                        cachedFloor.Add(pos);
+                    }
+                }
+
+                if (DEBUG_LOGGING)
+                {
+                }
+            }
+            else
+            {
+                if (DEBUG_LOGGING)
+                {
+                }
+            }
+        }
+        else
+        {
+            // Первоначальное строительство - начинаем с нуля
+            isAddingMoreCells = false;
+            if (DEBUG_LOGGING)
+            {
+            }
+        }
+
         currentState = DragState.Idle;
-        Debug.Log("[RoomDragBuilder] Drag mode activated - waiting for mouse input");
-        Debug.Log($"[RoomDragBuilder] GridManager: {(gridManager != null ? "OK" : "NULL")}, Camera: {(playerCamera != null ? "OK" : "NULL")}");
     }
 
     /// <summary>
     /// Деактивировать режим drag строительства
+    /// ВАЖНО: Если мы в состоянии PreviewReady или Confirmed - НЕ очищаем клетки!
+    /// Очищаем только если в состоянии Idle или Dragging (незавершенный drag)
     /// </summary>
     public void DeactivateDragMode()
     {
+
         isDragModeActive = false;
-        ClearAllGhosts();
-        Debug.Log("[RoomDragBuilder] Drag mode deactivated");
+        isAddingMoreCells = false; // Сбрасываем флаг добавления
+
+        // Очищаем build cursor preview
+        if (buildCursorPreview != null)
+        {
+            GhostBlockPool.Instance.Return(buildCursorPreview);
+            buildCursorPreview = null;
+        }
+
+        // ВАЖНО: Очищаем данные ТОЛЬКО если:
+        // 1. Drag не был завершен (Idle или Dragging state)
+        // 2. И данных комнаты НЕТ (roomPerimeter и roomFloor пусты)
+        // Это защищает от случайного удаления данных при переключении инструментов
+        bool hasRoomData = roomPerimeter.Count > 0 || roomFloor.Count > 0;
+        bool isIncompleteDrag = currentState == DragState.Idle || currentState == DragState.Dragging;
+
+
+        if (isIncompleteDrag && !hasRoomData)
+        {
+            // Незавершенный drag БЕЗ данных - очищаем все
+            ClearGhostBlocks();
+            ClearDelPreview();
+            ClearDelDragPreview();
+            roomPerimeter.Clear();
+            roomFloor.Clear();
+            currentState = DragState.Idle;
+        }
+        else
+        {
+            // PreviewReady, Confirmed ИЛИ есть данные - оставляем клетки на месте
+        }
+
     }
 
     /// <summary>
@@ -195,8 +483,9 @@ public class RoomDragBuilder : MonoBehaviour
     /// </summary>
     public void ActivateDeletionMode()
     {
+
         isDeletionModeActive = true;
-        Debug.Log("[RoomDragBuilder] Deletion mode activated");
+
     }
 
     /// <summary>
@@ -204,12 +493,13 @@ public class RoomDragBuilder : MonoBehaviour
     /// </summary>
     public void DeactivateDeletionMode()
     {
+
         isDeletionModeActive = false;
         isDeletionDragActive = false;
         ClearDelGhostBlocks();
         ClearDelPreview();
         ClearDelDragPreview();
-        Debug.Log("[RoomDragBuilder] Deletion mode deactivated");
+
     }
 
     /// <summary>
@@ -217,20 +507,44 @@ public class RoomDragBuilder : MonoBehaviour
     /// </summary>
     void HandleIdleState()
     {
+        // Показываем cursor preview под мышкой (только для build mode, для deletion есть отдельная логика)
+        if (isDragModeActive && !isDeletionModeActive)
+        {
+            Vector2Int currentGridPos = GetGridPositionFromMouse();
+
+            if (currentGridPos != Vector2Int.zero && currentGridPos != lastBuildPreviewPos)
+            {
+                // Удаляем старый preview
+                if (buildCursorPreview != null)
+                {
+                    GhostBlockPool.Instance.Return(buildCursorPreview);
+                    buildCursorPreview = null;
+                }
+
+                // Создаем новый preview под курсором
+                buildCursorPreview = CreateGhostBlockPooled(currentGridPos, buildGhostPrefab);
+                lastBuildPreviewPos = currentGridPos;
+            }
+        }
+
         if (Input.GetMouseButtonDown(0))
         {
-            Debug.Log("[RoomDragBuilder] Mouse button down detected");
+
+            // Удаляем cursor preview при начале drag
+            if (buildCursorPreview != null)
+            {
+                GhostBlockPool.Instance.Return(buildCursorPreview);
+                buildCursorPreview = null;
+            }
 
             // Начинаем drag
             Vector2Int gridPos = GetGridPositionFromMouse();
-            Debug.Log($"[RoomDragBuilder] Grid position from mouse: {gridPos}");
 
             if (gridPos != Vector2Int.zero)
             {
                 dragStartGridPos = gridPos;
                 dragEndGridPos = gridPos;
                 currentState = DragState.Dragging;
-                Debug.Log($"[RoomDragBuilder] Started dragging from {dragStartGridPos}");
             }
             else
             {
@@ -257,8 +571,18 @@ public class RoomDragBuilder : MonoBehaviour
         else if (Input.GetMouseButtonUp(0))
         {
             // Закончили drag - фиксируем силуэт
+            if (DEBUG_LOGGING)
+            {
+            }
+
+            // Если это режим добавления клеток - объединяем с существующими
+            if (isAddingMoreCells)
+            {
+                MergeNewCellsWithExisting();
+                isAddingMoreCells = false; // Сбрасываем флаг после merge
+            }
+
             currentState = DragState.PreviewReady;
-            Debug.Log($"[RoomDragBuilder] Drag complete: from {dragStartGridPos} to {dragEndGridPos}");
         }
     }
 
@@ -267,20 +591,43 @@ public class RoomDragBuilder : MonoBehaviour
     /// </summary>
     void UpdateDragPreview()
     {
+        if (DEBUG_LOGGING && isAddingMoreCells)
+        {
+        }
+
         // Вычисляем прямоугольник
         int minX = Mathf.Min(dragStartGridPos.x, dragEndGridPos.x);
         int maxX = Mathf.Max(dragStartGridPos.x, dragEndGridPos.x);
         int minY = Mathf.Min(dragStartGridPos.y, dragEndGridPos.y);
         int maxY = Mathf.Max(dragStartGridPos.y, dragEndGridPos.y);
 
-        // Новые множества позиций
+        // Новые множества позиций для НОВОГО нарисованного прямоугольника
         HashSet<Vector2Int> newPerimeter = new HashSet<Vector2Int>();
         HashSet<Vector2Int> newFloor = new HashSet<Vector2Int>();
+
+        // ВАЖНО: Если режим добавления - сначала добавляем существующие клетки!
+        if (isAddingMoreCells)
+        {
+            // Добавляем существующие клетки в новые множества
+            foreach (Vector2Int pos in existingPerimeter)
+            {
+                newPerimeter.Add(pos);
+            }
+            foreach (Vector2Int pos in existingFloor)
+            {
+                newFloor.Add(pos);
+            }
+
+            if (DEBUG_LOGGING)
+            {
+            }
+        }
 
         // Обновляем списки периметра и пола
         roomPerimeter.Clear();
         roomFloor.Clear();
 
+        // Добавляем НОВЫЙ нарисованный прямоугольник
         for (int x = minX; x <= maxX; x++)
         {
             for (int y = minY; y <= maxY; y++)
@@ -293,14 +640,21 @@ public class RoomDragBuilder : MonoBehaviour
                 if (isPerimeter)
                 {
                     newPerimeter.Add(cellPos);
-                    roomPerimeter.Add(cellPos);
                 }
                 else
                 {
                     newFloor.Add(cellPos);
-                    roomFloor.Add(cellPos);
                 }
             }
+        }
+
+        // ВАЖНО: Теперь копируем ВСЕ клетки из newPerimeter/newFloor в roomPerimeter/roomFloor
+        // Это включает как существующие клетки (если isAddingMoreCells), так и новые
+        roomPerimeter.AddRange(newPerimeter);
+        roomFloor.AddRange(newFloor);
+
+        if (DEBUG_LOGGING && isAddingMoreCells)
+        {
         }
 
         // ИНКРЕМЕНТАЛЬНОЕ ОБНОВЛЕНИЕ: Удаляем блоки которых больше нет
@@ -372,6 +726,242 @@ public class RoomDragBuilder : MonoBehaviour
     }
 
     /// <summary>
+    /// Объединить новые нарисованные клетки с существующими
+    /// Пересчитывает периметр и пол для объединенной фигуры
+    /// </summary>
+    void MergeNewCellsWithExisting()
+    {
+        if (DEBUG_LOGGING)
+        {
+        }
+
+        // Объединяем все клетки (существующие + новые)
+        HashSet<Vector2Int> allCells = new HashSet<Vector2Int>();
+
+        // Добавляем существующие клетки
+        foreach (Vector2Int pos in existingPerimeter)
+        {
+            allCells.Add(pos);
+        }
+        foreach (Vector2Int pos in existingFloor)
+        {
+            allCells.Add(pos);
+        }
+
+        // Добавляем новые клетки
+        foreach (Vector2Int pos in roomPerimeter)
+        {
+            allCells.Add(pos);
+        }
+        foreach (Vector2Int pos in roomFloor)
+        {
+            allCells.Add(pos);
+        }
+
+        if (DEBUG_LOGGING)
+        {
+        }
+
+        // Теперь пересчитываем периметр и пол для объединенной фигуры
+        List<Vector2Int> newPerimeter = new List<Vector2Int>();
+        List<Vector2Int> newFloor = new List<Vector2Int>();
+
+        foreach (Vector2Int pos in allCells)
+        {
+            // Проверяем, была ли эта клетка частью старого периметра (из удаления)
+            bool wasOldPerimeterWall = existingPerimeter.Contains(pos);
+
+            // Клетка - периметр, если хотя бы один ортогональный сосед пустой
+            bool hasEmptyNeighbor = false;
+
+            Vector2Int[] neighbors = new Vector2Int[]
+            {
+                pos + Vector2Int.left,
+                pos + Vector2Int.right,
+                pos + Vector2Int.down,
+                pos + Vector2Int.up
+            };
+
+            foreach (Vector2Int neighbor in neighbors)
+            {
+                if (!allCells.Contains(neighbor))
+                {
+                    hasEmptyNeighbor = true;
+                    break;
+                }
+            }
+
+            // DEBUG: Логируем клетки старого периметра, которые теперь внутри
+            if (DEBUG_LOGGING && wasOldPerimeterWall && !hasEmptyNeighbor)
+            {
+            }
+
+            // КРИТИЧНО: Дополнительная проверка на внутренние углы
+            // ВАЖНО: Эта проверка работает ТОЛЬКО для режима объединения БЕЗ удалений!
+            // Когда есть удаления (deletedCells.Count > 0), внутренние углы ищутся через FindInnerCorners()
+            if (!hasEmptyNeighbor && deletedCells.Count == 0)
+            {
+                // Проверяем каждую диагональ: если диагональ пустая И оба ортогональных соседа заняты - это внутренний угол
+                Vector2Int left = pos + Vector2Int.left;
+                Vector2Int right = pos + Vector2Int.right;
+                Vector2Int down = pos + Vector2Int.down;
+                Vector2Int up = pos + Vector2Int.up;
+                Vector2Int topLeft = pos + new Vector2Int(-1, 1);
+                Vector2Int topRight = pos + new Vector2Int(1, 1);
+                Vector2Int bottomLeft = pos + new Vector2Int(-1, -1);
+                Vector2Int bottomRight = pos + new Vector2Int(1, -1);
+
+                bool hasLeft = allCells.Contains(left);
+                bool hasRight = allCells.Contains(right);
+                bool hasDown = allCells.Contains(down);
+                bool hasUp = allCells.Contains(up);
+
+                // Проверка 1: TopLeft диагональ пустая, но Up и Left заняты -> внутренний угол
+                if (!allCells.Contains(topLeft) && hasUp && hasLeft)
+                {
+                    hasEmptyNeighbor = true;
+                }
+                // Проверка 2: TopRight диагональ пустая, но Up и Right заняты -> внутренний угол
+                else if (!allCells.Contains(topRight) && hasUp && hasRight)
+                {
+                    hasEmptyNeighbor = true;
+                }
+                // Проверка 3: BottomLeft диагональ пустая, но Down и Left заняты -> внутренний угол
+                else if (!allCells.Contains(bottomLeft) && hasDown && hasLeft)
+                {
+                    hasEmptyNeighbor = true;
+                }
+                // Проверка 4: BottomRight диагональ пустая, но Down и Right заняты -> внутренний угол
+                else if (!allCells.Contains(bottomRight) && hasDown && hasRight)
+                {
+                    hasEmptyNeighbor = true;
+                }
+            }
+
+            if (hasEmptyNeighbor)
+            {
+                newPerimeter.Add(pos);
+            }
+            else
+            {
+                newFloor.Add(pos);
+            }
+        }
+
+        // Обновляем списки
+        roomPerimeter.Clear();
+        roomPerimeter.AddRange(newPerimeter);
+        roomFloor.Clear();
+        roomFloor.AddRange(newFloor);
+
+        if (DEBUG_LOGGING)
+        {
+        }
+
+        // ВАЖНО: Вызываем RecalculatePerimeter() для финальной обработки
+        // Это операция ДОБАВЛЕНИЯ (не удаления), поэтому isDeletion=false
+        RecalculatePerimeter(isDeletion: false);
+
+        if (DEBUG_LOGGING)
+        {
+        }
+
+        // Обновляем ghost блоки для отображения объединенной фигуры
+        UpdateGhostsAfterMerge();
+    }
+
+    /// <summary>
+    /// Обновить ghost блоки после объединения клеток
+    /// </summary>
+    void UpdateGhostsAfterMerge()
+    {
+        if (DEBUG_LOGGING)
+        {
+        }
+
+        // Очищаем текущие ghost блоки
+        int wallsReturned = 0;
+        foreach (var kvp in activeGhostBlocks)
+        {
+            if (kvp.Value != null)
+            {
+                GhostBlockPool.Instance.Return(kvp.Value);
+                wallsReturned++;
+            }
+        }
+        activeGhostBlocks.Clear();
+        ghostBlocks.Clear();
+        cachedPerimeter.Clear();
+
+        int floorsReturned = 0;
+        foreach (var kvp in activeFloorBlocks)
+        {
+            if (kvp.Value != null)
+            {
+                GhostBlockPool.Instance.Return(kvp.Value);
+                floorsReturned++;
+            }
+        }
+        activeFloorBlocks.Clear();
+        ghostFloorBlocks.Clear();
+        cachedFloor.Clear();
+
+        if (DEBUG_LOGGING)
+        {
+        }
+
+        // Создаем ghost блоки для нового периметра
+        if (DEBUG_LOGGING)
+        {
+        }
+        foreach (Vector2Int pos in roomPerimeter)
+        {
+            GameObject ghostBlock = CreateGhostBlockPooled(pos, buildGhostPrefab);
+            activeGhostBlocks[pos] = ghostBlock;
+            ghostBlocks.Add(ghostBlock);
+            cachedPerimeter.Add(pos);
+
+            if (DEBUG_LOGGING)
+            {
+            }
+        }
+
+        // Создаем ghost блоки для нового пола
+        if (floorGhostPrefab != null)
+        {
+            if (DEBUG_LOGGING)
+            {
+            }
+            foreach (Vector2Int pos in roomFloor)
+            {
+                GameObject floorBlock = CreateGhostBlockPooled(pos, floorGhostPrefab);
+                activeFloorBlocks[pos] = floorBlock;
+                ghostFloorBlocks.Add(floorBlock);
+                cachedFloor.Add(pos);
+
+                if (DEBUG_LOGGING)
+                {
+                }
+            }
+        }
+
+        if (DEBUG_LOGGING)
+        {
+
+            // Проверяем сколько АКТИВНЫХ ghost блоков на сцене после создания
+            int activeSceneCount = 0;
+            GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>();
+            foreach (GameObject obj in allObjects)
+            {
+                if (obj.activeInHierarchy && (obj.name.Contains("GhostBlock_") || obj.name.Contains("Build_Ghost")))
+                {
+                    activeSceneCount++;
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Создать призрачный блок в указанной позиции (УСТАРЕВШИЙ - для совместимости)
     /// </summary>
     GameObject CreateGhostBlock(Vector2Int gridPos, GameObject prefab)
@@ -421,13 +1011,14 @@ public class RoomDragBuilder : MonoBehaviour
     /// </summary>
     public void ConfirmBuild()
     {
-        if (currentState != DragState.PreviewReady)
+        // ВАЖНО: Проверяем не state, а наличие данных!
+        // Можно подтверждать в любом состоянии если есть данные
+        if (!HasRoomData())
         {
-            Debug.LogWarning("[RoomDragBuilder] Cannot confirm - not in PreviewReady state");
+            Debug.LogWarning("[RoomDragBuilder] Cannot confirm - no room data available");
             return;
         }
 
-        Debug.Log("[RoomDragBuilder] Confirming build - replacing ghosts with confirmed ghosts");
 
         // Заменяем все Build_Ghost (стены) на Add_Build_Ghost
         foreach (Vector2Int cellPos in roomPerimeter)
@@ -450,21 +1041,21 @@ public class RoomDragBuilder : MonoBehaviour
         ClearGhostBlocks();
 
         currentState = DragState.Confirmed;
-        Debug.Log($"[RoomDragBuilder] Build confirmed with {confirmedBlocks.Count} wall blocks and {confirmedFloorBlocks.Count} floor blocks");
     }
 
     /// <summary>
-    /// Финализировать постройку - заменить Add_Build_Ghost на SM_Wall/SM_Wall_L
+    /// Финализировать постройку - создать настоящие стены
+    /// Теперь работает СРАЗУ, минуя Confirmed state (green ghost)
     /// </summary>
     public void FinalizeBuild()
     {
-        if (currentState != DragState.Confirmed)
+        // ВАЖНО: Проверяем не state, а наличие данных!
+        if (!HasRoomData())
         {
-            Debug.LogWarning("[RoomDragBuilder] Cannot finalize - not in Confirmed state");
+            Debug.LogWarning("[RoomDragBuilder] Cannot finalize - no room data available");
             return;
         }
 
-        Debug.Log("[RoomDragBuilder] Finalizing build - replacing Add_Build_Ghost with walls");
 
         // Вычисляем границы комнаты для создания GameObject
         int minX = int.MaxValue, maxX = int.MinValue;
@@ -491,23 +1082,52 @@ public class RoomDragBuilder : MonoBehaviour
         Vector2Int roomSize = new Vector2Int(maxX - minX + 1, maxY - minY + 1);
 
         // Используем сохраненные внутренние углы из RecalculatePerimeter
-        Debug.Log($"[RoomDragBuilder] FinalizeBuild - Using {savedInnerCorners.Count} saved inner corners to pass to RoomBuilder");
         foreach (Vector2Int corner in savedInnerCorners)
         {
-            Debug.Log($"[RoomDragBuilder] FinalizeBuild - Inner corner at {corner}");
         }
 
         // Создаем комнату с кастомным силуэтом, передавая внутренние углы
         GameObject room = RoomBuilder.Instance.BuildCustomRoom(roomGridPos, roomSize, "DraggedRoom", roomPerimeter, roomFloor, savedInnerCorners);
         room.name = $"DraggedRoom_{roomGridPos.x}_{roomGridPos.y}";
 
-        Debug.Log($"[RoomDragBuilder] Created custom room at {roomGridPos} with {roomPerimeter.Count} walls and {roomFloor.Count} floor tiles");
 
         // Регистрируем в GridManager
         gridManager.OccupyCellPerimeter(roomGridPos, roomSize.x, roomSize.y, room, "Room");
 
         // Очищаем Add_Build_Ghost и Add_Floor_Ghost блоки
         ClearConfirmedBlocks();
+
+        // КРИТИЧНО: Также очищаем activeGhostBlocks и activeFloorBlocks
+        // Это ghost блоки из режима preview, которые могли остаться после удаления
+        if (DEBUG_LOGGING)
+        {
+        }
+
+        foreach (var kvp in activeGhostBlocks)
+        {
+            if (kvp.Value != null)
+            {
+                GhostBlockPool.Instance.Return(kvp.Value);
+            }
+        }
+        activeGhostBlocks.Clear();
+        ghostBlocks.Clear();
+        cachedPerimeter.Clear();
+
+        foreach (var kvp in activeFloorBlocks)
+        {
+            if (kvp.Value != null)
+            {
+                GhostBlockPool.Instance.Return(kvp.Value);
+            }
+        }
+        activeFloorBlocks.Clear();
+        ghostFloorBlocks.Clear();
+        cachedFloor.Clear();
+
+        if (DEBUG_LOGGING)
+        {
+        }
 
         // Сбрасываем состояние
         currentState = DragState.Idle;
@@ -516,7 +1136,6 @@ public class RoomDragBuilder : MonoBehaviour
         deletedCells.Clear();
         savedInnerCorners.Clear();
 
-        Debug.Log("[RoomDragBuilder] Build finalized successfully");
     }
 
     /// <summary>
@@ -627,7 +1246,9 @@ public class RoomDragBuilder : MonoBehaviour
                     deletionDragStart = currentGridPos;
                     deletionDragEnd = currentGridPos;
                     ClearDelPreview(); // Убираем обычный preview
-                    Debug.Log($"[RoomDragBuilder] Started deletion drag from {deletionDragStart}");
+                    if (DEBUG_LOGGING)
+                    {
+                    }
                 }
             }
         }
@@ -645,7 +1266,9 @@ public class RoomDragBuilder : MonoBehaviour
             // Завершаем drag удаление
             else if (Input.GetMouseButtonUp(0))
             {
-                Debug.Log($"[RoomDragBuilder] Deletion drag complete: from {deletionDragStart} to {deletionDragEnd}");
+                if (DEBUG_LOGGING)
+                {
+                }
                 DeleteCellsInRectangle(deletionDragStart, deletionDragEnd);
                 ClearDelDragPreview();
                 isDeletionDragActive = false;
@@ -662,7 +1285,7 @@ public class RoomDragBuilder : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновить preview блок при наведении курсора
+    /// Обновить preview блок при наведении курсора (deletion mode)
     /// </summary>
     void UpdateDeletionPreview(Vector2Int gridPos)
     {
@@ -673,31 +1296,31 @@ public class RoomDragBuilder : MonoBehaviour
         }
 
         // Если позиция изменилась - обновляем preview
-        if (gridPos != lastPreviewPos)
+        if (gridPos != lastDelPreviewPos)
         {
             ClearDelPreview();
 
             // Создаем новый preview блок (показываем всегда, даже если не над комнатой)
             if (delBuildGhostPrefab != null)
             {
-                delPreviewBlock = CreateGhostBlock(gridPos, delBuildGhostPrefab);
+                delPreviewBlock = CreateGhostBlockPooled(gridPos, delBuildGhostPrefab);
                 delPreviewBlock.name = "Del_Preview";
-                lastPreviewPos = gridPos;
+                lastDelPreviewPos = gridPos;
             }
         }
     }
 
     /// <summary>
-    /// Очистить preview блок
+    /// Очистить deletion preview блок
     /// </summary>
     void ClearDelPreview()
     {
         if (delPreviewBlock != null)
         {
-            Destroy(delPreviewBlock);
+            GhostBlockPool.Instance.Return(delPreviewBlock);
             delPreviewBlock = null;
         }
-        lastPreviewPos = Vector2Int.zero;
+        lastDelPreviewPos = Vector2Int.zero;
     }
 
     /// <summary>
@@ -765,12 +1388,21 @@ public class RoomDragBuilder : MonoBehaviour
     /// </summary>
     void ClearDelDragPreview()
     {
-        foreach (GameObject block in delDragPreviewBlocks)
+        // ВАЖНО: Используем Object Pool для возврата блоков
+        foreach (var kvp in activeDelDragBlocks)
         {
-            if (block != null)
-                Destroy(block);
+            if (kvp.Value != null)
+            {
+                GhostBlockPool.Instance.Return(kvp.Value);
+            }
         }
+        activeDelDragBlocks.Clear();
+        cachedDelDragPositions.Clear();
         delDragPreviewBlocks.Clear();
+
+        if (DEBUG_LOGGING)
+        {
+        }
     }
 
     /// <summary>
@@ -798,7 +1430,9 @@ public class RoomDragBuilder : MonoBehaviour
             }
         }
 
-        Debug.Log($"[RoomDragBuilder] Deleting {cellsToDelete.Count} cells in rectangle");
+        if (DEBUG_LOGGING)
+        {
+        }
 
         // Удаляем все клетки
         foreach (Vector2Int cellPos in cellsToDelete)
@@ -806,9 +1440,18 @@ public class RoomDragBuilder : MonoBehaviour
             DeleteCellInternal(cellPos);
         }
 
+        if (DEBUG_LOGGING)
+        {
+        }
+
         // Пересчитываем периметр один раз после всех удалений
-        RecalculatePerimeter();
+        // ВАЖНО: Передаем isDeletion=true чтобы НЕ вызывать ClosePerimeterOrthogonally
+        RecalculatePerimeter(isDeletion: true);
         UpdateGhostsAfterDeletion();
+
+        if (DEBUG_LOGGING)
+        {
+        }
     }
 
     /// <summary>
@@ -817,7 +1460,7 @@ public class RoomDragBuilder : MonoBehaviour
     void DeleteCell(Vector2Int cellPos)
     {
         DeleteCellInternal(cellPos);
-        RecalculatePerimeter();
+        RecalculatePerimeter(isDeletion: true);
         UpdateGhostsAfterDeletion();
     }
 
@@ -835,7 +1478,6 @@ public class RoomDragBuilder : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[RoomDragBuilder] Deleting cell {cellPos}");
 
         // Добавляем в список удаленных для отслеживания
         if (!deletedCells.Contains(cellPos))
@@ -850,9 +1492,10 @@ public class RoomDragBuilder : MonoBehaviour
     }
 
     /// <summary>
-    /// Пересчитать периметр после удаления
+    /// Пересчитать периметр после добавления/удаления клеток
     /// </summary>
-    void RecalculatePerimeter()
+    /// <param name="isDeletion">True если это операция удаления (НЕ вызывать ClosePerimeterOrthogonally)</param>
+    void RecalculatePerimeter(bool isDeletion = false)
     {
         // Собираем все оставшиеся клетки (периметр + пол)
         HashSet<Vector2Int> allCells = new HashSet<Vector2Int>();
@@ -885,7 +1528,9 @@ public class RoomDragBuilder : MonoBehaviour
 
             foreach (Vector2Int neighbor in neighbors)
             {
-                if (!allCells.Contains(neighbor) || deletedCells.Contains(neighbor))
+                // Клетка - периметр, если хотя бы один сосед не входит в комнату
+                // (удаленные клетки уже не в allCells, поэтому проверка deletedCells избыточна)
+                if (!allCells.Contains(neighbor))
                 {
                     hasEmptyNeighbor = true;
                     break;
@@ -909,18 +1554,40 @@ public class RoomDragBuilder : MonoBehaviour
         roomFloor.Clear();
         roomFloor.AddRange(newFloor);
 
+        if (DEBUG_LOGGING)
+        {
+        }
+
         // СОХРАНЯЕМ исходный пол ПЕРЕД замыканием периметра
         // Эти клетки должны ВСЕГДА оставаться полом, даже после добавления стен
         HashSet<Vector2Int> originalFloor = new HashSet<Vector2Int>(roomFloor);
 
-        // Замыкаем периметр ортогонально - заполняем диагональные пробелы
-        int addedWalls = ClosePerimeterOrthogonally();
+        int addedWalls = 0;
+
+        // КРИТИЧНО: ClosePerimeterOrthogonally() вызываем ТОЛЬКО при добавлении клеток!
+        // При удалении клеток НЕ нужно замыкать диагональные соединения - это ломает периметр!
+        if (!isDeletion && deletedCells.Count == 0)
+        {
+            if (DEBUG_LOGGING)
+            {
+            }
+            addedWalls = ClosePerimeterOrthogonally();
+
+            if (DEBUG_LOGGING)
+            {
+            }
+        }
+        else
+        {
+            if (DEBUG_LOGGING)
+            {
+            }
+        }
 
         // ВАЖНО: После добавления новых стен, некоторые клетки пола могли стать стенами
         // Пересчитываем периметр/пол еще раз, НО сохраняем исходный пол
         if (addedWalls > 0)
         {
-            Debug.Log($"[RoomDragBuilder] Re-classifying floor/wall after orthogonal closure");
             HashSet<Vector2Int> allCellsAfter = new HashSet<Vector2Int>();
             foreach (Vector2Int pos in roomPerimeter)
             {
@@ -940,7 +1607,6 @@ public class RoomDragBuilder : MonoBehaviour
                 if (originalFloor.Contains(pos))
                 {
                     finalFloor.Add(pos);
-                    Debug.Log($"[RoomDragBuilder] Position {pos} stays as FLOOR (was original floor)");
                     continue;
                 }
 
@@ -956,7 +1622,9 @@ public class RoomDragBuilder : MonoBehaviour
 
                 foreach (Vector2Int neighbor in neighbors)
                 {
-                    if (!allCellsAfter.Contains(neighbor) || deletedCells.Contains(neighbor))
+                    // Клетка - периметр, если хотя бы один сосед не входит в комнату
+                    // (удаленные клетки уже не в allCellsAfter, проверка deletedCells избыточна)
+                    if (!allCellsAfter.Contains(neighbor))
                     {
                         hasEmptyNeighbor = true;
                         break;
@@ -978,48 +1646,130 @@ public class RoomDragBuilder : MonoBehaviour
             roomFloor.Clear();
             roomFloor.AddRange(finalFloor);
 
-            Debug.Log($"[RoomDragBuilder] Re-classified: {finalPerimeter.Count} walls, {finalFloor.Count} floor");
         }
 
-        // Находим и добавляем внутренние углы (в местах вырезов)
-        List<Vector2Int> innerCorners = FindInnerCorners();
+        // КРИТИЧНО: Находим внутренние углы в зависимости от типа операции
+        List<Vector2Int> innerCorners = new List<Vector2Int>();
 
-        // СОХРАНЯЕМ найденные углы в переменную класса для использования в FinalizeBuild
-        savedInnerCorners.Clear();
-        savedInnerCorners.AddRange(innerCorners);
-        Debug.Log($"[RoomDragBuilder] SAVED {savedInnerCorners.Count} inner corners for later use");
-
-        foreach (Vector2Int corner in innerCorners)
+        if (isDeletion && deletedCells.Count > 0)
         {
-            if (!roomPerimeter.Contains(corner))
+            // Удаление - ВАЖНО: нужно найти ОБА типа углов!
+            // 1. Старые углы от объединенных областей (чтобы не потерять их)
+            // 2. Новые углы в местах вырезов
+            if (DEBUG_LOGGING)
             {
-                roomPerimeter.Add(corner);
-                Debug.Log($"[RoomDragBuilder] Added inner corner at {corner} to perimeter");
             }
 
-            // КРИТИЧНО: Удаляем эту позицию из пола, если она там была!
-            if (roomFloor.Contains(corner))
+            HashSet<Vector2Int> allInnerCorners = new HashSet<Vector2Int>();
+
+            // Находим углы от объединенных областей
+            List<Vector2Int> mergedAreaCorners = FindInnerCornersForMergedAreas();
+            if (DEBUG_LOGGING)
             {
-                roomFloor.Remove(corner);
-                Debug.Log($"[RoomDragBuilder] Removed inner corner at {corner} from floor - it's now a wall!");
+            }
+            foreach (var corner in mergedAreaCorners)
+            {
+                allInnerCorners.Add(corner);
+            }
+
+            // Находим углы рядом с вырезами
+            List<Vector2Int> cutoutCorners = FindInnerCorners();
+            if (DEBUG_LOGGING)
+            {
+            }
+            foreach (var corner in cutoutCorners)
+            {
+                allInnerCorners.Add(corner);
+            }
+
+            innerCorners.AddRange(allInnerCorners);
+            if (DEBUG_LOGGING)
+            {
+            }
+        }
+        else if (!isDeletion)
+        {
+            // Добавление - ищем углы по признаку пустой диагонали
+            if (DEBUG_LOGGING)
+            {
+            }
+            innerCorners = FindInnerCornersForMergedAreas();
+        }
+        else
+        {
+            if (DEBUG_LOGGING)
+            {
             }
         }
 
-        Debug.Log($"[RoomDragBuilder] Perimeter recalculated: {roomPerimeter.Count} walls (including {innerCorners.Count} inner corners), {roomFloor.Count} floor cells");
+        // Добавляем найденные внутренние углы
+        if (innerCorners.Count > 0)
+        {
+            // СОХРАНЯЕМ найденные углы в переменную класса для использования в FinalizeBuild
+            savedInnerCorners.Clear();
+            savedInnerCorners.AddRange(innerCorners);
+            if (DEBUG_LOGGING)
+            {
+            }
+
+            foreach (Vector2Int corner in innerCorners)
+            {
+                if (!roomPerimeter.Contains(corner))
+                {
+                    roomPerimeter.Add(corner);
+                    if (DEBUG_LOGGING)
+                    {
+                    }
+                }
+
+                // КРИТИЧНО: Удаляем эту позицию из пола, если она там была!
+                if (roomFloor.Contains(corner))
+                {
+                    roomFloor.Remove(corner);
+                    if (DEBUG_LOGGING)
+                    {
+                    }
+                }
+            }
+
+            if (DEBUG_LOGGING)
+            {
+            }
+        }
+
+
+        // ВАЖНО: Очищаем deletedCells после пересчета периметра
+        // После пересчета периметра информация о удалениях УЖЕ учтена в новом периметре
+        // Не нужно хранить историю - это приводит к ошибкам при повторных операциях
+        deletedCells.Clear();
+        if (DEBUG_LOGGING)
+        {
+        }
     }
 
     /// <summary>
     /// Замыкает периметр ортогонально, заполняя диагональные пробелы (ОПТИМИЗИРОВАНО)
     /// Работает итеративно, пока все диагональные соединения не будут устранены
     /// Возвращает количество добавленных стен
+    /// ВАЖНО: deletedCells содержит ТОЛЬКО клетки из текущей операции (очищается после каждого RecalculatePerimeter)
     /// </summary>
     int ClosePerimeterOrthogonally()
     {
+        HashSet<Vector2Int> deletedSet = new HashSet<Vector2Int>(deletedCells);
+
+        if (DEBUG_LOGGING)
+        {
+            if (deletedSet.Count > 0)
+            {
+                foreach (var del in deletedSet)
+                {
+                }
+            }
+        }
+
         int totalAddedWalls = 0;
         int iteration = 0;
         int maxIterations = 20; // ОПТИМИЗАЦИЯ: Снижено с 100 до 20 для производительности
-
-        HashSet<Vector2Int> deletedSet = new HashSet<Vector2Int>(deletedCells);
 
         while (iteration < maxIterations)
         {
@@ -1069,6 +1819,29 @@ public class RoomDragBuilder : MonoBehaviour
                         // Если ни одной из промежуточных стен нет - диагональное соединение!
                         if (!hasOrtho1Wall && !hasOrtho2Wall)
                         {
+                            // КРИТИЧЕСКАЯ ПРОВЕРКА: Замыкать ТОЛЬКО если это диагональное соединение рядом с ВЫРЕЗОМ
+                            // Если далеко от удаленных клеток - это внешний угол исходной формы, НЕ замыкаем!
+                            bool isWallNearDeletion = IsPositionNearDeletion(wall, deletedSet, 2);
+                            bool isDiagNearDeletion = IsPositionNearDeletion(diagonalPos, deletedSet, 2);
+                            bool isNearDeletion = isWallNearDeletion || isDiagNearDeletion;
+
+                            if (DEBUG_LOGGING)
+                            {
+                            }
+
+                            if (!isNearDeletion)
+                            {
+                                // Диагональное соединение далеко от вырезов - это внешний угол, НЕ замыкаем
+                                if (DEBUG_LOGGING)
+                                {
+                                }
+                                continue;
+                            }
+
+                            if (DEBUG_LOGGING)
+                            {
+                            }
+
                             // Нужно добавить стену "по ходу направления" одной из стен
                             // Определяем какая из двух позиций лучше подходит
                             bool ortho1IsDeleted = deletedSet.Contains(ortho1);
@@ -1207,6 +1980,27 @@ public class RoomDragBuilder : MonoBehaviour
     }
 
     /// <summary>
+    /// Проверяет, находится ли позиция рядом с удаленными клетками (в пределах radius)
+    /// Используется для определения, является ли диагональное соединение частью выреза
+    /// </summary>
+    bool IsPositionNearDeletion(Vector2Int pos, HashSet<Vector2Int> deletedSet, int radius)
+    {
+        // Проверяем все позиции в пределах radius
+        for (int dx = -radius; dx <= radius; dx++)
+        {
+            for (int dy = -radius; dy <= radius; dy++)
+            {
+                Vector2Int checkPos = pos + new Vector2Int(dx, dy);
+                if (deletedSet.Contains(checkPos))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Найти позиции внутренних углов (в местах вырезов)
     /// Внутренние углы могут быть как пустыми позициями, так и позициями ПОЛА которые окружены стенами под прямым углом
     /// </summary>
@@ -1260,6 +2054,146 @@ public class RoomDragBuilder : MonoBehaviour
             {
                 innerCorners.Add(pos);
             }
+        }
+
+        return innerCorners;
+    }
+
+    /// <summary>
+    /// Найти позиции внутренних углов для объединенных областей (БЕЗ удалений)
+    /// Внутренний угол определяется по признаку пустой диагонали между двумя перпендикулярными стенами
+    /// НЕ требует близости к удаленным клеткам - работает для случая объединения прямоугольников
+    /// </summary>
+    List<Vector2Int> FindInnerCornersForMergedAreas()
+    {
+        List<Vector2Int> innerCorners = new List<Vector2Int>();
+
+        // Создаем HashSet для быстрой проверки
+        HashSet<Vector2Int> wallSet = new HashSet<Vector2Int>(roomPerimeter);
+        HashSet<Vector2Int> floorSet = new HashSet<Vector2Int>(roomFloor);
+        HashSet<Vector2Int> allCells = new HashSet<Vector2Int>(wallSet);
+        allCells.UnionWith(floorSet);
+
+        if (DEBUG_LOGGING)
+        {
+        }
+
+        // ВАЖНО: Проверяем НЕ ТОЛЬКО стены, но и ПОЛ!
+        // При объединении областей внутренние углы могут оказаться на полу
+        List<Vector2Int> positionsToCheck = new List<Vector2Int>();
+        positionsToCheck.AddRange(roomPerimeter);
+        positionsToCheck.AddRange(roomFloor);
+
+        // Проверяем каждую позицию - может ли она быть внутренним углом
+        foreach (Vector2Int wallPos in positionsToCheck)
+        {
+            // Получаем соседей
+            Vector2Int topPos = wallPos + Vector2Int.up;
+            Vector2Int bottomPos = wallPos + Vector2Int.down;
+            Vector2Int leftPos = wallPos + Vector2Int.left;
+            Vector2Int rightPos = wallPos + Vector2Int.right;
+
+            bool hasWallTop = wallSet.Contains(topPos);
+            bool hasWallBottom = wallSet.Contains(bottomPos);
+            bool hasWallLeft = wallSet.Contains(leftPos);
+            bool hasWallRight = wallSet.Contains(rightPos);
+
+            // КРИТИЧНО: Внутренний угол должен иметь РОВНО 2 стены-соседа под прямым углом
+            int wallNeighborCount = (hasWallTop ? 1 : 0) + (hasWallBottom ? 1 : 0) + (hasWallLeft ? 1 : 0) + (hasWallRight ? 1 : 0);
+
+            if (wallNeighborCount != 2)
+                continue;
+
+            // Проверяем, что 2 стены находятся под прямым углом (не напротив друг друга)
+            bool hasVerticalPair = hasWallTop && hasWallBottom;
+            bool hasHorizontalPair = hasWallLeft && hasWallRight;
+
+            if (hasVerticalPair || hasHorizontalPair)
+                continue;
+
+            // Если дошли сюда - у нас есть кандидат на внутренний угол
+            if (DEBUG_LOGGING)
+            {
+            }
+
+            // Теперь проверяем диагонали - внутренний угол имеет ПУСТУЮ диагональ между двумя перпендикулярными стенами
+            Vector2Int topLeftDiag = wallPos + new Vector2Int(-1, 1);
+            Vector2Int topRightDiag = wallPos + new Vector2Int(1, 1);
+            Vector2Int bottomLeftDiag = wallPos + new Vector2Int(-1, -1);
+            Vector2Int bottomRightDiag = wallPos + new Vector2Int(1, -1);
+
+            bool isInnerCorner = false;
+
+            // Конфигурация 1: Стены Top+Right → диагональ TopRight должна быть пустой
+            if (hasWallTop && hasWallRight)
+            {
+                bool diagEmpty = !allCells.Contains(topRightDiag);
+                if (DEBUG_LOGGING)
+                {
+                }
+                // Проверяем что TopRight диагональ НЕ часть комнаты (пустая)
+                if (diagEmpty)
+                {
+                    isInnerCorner = true;
+                    if (DEBUG_LOGGING)
+                    {
+                    }
+                }
+            }
+            // Конфигурация 2: Стены Top+Left → диагональ TopLeft должна быть пустой
+            else if (hasWallTop && hasWallLeft)
+            {
+                bool diagEmpty = !allCells.Contains(topLeftDiag);
+                if (DEBUG_LOGGING)
+                {
+                }
+                if (diagEmpty)
+                {
+                    isInnerCorner = true;
+                    if (DEBUG_LOGGING)
+                    {
+                    }
+                }
+            }
+            // Конфигурация 3: Стены Bottom+Right → диагональ BottomRight должна быть пустой
+            else if (hasWallBottom && hasWallRight)
+            {
+                bool diagEmpty = !allCells.Contains(bottomRightDiag);
+                if (DEBUG_LOGGING)
+                {
+                }
+                if (diagEmpty)
+                {
+                    isInnerCorner = true;
+                    if (DEBUG_LOGGING)
+                    {
+                    }
+                }
+            }
+            // Конфигурация 4: Стены Bottom+Left → диагональ BottomLeft должна быть пустой
+            else if (hasWallBottom && hasWallLeft)
+            {
+                bool diagEmpty = !allCells.Contains(bottomLeftDiag);
+                if (DEBUG_LOGGING)
+                {
+                }
+                if (diagEmpty)
+                {
+                    isInnerCorner = true;
+                    if (DEBUG_LOGGING)
+                    {
+                    }
+                }
+            }
+
+            if (isInnerCorner)
+            {
+                innerCorners.Add(wallPos);
+            }
+        }
+
+        if (DEBUG_LOGGING)
+        {
         }
 
         return innerCorners;
@@ -1361,7 +2295,6 @@ public class RoomDragBuilder : MonoBehaviour
     /// </summary>
     bool IsWallAnInnerCorner(Vector2Int wallPos, HashSet<Vector2Int> wallSet, HashSet<Vector2Int> floorSet)
     {
-        Debug.Log($"[RoomDragBuilder] === Checking wall at {wallPos} for inner corner ===");
 
         // Проверяем соседние клетки
         Vector2Int topPos = wallPos + Vector2Int.up;
@@ -1374,14 +2307,11 @@ public class RoomDragBuilder : MonoBehaviour
         bool hasWallLeft = wallSet.Contains(leftPos);
         bool hasWallRight = wallSet.Contains(rightPos);
 
-        Debug.Log($"[RoomDragBuilder]   Wall neighbors: Top={hasWallTop}, Bottom={hasWallBottom}, Left={hasWallLeft}, Right={hasWallRight}");
 
         // ВАЖНО: Угол должен иметь РОВНО 2 стены-соседа под прямым углом
         int wallNeighborCount = (hasWallTop ? 1 : 0) + (hasWallBottom ? 1 : 0) + (hasWallLeft ? 1 : 0) + (hasWallRight ? 1 : 0);
-        Debug.Log($"[RoomDragBuilder]   Total wall neighbors: {wallNeighborCount}");
         if (wallNeighborCount != 2)
         {
-            Debug.Log($"[RoomDragBuilder]   REJECT: Need exactly 2 wall neighbors, has {wallNeighborCount}");
             return false;
         }
 
@@ -1390,7 +2320,6 @@ public class RoomDragBuilder : MonoBehaviour
         bool hasHorizontalPair = hasWallLeft && hasWallRight;
         if (hasVerticalPair || hasHorizontalPair)
         {
-            Debug.Log($"[RoomDragBuilder]   REJECT: Walls are opposite (not perpendicular). Vertical={hasVerticalPair}, Horizontal={hasHorizontalPair}");
             return false;
         }
 
@@ -1403,12 +2332,9 @@ public class RoomDragBuilder : MonoBehaviour
         bool hasDeletedRight = deletedSet.Contains(rightPos);
         bool hasDeletedNeighbor = hasDeletedTop || hasDeletedBottom || hasDeletedLeft || hasDeletedRight;
 
-        Debug.Log($"[RoomDragBuilder]   Deleted neighbors: Top={hasDeletedTop}, Bottom={hasDeletedBottom}, Left={hasDeletedLeft}, Right={hasDeletedRight}");
-        Debug.Log($"[RoomDragBuilder]   Total deleted cells nearby: {deletedCells.Count}");
 
         if (!hasDeletedNeighbor)
         {
-            Debug.Log($"[RoomDragBuilder]   REJECT: No deleted neighbor - this is outer corner, not inner corner");
             return false;
         }
 
@@ -1423,55 +2349,45 @@ public class RoomDragBuilder : MonoBehaviour
         bool hasFloorBottomLeft = floorSet.Contains(bottomLeftDiag);
         bool hasFloorBottomRight = floorSet.Contains(bottomRightDiag);
 
-        Debug.Log($"[RoomDragBuilder]   Diagonal floor: TopLeft={hasFloorTopLeft}, TopRight={hasFloorTopRight}, BottomLeft={hasFloorBottomLeft}, BottomRight={hasFloorBottomRight}");
 
         // Проверяем конфигурации внутренних углов
         // Внутренний угол имеет пол на противоположной диагонали от места соединения стен
         if (hasWallTop && hasWallRight)
         {
-            Debug.Log($"[RoomDragBuilder]   Config: walls Top+Right -> need floor at BottomLeft. Has floor? {hasFloorBottomLeft}");
             // Стены сверху и справа -> пол должен быть слева снизу
             if (hasFloorBottomLeft)
             {
-                Debug.Log($"[RoomDragBuilder]   ✓ MATCH inner corner at {wallPos} (walls: Top+Right, floor at BottomLeft)");
                 return true;
             }
         }
 
         if (hasWallTop && hasWallLeft)
         {
-            Debug.Log($"[RoomDragBuilder]   Config: walls Top+Left -> need floor at BottomRight. Has floor? {hasFloorBottomRight}");
             // Стены сверху и слева -> пол должен быть справа снизу
             if (hasFloorBottomRight)
             {
-                Debug.Log($"[RoomDragBuilder]   ✓ MATCH inner corner at {wallPos} (walls: Top+Left, floor at BottomRight)");
                 return true;
             }
         }
 
         if (hasWallBottom && hasWallRight)
         {
-            Debug.Log($"[RoomDragBuilder]   Config: walls Bottom+Right -> need floor at TopLeft. Has floor? {hasFloorTopLeft}");
             // Стены снизу и справа -> пол должен быть слева сверху
             if (hasFloorTopLeft)
             {
-                Debug.Log($"[RoomDragBuilder]   ✓ MATCH inner corner at {wallPos} (walls: Bottom+Right, floor at TopLeft)");
                 return true;
             }
         }
 
         if (hasWallBottom && hasWallLeft)
         {
-            Debug.Log($"[RoomDragBuilder]   Config: walls Bottom+Left -> need floor at TopRight. Has floor? {hasFloorTopRight}");
             // Стены снизу и слева -> пол должен быть справа сверху
             if (hasFloorTopRight)
             {
-                Debug.Log($"[RoomDragBuilder]   ✓ MATCH inner corner at {wallPos} (walls: Bottom+Left, floor at TopRight)");
                 return true;
             }
         }
 
-        Debug.Log($"[RoomDragBuilder]   REJECT: No matching floor pattern for inner corner");
         return false;
     }
 
@@ -1485,7 +2401,8 @@ public class RoomDragBuilder : MonoBehaviour
         HashSet<Vector2Int> newPerimeter = new HashSet<Vector2Int>(roomPerimeter);
         HashSet<Vector2Int> newFloor = new HashSet<Vector2Int>(roomFloor);
 
-        if (currentState == DragState.PreviewReady)
+        // ВАЖНО: Обрабатываем Idle, PreviewReady - используем активные ghost блоки
+        if (currentState == DragState.Idle || currentState == DragState.PreviewReady)
         {
             // Удаляем стены которых больше нет
             List<Vector2Int> wallsToRemove = new List<Vector2Int>();
@@ -1551,6 +2468,12 @@ public class RoomDragBuilder : MonoBehaviour
                     }
                 }
             }
+
+            // Обновляем state если нужно
+            if (currentState == DragState.Idle && (roomPerimeter.Count > 0 || roomFloor.Count > 0))
+            {
+                currentState = DragState.PreviewReady;
+            }
         }
         else if (currentState == DragState.Confirmed)
         {
@@ -1603,5 +2526,44 @@ public class RoomDragBuilder : MonoBehaviour
     public bool IsConfirmed()
     {
         return currentState == DragState.Confirmed;
+    }
+
+    /// <summary>
+    /// Проверить, активен ли режим удаления
+    /// </summary>
+    public bool IsDeletionModeActive()
+    {
+        return isDeletionModeActive;
+    }
+
+    /// <summary>
+    /// Проверить, активен ли drag режим
+    /// </summary>
+    public bool IsDragModeActive()
+    {
+        return isDragModeActive;
+    }
+
+    /// <summary>
+    /// Проверить, есть ли данные комнаты (периметр или пол)
+    /// </summary>
+    public bool HasRoomData()
+    {
+        return roomPerimeter.Count > 0 || roomFloor.Count > 0;
+    }
+
+    /// <summary>
+    /// Проверить, можно ли подтвердить постройку
+    /// Возвращает true если есть хоть какие-то данные или идет процесс рисования
+    /// </summary>
+    public bool CanConfirmBuild()
+    {
+        // Кнопка активна если:
+        // 1. Идет процесс рисования (Dragging state)
+        // 2. Есть готовый preview (PreviewReady state)
+        // 3. ИЛИ просто есть данные (на случай если state сбросился но данные остались)
+        return currentState == DragState.Dragging ||
+               currentState == DragState.PreviewReady ||
+               HasRoomData();
     }
 }

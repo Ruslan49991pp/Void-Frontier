@@ -143,7 +143,6 @@ public class CanvasCharacterIconsManager : MonoBehaviour
             {
                 // Добавляем обработчик для открытия инвентаря конкретного персонажа
                 iconData.inventoryButton.onClick.AddListener(() => OnInventoryButtonClicked(capturedCharacter));
-                Debug.Log($"[CanvasCharacterIconsManager] Inventory button attached for {character.GetFullName()}");
             }
             else
             {
@@ -205,8 +204,6 @@ public class CanvasCharacterIconsManager : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[CanvasCharacterIconsManager] Inventory button clicked for {character.GetFullName()}");
-
         // Находим InventoryUI в сцене
         InventoryUI inventoryUI = FindObjectOfType<InventoryUI>();
         if (inventoryUI == null)
@@ -226,8 +223,6 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         // Открываем инвентарь персонажа
         inventoryUI.SetCurrentInventory(inventory, character);
         inventoryUI.ShowInventory();
-
-        Debug.Log($"[CanvasCharacterIconsManager] Opened inventory for {character.GetFullName()}");
     }
 
     void OnSelectionChanged(List<GameObject> selectedObjects)
@@ -271,7 +266,6 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         if (portraitSprite != null)
         {
             avatarImage.sprite = portraitSprite;
-            Debug.Log($"[CanvasCharacterIconsManager] Loaded portrait '{portraitPath}' for {character.GetFullName()}");
         }
         else
         {
