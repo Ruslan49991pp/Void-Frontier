@@ -12,7 +12,8 @@ public class RoomBuilder : MonoBehaviour
 
     [Header("Wall Prefabs")]
     public GameObject wallPrefab;         // Обычная стена SM_Wall
-    public GameObject wallCornerPrefab;   // Угловая стена SM_Wall_L
+    public GameObject wallCornerPrefab;   // Угловая стена SM_Wall_L (внешние углы)
+    public GameObject wallInnerCornerPrefab; // Внутренняя угловая стена SM_Wall_L_Undo (внутренние углы в вырезах)
 
     [Header("Room Settings")]
     public float cellSize = 1f;
@@ -123,6 +124,53 @@ public class RoomBuilder : MonoBehaviour
                 FileLogger.Log("SM_Wall_L prefab loaded successfully");
             }
         }
+
+        // Загружаем префаб внутренней угловой стены если он не назначен
+        if (wallInnerCornerPrefab == null)
+        {
+            FileLogger.Log("[INIT] Attempting to load SM_Wall_L_Undo from Resources/Prefabs/SM_Wall_L_Undo");
+            wallInnerCornerPrefab = Resources.Load<GameObject>("Prefabs/SM_Wall_L_Undo");
+            if (wallInnerCornerPrefab == null)
+            {
+                FileLogger.LogError("[ERROR] SM_Wall_L_Undo prefab not found in Resources/Prefabs/! Using regular corner wall as fallback");
+                wallInnerCornerPrefab = wallCornerPrefab; // Fallback на обычный угол
+            }
+            else
+            {
+                FileLogger.Log($"[INIT] ✓ SM_Wall_L_Undo prefab loaded successfully: {wallInnerCornerPrefab.name}");
+            }
+        }
+        else
+        {
+            FileLogger.Log($"[INIT] SM_Wall_L_Undo prefab already assigned: {wallInnerCornerPrefab.name}");
+        }
+    }
+
+    /// <summary>
+    /// Построить комнату с кастомным силуэтом (после удаления клеток)
+    /// </summary>
+    public GameObject BuildCustomRoom(Vector2Int gridPosition, Vector2Int roomSize, string roomName, List<Vector2Int> wallPositions, List<Vector2Int> floorPositions, List<Vector2Int> innerCornerPositions = null)
+    {
+        FileLogger.Log($"DEBUG: BuildCustomRoom called - name: {roomName}, position: {gridPosition}, size: {roomSize}, walls: {wallPositions.Count}, floor: {floorPositions.Count}, innerCorners: {(innerCornerPositions != null ? innerCornerPositions.Count : 0)}");
+
+        GameObject roomGO = new GameObject($"Room_{roomName}_{gridPosition.x}_{gridPosition.y}");
+
+        // Добавляем компонент информации о комнате
+        RoomInfo roomInfo = roomGO.AddComponent<RoomInfo>();
+        roomInfo.gridPosition = gridPosition;
+        roomInfo.roomSize = roomSize;
+        roomInfo.roomName = roomName;
+        roomInfo.roomRotation = 0;
+
+        FileLogger.Log($"DEBUG: RoomInfo added to {roomGO.name}");
+
+        // Создаем пол из отдельных плиток
+        CreateCustomFloor(roomGO, floorPositions);
+
+        // Создаем стены по списку позиций, передавая внутренние углы
+        CreateCustomWalls(roomGO, wallPositions, floorPositions, innerCornerPositions);
+
+        return roomGO;
     }
 
     /// <summary>
@@ -341,6 +389,393 @@ public class RoomBuilder : MonoBehaviour
         floorMarker.parentRoom = parent;
 
         FileLogger.Log($"DEBUG: SmallRoom SelectionFloor created, layer: {selectionFloor.layer}, position: {selectionFloor.transform.position}");
+    }
+
+    /// <summary>
+    /// Создать кастомный пол из отдельных плиток
+    /// </summary>
+    void CreateCustomFloor(GameObject parent, List<Vector2Int> floorPositions)
+    {
+        FileLogger.Log($"DEBUG: CreateCustomFloor called with {floorPositions.Count} floor tiles");
+
+        if (floorPositions.Count == 0)
+        {
+            FileLogger.Log("DEBUG: No floor positions provided, skipping floor creation");
+            return;
+        }
+
+        // Создаем контейнер для пола
+        GameObject floorContainer = new GameObject("FloorTiles");
+        floorContainer.transform.SetParent(parent.transform);
+
+        // Создаем отдельную плитку для каждой позиции пола
+        foreach (Vector2Int floorPos in floorPositions)
+        {
+            GameObject floorTile = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            floorTile.name = $"FloorTile_{floorPos.x}_{floorPos.y}";
+            floorTile.transform.SetParent(floorContainer.transform);
+
+            // Позиция плитки (центр клетки)
+            Vector3 worldPos = GridToWorldPosition(floorPos);
+            worldPos.y = -floorThickness * 0.5f;
+            floorTile.transform.position = worldPos;
+
+            // Размер плитки
+            floorTile.transform.localScale = new Vector3(cellSize * 0.95f, floorThickness, cellSize * 0.95f);
+
+            // Материал
+            Renderer renderer = floorTile.GetComponent<Renderer>();
+            if (renderer != null && floorMaterial != null)
+            {
+                renderer.material = floorMaterial;
+            }
+
+            // Убираем коллайдер у плиток (коллайдер выделения будет отдельно)
+            Collider tileCollider = floorTile.GetComponent<Collider>();
+            if (tileCollider != null)
+            {
+                Destroy(tileCollider);
+            }
+        }
+
+        // Создаем коллайдер для выделения комнаты
+        CreateCustomSelectionFloor(parent, floorPositions);
+
+        FileLogger.Log($"DEBUG: Created {floorPositions.Count} floor tiles");
+    }
+
+    /// <summary>
+    /// Создать коллайдер для выделения кастомной комнаты
+    /// </summary>
+    void CreateCustomSelectionFloor(GameObject parent, List<Vector2Int> floorPositions)
+    {
+        if (floorPositions.Count == 0) return;
+
+        FileLogger.Log($"DEBUG: CreateCustomSelectionFloor for {parent.name}");
+
+        // Находим центр пола
+        Vector3 center = Vector3.zero;
+        foreach (Vector2Int pos in floorPositions)
+        {
+            center += GridToWorldPosition(pos);
+        }
+        center /= floorPositions.Count;
+
+        GameObject selectionFloor = new GameObject("SelectionFloor");
+        selectionFloor.transform.SetParent(parent.transform);
+        selectionFloor.transform.position = new Vector3(center.x, -floorThickness * 2f, center.z);
+
+        // Создаем коллайдеры для каждой плитки пола (для выделения)
+        foreach (Vector2Int pos in floorPositions)
+        {
+            GameObject colliderTile = new GameObject($"SelectionTile_{pos.x}_{pos.y}");
+            colliderTile.transform.SetParent(selectionFloor.transform);
+
+            Vector3 worldPos = GridToWorldPosition(pos);
+            worldPos.y = -floorThickness * 2f;
+            colliderTile.transform.position = worldPos;
+
+            BoxCollider tileCollider = colliderTile.AddComponent<BoxCollider>();
+            tileCollider.size = new Vector3(cellSize, floorThickness, cellSize);
+            tileCollider.isTrigger = false;
+        }
+
+        // Добавляем компонент для выделения к главному объекту
+        LocationObjectInfo locationInfo = selectionFloor.AddComponent<LocationObjectInfo>();
+        RoomInfo roomInfo = parent.GetComponent<RoomInfo>();
+        if (roomInfo != null)
+        {
+            locationInfo.objectName = roomInfo.roomName;
+            locationInfo.objectType = roomInfo.roomType;
+            locationInfo.health = 500f;
+            locationInfo.isDestructible = true;
+        }
+
+        RoomFloorMarker floorMarker = selectionFloor.AddComponent<RoomFloorMarker>();
+        floorMarker.parentRoom = parent;
+
+        FileLogger.Log($"DEBUG: Custom SelectionFloor created with {floorPositions.Count} tiles");
+    }
+
+    /// <summary>
+    /// Создать кастомные стены по списку позиций
+    /// </summary>
+    void CreateCustomWalls(GameObject parent, List<Vector2Int> wallPositions, List<Vector2Int> floorPositions, List<Vector2Int> innerCornerPositions = null)
+    {
+        FileLogger.Log($"DEBUG: CreateCustomWalls called with {wallPositions.Count} wall positions and {floorPositions.Count} floor positions");
+
+        if (wallPositions.Count == 0)
+        {
+            FileLogger.Log("DEBUG: No wall positions provided, skipping wall creation");
+            return;
+        }
+
+        // Создаем HashSet для быстрой проверки наличия стен и пола
+        HashSet<Vector2Int> wallSet = new HashSet<Vector2Int>(wallPositions);
+        HashSet<Vector2Int> floorSet = new HashSet<Vector2Int>(floorPositions);
+
+        // Используем переданные внутренние углы или ищем их сами (fallback)
+        if (innerCornerPositions == null)
+        {
+            FileLogger.Log("DEBUG: No inner corners provided, using fallback FindInnerCornerPositions");
+            innerCornerPositions = FindInnerCornerPositions(wallSet, floorSet);
+        }
+        FileLogger.Log($"DEBUG: Using {innerCornerPositions.Count} inner corner positions");
+
+        // НЕ добавляем внутренние углы в wallSet - они уже должны быть в roomPerimeter
+        // wallSet уже содержит все нужные позиции, включая внутренние углы
+
+        // Создаем стены для каждой позиции (включая внутренние углы)
+        List<WallData> wallsToCreate = new List<WallData>();
+
+        // Используем только wallPositions - внутренние углы уже в нем
+        foreach (Vector2Int wallPos in wallPositions)
+        {
+            // Определяем тип стены (угловая или прямая) и её ориентацию с учетом пола
+            WallSide wallSide = DetermineWallSideFromNeighbors(wallPos, wallSet, floorSet);
+
+            // Проверяем является ли это внутренним углом
+            bool isInnerCornerWall = innerCornerPositions.Contains(wallPos);
+            WallType wallType = isInnerCornerWall ? WallType.InnerCorner : DetermineWallType(wallSide);
+
+            WallData wallData = new WallData(
+                wallPos,
+                WallDirection.Vertical,
+                Vector2Int.zero, // roomPosition - не используется для кастомных стен
+                Vector2Int.zero, // roomSize - не используется
+                wallSide,
+                wallType,
+                0 // rotation
+            );
+
+            wallsToCreate.Add(wallData);
+            FileLogger.Log($"DEBUG: Wall at {wallPos}: side={wallSide}, type={wallType}");
+        }
+
+        // Добавляем стены в глобальный реестр
+        foreach (WallData wall in wallsToCreate)
+        {
+            AddWallToGlobal(wall);
+        }
+
+        UpdateWallVisuals();
+
+        FileLogger.Log($"DEBUG: Created {wallsToCreate.Count} custom walls (including {innerCornerPositions.Count} inner corners)");
+    }
+
+    /// <summary>
+    /// Найти позиции для внутренних углов (в местах вырезов)
+    /// </summary>
+    List<Vector2Int> FindInnerCornerPositions(HashSet<Vector2Int> wallSet, HashSet<Vector2Int> floorSet)
+    {
+        List<Vector2Int> innerCorners = new List<Vector2Int>();
+
+        // Находим границы области для поиска
+        int minX = int.MaxValue, maxX = int.MinValue;
+        int minY = int.MaxValue, maxY = int.MinValue;
+
+        foreach (Vector2Int pos in wallSet)
+        {
+            minX = Mathf.Min(minX, pos.x);
+            maxX = Mathf.Max(maxX, pos.x);
+            minY = Mathf.Min(minY, pos.y);
+            maxY = Mathf.Max(maxY, pos.y);
+        }
+
+        foreach (Vector2Int pos in floorSet)
+        {
+            minX = Mathf.Min(minX, pos.x);
+            maxX = Mathf.Max(maxX, pos.x);
+            minY = Mathf.Min(minY, pos.y);
+            maxY = Mathf.Max(maxY, pos.y);
+        }
+
+        // Расширяем область поиска на 1 клетку
+        minX--; maxX++; minY--; maxY++;
+
+        // Проверяем все клетки в области
+        for (int x = minX; x <= maxX; x++)
+        {
+            for (int y = minY; y <= maxY; y++)
+            {
+                Vector2Int pos = new Vector2Int(x, y);
+
+                // Пропускаем если это уже стена или пол
+                if (wallSet.Contains(pos) || floorSet.Contains(pos))
+                    continue;
+
+                // Проверяем является ли это внутренним углом
+                if (IsInnerCorner(pos, wallSet, floorSet))
+                {
+                    innerCorners.Add(pos);
+                    FileLogger.Log($"DEBUG: Inner corner detected at {pos}");
+                }
+            }
+        }
+
+        return innerCorners;
+    }
+
+    /// <summary>
+    /// Проверить является ли позиция внутренним углом
+    /// </summary>
+    bool IsInnerCorner(Vector2Int pos, HashSet<Vector2Int> wallSet, HashSet<Vector2Int> floorSet)
+    {
+        // Проверяем соседние клетки
+        bool hasWallTop = wallSet.Contains(pos + Vector2Int.up);
+        bool hasWallBottom = wallSet.Contains(pos + Vector2Int.down);
+        bool hasWallLeft = wallSet.Contains(pos + Vector2Int.left);
+        bool hasWallRight = wallSet.Contains(pos + Vector2Int.right);
+
+        // Проверяем диагональные клетки (где должен быть пол)
+        bool hasFloorTopLeft = floorSet.Contains(pos + new Vector2Int(-1, 1));
+        bool hasFloorTopRight = floorSet.Contains(pos + new Vector2Int(1, 1));
+        bool hasFloorBottomLeft = floorSet.Contains(pos + new Vector2Int(-1, -1));
+        bool hasFloorBottomRight = floorSet.Contains(pos + new Vector2Int(1, -1));
+
+        // Внутренний угол: 2 стены под прямым углом + пол в противоположной диагонали
+
+        // TopLeft конфигурация: стены справа и снизу, пол слева сверху
+        if (hasWallRight && hasWallBottom && hasFloorTopLeft)
+            return true;
+
+        // TopRight конфигурация: стены слева и снизу, пол справа сверху
+        if (hasWallLeft && hasWallBottom && hasFloorTopRight)
+            return true;
+
+        // BottomLeft конфигурация: стены справа и сверху, пол слева снизу
+        if (hasWallRight && hasWallTop && hasFloorBottomLeft)
+            return true;
+
+        // BottomRight конфигурация: стены слева и сверху, пол справа снизу
+        if (hasWallLeft && hasWallTop && hasFloorBottomRight)
+            return true;
+
+        return false;
+    }
+
+    /// <summary>
+    /// Определить сторону/тип стены на основе соседних клеток
+    /// Учитывает позиции пола для правильного определения внутренних/внешних углов
+    /// </summary>
+    WallSide DetermineWallSideFromNeighbors(Vector2Int wallPos, HashSet<Vector2Int> wallSet, HashSet<Vector2Int> floorSet)
+    {
+        // Проверяем соседние клетки (4 стороны)
+        bool hasWallTop = wallSet.Contains(wallPos + Vector2Int.up);
+        bool hasWallBottom = wallSet.Contains(wallPos + Vector2Int.down);
+        bool hasWallLeft = wallSet.Contains(wallPos + Vector2Int.left);
+        bool hasWallRight = wallSet.Contains(wallPos + Vector2Int.right);
+
+        // Проверяем диагональные клетки (для определения внутренних углов)
+        bool hasFloorTopLeft = floorSet.Contains(wallPos + new Vector2Int(-1, 1));
+        bool hasFloorTopRight = floorSet.Contains(wallPos + new Vector2Int(1, 1));
+        bool hasFloorBottomLeft = floorSet.Contains(wallPos + new Vector2Int(-1, -1));
+        bool hasFloorBottomRight = floorSet.Contains(wallPos + new Vector2Int(1, -1));
+
+        // Проверяем где находится пол (комната) относительно стены
+        bool hasFloorTop = floorSet.Contains(wallPos + Vector2Int.up);
+        bool hasFloorBottom = floorSet.Contains(wallPos + Vector2Int.down);
+        bool hasFloorLeft = floorSet.Contains(wallPos + Vector2Int.left);
+        bool hasFloorRight = floorSet.Contains(wallPos + Vector2Int.right);
+
+        // УГЛЫ: проверяем угловые конфигурации
+        // Угол появляется когда есть стены с двух перпендикулярных сторон
+
+        // TopLeft: стены сверху и слева
+        if (hasWallTop && hasWallLeft)
+        {
+            // Внешний угол: пол справа снизу (комната в BottomRight диагонали)
+            if (hasFloorBottomRight || hasFloorBottom || hasFloorRight)
+                return WallSide.TopLeft;
+            // Внутренний угол (вырез): пол слева сверху
+            if (hasFloorTopLeft)
+                return WallSide.BottomRight; // Инвертированный угол для выреза
+        }
+
+        // TopRight: стены сверху и справа
+        if (hasWallTop && hasWallRight)
+        {
+            // Внешний угол: пол слева снизу (комната в BottomLeft диагонали)
+            if (hasFloorBottomLeft || hasFloorBottom || hasFloorLeft)
+                return WallSide.TopRight;
+            // Внутренний угол (вырез): пол справа сверху
+            if (hasFloorTopRight)
+                return WallSide.BottomLeft; // Инвертированный угол для выреза
+        }
+
+        // BottomLeft: стены снизу и слева
+        if (hasWallBottom && hasWallLeft)
+        {
+            // Внешний угол: пол справа сверху (комната в TopRight диагонали)
+            if (hasFloorTopRight || hasFloorTop || hasFloorRight)
+                return WallSide.BottomLeft;
+            // Внутренний угол (вырез): пол слева снизу
+            if (hasFloorBottomLeft)
+                return WallSide.TopRight; // Инвертированный угол для выреза
+        }
+
+        // BottomRight: стены снизу и справа
+        if (hasWallBottom && hasWallRight)
+        {
+            // Внешний угол: пол слева сверху (комната в TopLeft диагонали)
+            if (hasFloorTopLeft || hasFloorTop || hasFloorLeft)
+                return WallSide.BottomRight;
+            // Внутренний угол (вырез): пол справа снизу
+            if (hasFloorBottomRight)
+                return WallSide.TopLeft; // Инвертированный угол для выреза
+        }
+
+        // ВНУТРЕННИЕ УГЛЫ (вырезы): стены с двух сторон под прямым углом, пол в противоположной диагонали
+        // Эти углы "смотрят" внутрь выреза
+
+        // Вырез TopLeft: стены справа и снизу, пол слева сверху
+        if (hasWallRight && hasWallBottom && hasFloorTopLeft)
+            return WallSide.BottomRight;
+
+        // Вырез TopRight: стены слева и снизу, пол справа сверху
+        if (hasWallLeft && hasWallBottom && hasFloorTopRight)
+            return WallSide.BottomLeft;
+
+        // Вырез BottomLeft: стены справа и сверху, пол слева снизу
+        if (hasWallRight && hasWallTop && hasFloorBottomLeft)
+            return WallSide.TopRight;
+
+        // Вырез BottomRight: стены слева и сверху, пол справа снизу
+        if (hasWallLeft && hasWallTop && hasFloorBottomRight)
+            return WallSide.TopLeft;
+
+        // ПРЯМЫЕ СТЕНЫ: определяем ориентацию по соседним стенам или полу
+
+        // Вертикальная стена (стены сверху/снизу)
+        if (hasWallTop || hasWallBottom)
+        {
+            // Определяем в какую сторону смотрит стена (где комната)
+            if (hasFloorLeft)
+                return WallSide.Right; // Смотрит влево (комната слева)
+            if (hasFloorRight)
+                return WallSide.Left;  // Смотрит вправо (комната справа)
+            return WallSide.Left; // По умолчанию
+        }
+
+        // Горизонтальная стена (стены слева/справа)
+        if (hasWallLeft || hasWallRight)
+        {
+            // Определяем в какую сторону смотрит стена (где комната)
+            if (hasFloorTop)
+                return WallSide.Bottom; // Смотрит вниз (комната сверху)
+            if (hasFloorBottom)
+                return WallSide.Top;    // Смотрит вверх (комната снизу)
+            return WallSide.Top; // По умолчанию
+        }
+
+        // Одиночная стена - определяем по полу
+        if (hasFloorLeft || hasFloorRight)
+            return WallSide.Left;   // Вертикальная
+        if (hasFloorTop || hasFloorBottom)
+            return WallSide.Top;    // Горизонтальная
+
+        // По умолчанию вертикальная стена
+        return WallSide.Left;
     }
 
     /// <summary>
@@ -805,13 +1240,29 @@ public class RoomBuilder : MonoBehaviour
 
         // Выбираем правильный префаб в зависимости от типа стены
         GameObject prefabToUse = null;
-        if (wallData.wallType == WallType.Corner && wallCornerPrefab != null)
+
+        FileLogger.Log($"[DEBUG] CreateWallGameObject: wallType={wallData.wallType}, position={wallData.position}");
+        FileLogger.Log($"[DEBUG] Prefab availability: wallInnerCornerPrefab={(wallInnerCornerPrefab != null ? "OK" : "NULL")}, wallCornerPrefab={(wallCornerPrefab != null ? "OK" : "NULL")}, wallPrefab={(wallPrefab != null ? "OK" : "NULL")}");
+
+        if (wallData.wallType == WallType.InnerCorner && wallInnerCornerPrefab != null)
+        {
+            prefabToUse = wallInnerCornerPrefab;
+            FileLogger.Log($"[DEBUG] ✓ Using INNER CORNER prefab (SM_Wall_L_Undo) at {wallData.position}");
+        }
+        else if (wallData.wallType == WallType.InnerCorner && wallInnerCornerPrefab == null)
+        {
+            FileLogger.LogError($"[ERROR] Inner corner requested but wallInnerCornerPrefab is NULL! Using fallback.");
+            prefabToUse = wallCornerPrefab;
+        }
+        else if (wallData.wallType == WallType.Corner && wallCornerPrefab != null)
         {
             prefabToUse = wallCornerPrefab;
+            FileLogger.Log($"[DEBUG] Using OUTER CORNER prefab (SM_Wall_L) at {wallData.position}");
         }
         else if (wallPrefab != null)
         {
             prefabToUse = wallPrefab;
+            FileLogger.Log($"[DEBUG] Using STRAIGHT WALL prefab (SM_Wall) at {wallData.position}");
         }
 
         // Используем выбранный префаб если доступен, иначе примитив
@@ -1010,12 +1461,21 @@ public class WallData
             default: baseRotation = 0f; break;
         }
 
+        // КРИТИЧНО: Для внутренних углов (SM_Wall_L_Undo) ротация НЕ инвертируется
+        // wallSide уже правильно установлен в DetermineWallSideFromNeighbors()
+        // (для внутренних углов wallSide инвертирован относительно внешних углов там же)
+        if (wallType == WallType.InnerCorner)
+        {
+            FileLogger.Log($"[DEBUG] INNER CORNER using standard rotation: {baseRotation}° (no adjustment)");
+        }
+
         // Компенсируем поворот комнаты: вычитаем roomRotation из базового поворота
         float finalRotation = (baseRotation - roomRotation) % 360f;
         if (finalRotation < 0) finalRotation += 360f;
 
         // Debug лог для отслеживания поворотов
-        FileLogger.Log($"[DEBUG] Wall at {position} - wallSide: {wallSide}, roomRotation: {roomRotation}, baseRotation: {baseRotation}°, finalRotation: {finalRotation}°");
+        string wallTypeStr = wallType == WallType.InnerCorner ? "InnerCorner" : (wallType == WallType.Corner ? "OuterCorner" : "Straight");
+        FileLogger.Log($"[DEBUG] Wall at {position} - type: {wallTypeStr}, wallSide: {wallSide}, roomRotation: {roomRotation}, baseRotation: {baseRotation}°, finalRotation: {finalRotation}°");
 
         return finalRotation;
     }
@@ -1060,8 +1520,9 @@ public enum WallSide
 /// </summary>
 public enum WallType
 {
-    Straight = 0,   // Обычная прямая стена (SM_Wall)
-    Corner = 1      // Угловая стена (SM_Wall_L)
+    Straight = 0,      // Обычная прямая стена (SM_Wall)
+    Corner = 1,        // Угловая стена внешняя (SM_Wall_L)
+    InnerCorner = 2    // Угловая стена внутренняя для вырезов (SM_Wall_L_Undo)
 }
 
 /// <summary>

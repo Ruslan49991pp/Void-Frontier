@@ -146,7 +146,7 @@ GameObject:
   - component: {fileID: 7112625769407571052}
   - component: {fileID: 174876177456277553}
   m_Layer: 5
-  m_Name: BuildSlot
+  m_Name: Floor_Slot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
