@@ -1196,37 +1196,57 @@ public class RoomBuilder : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновить визуальное отображение всех стен
+    /// Обновить визуальное отображение всех стен (ОПТИМИЗИРОВАНО - инкрементальное обновление)
     /// </summary>
     void UpdateWallVisuals()
     {
-        FileLogger.Log($"DEBUG: UpdateWallVisuals started. Current activeWalls count: {activeWalls.Count}, globalWalls count: {globalWalls.Count}");
+        FileLogger.Log($"DEBUG: UpdateWallVisuals started (INCREMENTAL). Current activeWalls count: {activeWalls.Count}, globalWalls count: {globalWalls.Count}");
 
-        // Удаляем старые стены
-        int destroyedWalls = 0;
+        // ИНКРЕМЕНТАЛЬНОЕ ОБНОВЛЕНИЕ: Находим стены которые нужно удалить
+        List<Vector2Int> wallsToRemove = new List<Vector2Int>();
         foreach (var kvp in activeWalls)
         {
-            if (kvp.Value != null)
+            if (!globalWalls.ContainsKey(kvp.Key))
             {
-                DestroyImmediate(kvp.Value);
-                destroyedWalls++;
+                wallsToRemove.Add(kvp.Key);
             }
         }
-        FileLogger.Log($"DEBUG: Destroyed {destroyedWalls} old wall GameObjects");
-        activeWalls.Clear();
 
-        // Создаем новые стены
+        // Удаляем только стены которых больше нет
+        int destroyedWalls = 0;
+        foreach (Vector2Int key in wallsToRemove)
+        {
+            if (activeWalls[key] != null)
+            {
+                DestroyImmediate(activeWalls[key]);
+                destroyedWalls++;
+            }
+            activeWalls.Remove(key);
+        }
+        FileLogger.Log($"DEBUG: Destroyed {destroyedWalls} wall GameObjects (removed from global)");
+
+        // ИНКРЕМЕНТАЛЬНОЕ ОБНОВЛЕНИЕ: Создаем только новые стены
         int createdWalls = 0;
+        int updatedWalls = 0;
         foreach (var kvp in globalWalls)
         {
             Vector2Int key = kvp.Key;
             WallData wallData = kvp.Value.wallData;
 
-            GameObject wallGO = CreateWallGameObject(wallData);
-            activeWalls[key] = wallGO;
-            createdWalls++;
+            if (!activeWalls.ContainsKey(key))
+            {
+                // Новая стена - создаем
+                GameObject wallGO = CreateWallGameObject(wallData);
+                activeWalls[key] = wallGO;
+                createdWalls++;
+            }
+            else
+            {
+                // Стена уже существует - просто обновляем счетчик
+                updatedWalls++;
+            }
         }
-        FileLogger.Log($"DEBUG: Created {createdWalls} new wall GameObjects");
+        FileLogger.Log($"DEBUG: Created {createdWalls} new walls, kept {updatedWalls} existing walls");
 
         FileLogger.Log($"DEBUG: UpdateWallVisuals completed. Final activeWalls count: {activeWalls.Count}");
     }
@@ -1336,7 +1356,45 @@ public class RoomBuilder : MonoBehaviour
         WallComponent wallComp = wall.AddComponent<WallComponent>();
         wallComp.wallData = wallData;
 
+        // Создаем пол под стеной
+        CreateFloorUnderWall(wall, wallData);
+
         return wall;
+    }
+
+    /// <summary>
+    /// Создать пол под стеной
+    /// </summary>
+    void CreateFloorUnderWall(GameObject wallParent, WallData wallData)
+    {
+        // Создаем пол как дочерний объект стены
+        GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        floor.name = "FloorUnderWall";
+        floor.transform.SetParent(wallParent.transform);
+
+        // Позиционируем пол под стеной в той же клетке
+        Vector3 worldPos = GridToWorldPosition(wallData.position);
+        worldPos.y = -floorThickness * 0.5f;  // На уровне пола
+        floor.transform.position = worldPos;
+
+        // Размер пола - полная клетка
+        floor.transform.localScale = new Vector3(cellSize * 0.95f, floorThickness, cellSize * 0.95f);
+
+        // Применяем материал пола
+        Renderer renderer = floor.GetComponent<Renderer>();
+        if (renderer != null && floorMaterial != null)
+        {
+            renderer.material = floorMaterial;
+        }
+
+        // Убираем коллайдер у пола под стеной (коллайдер стены достаточен)
+        Collider floorCollider = floor.GetComponent<Collider>();
+        if (floorCollider != null)
+        {
+            Destroy(floorCollider);
+        }
+
+        FileLogger.Log($"DEBUG: Created floor under wall at {wallData.position}");
     }
 
     /// <summary>
