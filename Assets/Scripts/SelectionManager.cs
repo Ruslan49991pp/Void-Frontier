@@ -386,11 +386,11 @@ public class SelectionManager : MonoBehaviour
                     GameObject targetObject = hitObject;
 
                     // Проверяем, является ли это полом комнаты
-                    RoomFloorMarker floorMarker = hitObject.GetComponent<RoomFloorMarker>();
-                    if (floorMarker != null && floorMarker.GetParentRoom() != null)
+                    RoomInfo roomInfo = hitObject.GetComponentInParent<RoomInfo>();
+                    if (roomInfo != null)
                     {
                         // Если это пол комнаты, выделяем родительскую комнату
-                        targetObject = floorMarker.GetParentRoom();
+                        targetObject = roomInfo.gameObject;
                     }
 
                     // Найден подходящий объект для выделения
@@ -730,14 +730,6 @@ public class SelectionManager : MonoBehaviour
                     locationInfo.isDestructible = true;
                 }
 
-                // Проверяем наличие RoomFloorMarker на полу
-                RoomFloorMarker floorMarker = floor.GetComponent<RoomFloorMarker>();
-                if (floorMarker == null)
-                {
-                    floorMarker = floor.AddComponent<RoomFloorMarker>();
-                    floorMarker.parentRoom = roomObj;
-                }
-
                 // Проверяем наличие коллайдера на полу
                 BoxCollider floorCollider = floor.GetComponent<BoxCollider>();
                 if (floorCollider == null)
@@ -760,14 +752,6 @@ public class SelectionManager : MonoBehaviour
                     locationInfo.objectType = roomInfo.roomType;
                     locationInfo.health = 500f;
                     locationInfo.isDestructible = true;
-                }
-
-                // Проверяем наличие RoomFloorMarker
-                RoomFloorMarker floorMarker = selectionFloor.GetComponent<RoomFloorMarker>();
-                if (floorMarker == null)
-                {
-                    floorMarker = selectionFloor.AddComponent<RoomFloorMarker>();
-                    floorMarker.parentRoom = roomObj;
                 }
 
                 // Проверяем наличие коллайдера
@@ -811,11 +795,11 @@ public class SelectionManager : MonoBehaviour
             if (rootObject != null)
             {
                 // Проверяем, является ли это полом комнаты
-                RoomFloorMarker floorMarker = rootObject.GetComponent<RoomFloorMarker>();
-                if (floorMarker != null && floorMarker.GetParentRoom() != null)
+                RoomInfo roomInfo = rootObject.GetComponentInParent<RoomInfo>();
+                if (roomInfo != null)
                 {
                     // Если это пол комнаты, подсвечиваем родительскую комнату
-                    hoveredObject = floorMarker.GetParentRoom();
+                    hoveredObject = roomInfo.gameObject;
                 }
                 else
                 {

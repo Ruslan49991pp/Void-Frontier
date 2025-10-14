@@ -3,12 +3,12 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Компонент для отображения информации о выделенном враге в SelectionInfoPanel
+/// Компонент для отображения информации о выделенном враге в панели EnemySelect
 /// </summary>
-public class SelectionInfoDisplay : MonoBehaviour
+public class EnemySelectDisplay : MonoBehaviour
 {
     [Header("UI References")]
-    public GameObject selectionInfoPanel; // Главная панель SelectionInfoPanel
+    public GameObject enemySelectPanel; // Главная панель EnemySelect
     public GameObject enemyPortrait; // EnemyPortrait префаб внутри панели
 
     [Header("Enemy Info Elements")]
@@ -37,24 +37,20 @@ public class SelectionInfoDisplay : MonoBehaviour
         "Icons/Characters/Reptiloids/Enemy_3_ico"
     };
 
-    // Словарь для запоминания портрета каждого врага
-    private static System.Collections.Generic.Dictionary<int, int> enemyPortraitMapping =
-        new System.Collections.Generic.Dictionary<int, int>();
+    // Словарь для запоминания портрета каждого врага (static чтобы сохранялся между врагами)
+    private static System.Collections.Generic.Dictionary<int, string> enemyPortraitMapping =
+        new System.Collections.Generic.Dictionary<int, string>();
     private static int nextReptiloidPortraitIndex = 0;
 
     void Awake()
     {
-
         // Находим SelectionManager в сцене
         selectionManager = FindObjectOfType<SelectionManager>();
 
         // Автоматически находим UI элементы если не назначены
-        if (selectionInfoPanel == null)
+        if (enemySelectPanel == null)
         {
-            selectionInfoPanel = gameObject;
-        }
-        else
-        {
+            enemySelectPanel = gameObject;
         }
 
         // ИСПРАВЛЕНИЕ: Пытаемся найти EnemyPortrait правильно
@@ -76,13 +72,6 @@ public class SelectionInfoDisplay : MonoBehaviour
             {
                 enemyPortrait = enemyPortraitTransform.gameObject;
             }
-            else
-            {
-                Debug.LogError("[SelectionInfoDisplay] EnemyPortrait not found!");
-            }
-        }
-        else
-        {
         }
 
         // Автопоиск UI элементов внутри EnemyPortrait
@@ -94,10 +83,6 @@ public class SelectionInfoDisplay : MonoBehaviour
                 if (healthBarTransform != null)
                 {
                     healthBarPlane = healthBarTransform.gameObject;
-                }
-                else
-                {
-                    Debug.LogWarning("[SelectionInfoDisplay] HealthBar_Plane not found!");
                 }
             }
 
@@ -129,12 +114,13 @@ public class SelectionInfoDisplay : MonoBehaviour
                     {
                         avatarImage = imageTransform.GetComponent<Image>();
                     }
+                    else
+                    {
+                        // Пробуем найти Image компонент прямо на Avatar
+                        avatarImage = avatarTransform.GetComponent<Image>();
+                    }
                 }
             }
-        }
-        else
-        {
-            Debug.LogError("[SelectionInfoDisplay] enemyPortrait is NULL in Awake!");
         }
 
         // Настраиваем кнопку для двойного клика на портрете
@@ -146,15 +132,10 @@ public class SelectionInfoDisplay : MonoBehaviour
 
     void Start()
     {
-
         // Подписываемся на события выделения
         if (selectionManager != null)
         {
             selectionManager.OnSelectionChanged += OnSelectionChanged;
-        }
-        else
-        {
-            Debug.LogError("[SelectionInfoDisplay] Cannot subscribe - selectionManager is NULL!");
         }
     }
 
@@ -188,7 +169,6 @@ public class SelectionInfoDisplay : MonoBehaviour
     /// </summary>
     void OnSelectionChanged(System.Collections.Generic.List<GameObject> selectedObjects)
     {
-
         // Отписываемся от текущего врага
         if (currentEnemy != null)
         {
@@ -202,7 +182,6 @@ public class SelectionInfoDisplay : MonoBehaviour
             GameObject selectedObject = selectedObjects[0];
             Character character = selectedObject.GetComponent<Character>();
 
-
             // Проверяем, является ли выделенный объект врагом (не союзником)
             if (character != null && !character.IsPlayerCharacter())
             {
@@ -212,9 +191,6 @@ public class SelectionInfoDisplay : MonoBehaviour
                 UpdateEnemyInfo();
                 ShowPanel();
                 return;
-            }
-            else if (character != null)
-            {
             }
         }
 
@@ -274,10 +250,10 @@ public class SelectionInfoDisplay : MonoBehaviour
         // В будущем можно добавить поле race в Character
         if (character != null && !character.IsPlayerCharacter())
         {
-            return "Рептилоид";
+            return "Reptiloid";
         }
 
-        return "Неизвестно";
+        return "Unknown";
     }
 
     /// <summary>
@@ -287,7 +263,6 @@ public class SelectionInfoDisplay : MonoBehaviour
     {
         if (healthBarPlane == null)
         {
-            Debug.LogWarning("[SelectionInfoDisplay] UpdateHealthBar called but healthBarPlane is NULL!");
             return;
         }
 
@@ -329,11 +304,6 @@ public class SelectionInfoDisplay : MonoBehaviour
             }
 
             healthBarImage.color = newColor;
-
-        }
-        else
-        {
-            Debug.LogWarning($"[SelectionInfoDisplay] Missing components on HealthBar_Plane! RectTransform: {rectTransform != null}, Image: {healthBarImage != null}");
         }
     }
 
@@ -342,22 +312,27 @@ public class SelectionInfoDisplay : MonoBehaviour
     /// </summary>
     void UpdateAvatar()
     {
-        if (avatarImage == null || currentEnemy == null) return;
+        if (currentEnemy == null || avatarImage == null)
+        {
+            return;
+        }
 
         // Получаем уникальный ID врага (используем GetInstanceID)
         int enemyID = currentEnemy.GetInstanceID();
+        string portraitPath;
 
         // Проверяем, есть ли у этого врага уже назначенный портрет
         if (!enemyPortraitMapping.ContainsKey(enemyID))
         {
             // Назначаем следующий портрет по кругу
-            enemyPortraitMapping[enemyID] = nextReptiloidPortraitIndex;
+            portraitPath = reptiloidPortraits[nextReptiloidPortraitIndex];
+            enemyPortraitMapping[enemyID] = portraitPath;
             nextReptiloidPortraitIndex = (nextReptiloidPortraitIndex + 1) % reptiloidPortraits.Length;
         }
-
-        // Получаем индекс портрета для этого врага
-        int portraitIndex = enemyPortraitMapping[enemyID];
-        string portraitPath = reptiloidPortraits[portraitIndex];
+        else
+        {
+            portraitPath = enemyPortraitMapping[enemyID];
+        }
 
         // Загружаем Sprite из Resources
         Sprite enemyIcon = Resources.Load<Sprite>(portraitPath);
@@ -370,7 +345,6 @@ public class SelectionInfoDisplay : MonoBehaviour
         else
         {
             avatarImage.enabled = false;
-            Debug.LogWarning($"[SelectionInfoDisplay] Failed to load portrait from '{portraitPath}' for enemy {currentEnemy.GetFullName()}");
         }
     }
 
@@ -379,14 +353,10 @@ public class SelectionInfoDisplay : MonoBehaviour
     /// </summary>
     void ShowPanel()
     {
-        // Показываем весь SelectionInfoPanel
-        if (selectionInfoPanel != null)
+        // Показываем весь EnemySelect
+        if (enemySelectPanel != null)
         {
-            selectionInfoPanel.SetActive(true);
-        }
-        else
-        {
-            Debug.LogError("[SelectionInfoDisplay] selectionInfoPanel is NULL!");
+            enemySelectPanel.SetActive(true);
         }
     }
 
@@ -398,14 +368,10 @@ public class SelectionInfoDisplay : MonoBehaviour
         // Очищаем ссылку на врага чтобы остановить Update()
         currentEnemy = null;
 
-        // Скрываем весь SelectionInfoPanel
-        if (selectionInfoPanel != null)
+        // Скрываем весь EnemySelect
+        if (enemySelectPanel != null)
         {
-            selectionInfoPanel.SetActive(false);
-        }
-        else
-        {
-            Debug.LogError("[SelectionInfoDisplay] selectionInfoPanel is NULL in HidePanel!");
+            enemySelectPanel.SetActive(false);
         }
     }
 
@@ -443,7 +409,6 @@ public class SelectionInfoDisplay : MonoBehaviour
 
         // Добавляем обработчик клика
         portraitButton.onClick.AddListener(OnPortraitClicked);
-
     }
 
     /// <summary>
@@ -456,7 +421,6 @@ public class SelectionInfoDisplay : MonoBehaviour
         float currentTime = Time.time;
         bool isDoubleClick = (currentTime - lastClickTime < 0.5f);
         lastClickTime = currentTime;
-
 
         // Двойной клик - фокус камеры на враге
         if (isDoubleClick)
@@ -486,5 +450,18 @@ public class SelectionInfoDisplay : MonoBehaviour
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Получить имена всех дочерних объектов для отладки
+    /// </summary>
+    string[] GetChildNames(Transform parent)
+    {
+        string[] names = new string[parent.childCount];
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            names[i] = parent.GetChild(i).name;
+        }
+        return names;
     }
 }

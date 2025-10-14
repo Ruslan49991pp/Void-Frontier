@@ -1553,7 +1553,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Построить комнату
+    /// Построить комнату (используя новую систему BuildCustomRoom)
     /// </summary>
     void BuildRoom(Vector2Int gridPosition, RoomData roomData, int rotation = 0)
     {
@@ -1564,21 +1564,51 @@ public class ShipBuildingSystem : MonoBehaviour
 
         FileLogger.Log($"DEBUG: Rotated size: {rotatedSize}");
 
-        // Используем RoomBuilder для создания комнат из примитивов
+        // Используем новую систему BuildCustomRoom для создания комнат
         if (roomData.prefab == null)
         {
-            FileLogger.Log($"DEBUG: About to call RoomBuilder.BuildRoom for {roomData.roomName}");
-            room = RoomBuilder.Instance.BuildRoom(gridPosition, rotatedSize, roomData.roomName, rotation);
+            FileLogger.Log($"DEBUG: Building custom room for {roomData.roomName} using BuildCustomRoom");
+
+            // Генерируем списки позиций стен и пола для прямоугольной комнаты
+            List<Vector2Int> wallPositions = new List<Vector2Int>();
+            List<Vector2Int> floorPositions = new List<Vector2Int>();
+
+            for (int x = 0; x < rotatedSize.x; x++)
+            {
+                for (int y = 0; y < rotatedSize.y; y++)
+                {
+                    Vector2Int cellPos = new Vector2Int(gridPosition.x + x, gridPosition.y + y);
+
+                    // Проверяем, является ли клетка частью периметра (стена) или внутренней частью (пол)
+                    bool isPerimeter = (x == 0 || x == rotatedSize.x - 1 || y == 0 || y == rotatedSize.y - 1);
+
+                    if (isPerimeter)
+                    {
+                        wallPositions.Add(cellPos);
+                    }
+                    else
+                    {
+                        floorPositions.Add(cellPos);
+                    }
+                }
+            }
+
+            // Вызываем BuildCustomRoom с сгенерированными позициями
+            room = RoomBuilder.Instance.BuildCustomRoom(gridPosition, rotatedSize, roomData.roomName, wallPositions, floorPositions);
             room.name = $"{roomData.roomName}_{builtRooms.Count + 1}";
 
-            // ВАЖНО: Устанавливаем позицию комнаты в мире
-            Vector3 worldPosition = gridManager.GridToWorld(gridPosition);
-            room.transform.position = worldPosition;
+            FileLogger.Log($"DEBUG: BuildCustomRoom completed, room created: {room.name}");
 
-            FileLogger.Log($"DEBUG: RoomBuilder.BuildRoom completed, room created: {room.name} at position: {room.transform.position}");
-
-            // Больше не добавляем компоненты выделения к основному объекту комнаты
-            // Теперь выделение происходит через пол комнаты, который создается в RoomBuilder
+            // Добавляем RoomInfo компонент для хранения информации о комнате
+            RoomInfo roomInfo = room.GetComponent<RoomInfo>();
+            if (roomInfo != null)
+            {
+                roomInfo.gridPosition = gridPosition;
+                roomInfo.roomSize = roomData.size;
+                roomInfo.roomRotation = rotation;
+                roomInfo.roomName = roomData.roomName;
+                roomInfo.roomType = roomData.roomType;
+            }
         }
         else
         {

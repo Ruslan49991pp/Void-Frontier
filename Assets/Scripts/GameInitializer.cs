@@ -12,6 +12,7 @@ public class GameInitializer : MonoBehaviour
     public bool autoInitializeInventory = true;
     public bool autoInitializePauseSystem = true;
     public bool autoInitializeSelectionInfoDisplay = true;
+    public bool autoInitializeObjectSelectDisplay = true;
 
     void Awake()
     {
@@ -62,7 +63,12 @@ public class GameInitializer : MonoBehaviour
 
         if (autoInitializeSelectionInfoDisplay)
         {
-            EnsureSelectionInfoDisplay();
+            EnsureEnemySelectDisplay();
+        }
+
+        if (autoInitializeObjectSelectDisplay)
+        {
+            EnsureObjectSelectDisplay();
         }
 
         // ОТКЛЮЧЕНО: Весь динамический UI не используется
@@ -125,18 +131,16 @@ public class GameInitializer : MonoBehaviour
     /// </summary>
     void EnsurePauseSystem()
     {
-        FileLogger.Log("[GameInitializer] Initializing pause system");
-
         // Инициализируем GamePauseManager
         if (GamePauseManager.Instance != null)
         {
-            FileLogger.Log("[GameInitializer] GamePauseManager initialized");
+            // Initialized
         }
 
         // Инициализируем PauseMenuManager
         if (PauseMenuManager.Instance != null)
         {
-            FileLogger.Log("[GameInitializer] PauseMenuManager initialized");
+            // Initialized
         }
     }
 
@@ -255,83 +259,114 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что SelectionInfoDisplay существует в сцене и правильно настроен
+    /// Убедиться что EnemySelectDisplay существует в сцене и правильно настроен
     /// </summary>
-    void EnsureSelectionInfoDisplay()
+    void EnsureEnemySelectDisplay()
     {
-        FileLogger.Log("[GameInitializer] Ensuring SelectionInfoDisplay exists");
+        // Ищем EnemySelectDisplay в сцене
+        EnemySelectDisplay enemySelectDisplay = FindObjectOfType<EnemySelectDisplay>();
 
-        // Ищем SelectionInfoDisplay в сцене
-        SelectionInfoDisplay selectionInfoDisplay = FindObjectOfType<SelectionInfoDisplay>();
-
-        if (selectionInfoDisplay == null)
+        if (enemySelectDisplay == null)
         {
-            FileLogger.Log("[GameInitializer] SelectionInfoDisplay not found in scene, looking for SelectionInfoPanel");
-
-            // Ищем SelectionInfoPanel на Canvas_MainUI
+            // Ищем EnemySelect на Canvas_MainUI
             GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>(true);
-            GameObject selectionInfoPanel = null;
+            GameObject enemySelectPanel = null;
 
             foreach (GameObject obj in allObjects)
             {
-                if (obj.name == "SelectionInfoPanel")
+                if (obj.name == "EnemySelect")
                 {
-                    selectionInfoPanel = obj;
-                    FileLogger.Log($"[GameInitializer] Found SelectionInfoPanel: {obj.name}");
+                    enemySelectPanel = obj;
                     break;
                 }
             }
 
-            if (selectionInfoPanel != null)
+            if (enemySelectPanel != null)
             {
-                FileLogger.Log($"[GameInitializer] SelectionInfoPanel active state: {selectionInfoPanel.activeSelf}");
-
-                // Добавляем компонент SelectionInfoDisplay если его нет
-                selectionInfoDisplay = selectionInfoPanel.GetComponent<SelectionInfoDisplay>();
-                if (selectionInfoDisplay == null)
+                // Добавляем компонент EnemySelectDisplay если его нет
+                enemySelectDisplay = enemySelectPanel.GetComponent<EnemySelectDisplay>();
+                if (enemySelectDisplay == null)
                 {
                     // Активируем панель перед добавлением компонента чтобы вызвался Awake()
-                    bool wasActive = selectionInfoPanel.activeSelf;
+                    bool wasActive = enemySelectPanel.activeSelf;
                     if (!wasActive)
                     {
-                        selectionInfoPanel.SetActive(true);
-                        FileLogger.Log("[GameInitializer] Activated SelectionInfoPanel to add component");
+                        enemySelectPanel.SetActive(true);
                     }
 
-                    selectionInfoDisplay = selectionInfoPanel.AddComponent<SelectionInfoDisplay>();
-                    FileLogger.Log("[GameInitializer] Added SelectionInfoDisplay component to SelectionInfoPanel");
+                    enemySelectDisplay = enemySelectPanel.AddComponent<EnemySelectDisplay>();
 
                     // Деактивируем панель обратно если была неактивной
                     if (!wasActive)
                     {
-                        selectionInfoPanel.SetActive(false);
-                        FileLogger.Log("[GameInitializer] Deactivated SelectionInfoPanel after adding component");
+                        enemySelectPanel.SetActive(false);
                     }
                 }
                 else
                 {
-                    FileLogger.Log("[GameInitializer] SelectionInfoDisplay component already exists on SelectionInfoPanel");
-
                     // Активируем панель на момент инициализации чтобы вызвался Awake() и Start()
-                    if (!selectionInfoPanel.activeSelf)
+                    if (!enemySelectPanel.activeSelf)
                     {
-                        selectionInfoPanel.SetActive(true);
-                        FileLogger.Log("[GameInitializer] Temporarily activated SelectionInfoPanel to initialize component");
+                        enemySelectPanel.SetActive(true);
 
                         // Деактивируем панель обратно после небольшой задержки
                         // Используем корутину на GameInitializer (активном объекте)
-                        StartCoroutine(DeactivatePanelAfterDelay(selectionInfoPanel, 0.1f));
+                        StartCoroutine(DeactivatePanelAfterDelay(enemySelectPanel, 0.1f));
                     }
                 }
             }
-            else
-            {
-                FileLogger.LogError("[GameInitializer] SelectionInfoPanel not found in scene!");
-            }
         }
-        else
+    }
+
+    /// <summary>
+    /// Убедиться что ObjectSelectDisplay существует в сцене и правильно настроен
+    /// </summary>
+    void EnsureObjectSelectDisplay()
+    {
+        // Ищем ObjectSelectDisplay в сцене
+        ObjectSelectDisplay objectSelectDisplay = FindObjectOfType<ObjectSelectDisplay>();
+
+        if (objectSelectDisplay == null)
         {
-            FileLogger.Log("[GameInitializer] SelectionInfoDisplay found in scene");
+            // Ищем ObjectSelect на Canvas_MainUI
+            GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>(true);
+            GameObject objectSelectPanel = null;
+
+            foreach (GameObject obj in allObjects)
+            {
+                if (obj.name == "ObjectSelect")
+                {
+                    objectSelectPanel = obj;
+                    break;
+                }
+            }
+
+            if (objectSelectPanel != null)
+            {
+                // Добавляем компонент ObjectSelectDisplay если его нет
+                objectSelectDisplay = objectSelectPanel.GetComponent<ObjectSelectDisplay>();
+                if (objectSelectDisplay == null)
+                {
+                    // Активируем панель перед добавлением компонента чтобы вызвался Awake(), Start() и OnEnable()
+                    bool wasActive = objectSelectPanel.activeSelf;
+                    if (!wasActive)
+                    {
+                        objectSelectPanel.SetActive(true);
+                    }
+
+                    objectSelectDisplay = objectSelectPanel.AddComponent<ObjectSelectDisplay>();
+                    // Компонент сам скроет панель в Start()
+                }
+                else
+                {
+                    // Активируем панель на момент инициализации чтобы вызвался Start() и OnEnable()
+                    if (!objectSelectPanel.activeSelf)
+                    {
+                        objectSelectPanel.SetActive(true);
+                        // Компонент сам скроет панель в Start()
+                    }
+                }
+            }
         }
     }
 
@@ -344,7 +379,6 @@ public class GameInitializer : MonoBehaviour
         if (panel != null)
         {
             panel.SetActive(false);
-            FileLogger.Log("[GameInitializer] Deactivated SelectionInfoPanel after initialization");
         }
     }
 }
