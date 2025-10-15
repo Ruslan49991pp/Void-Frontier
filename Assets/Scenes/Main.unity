@@ -9334,7 +9334,7 @@ GameObject:
   - component: {fileID: 1786885552}
   - component: {fileID: 1786885555}
   - component: {fileID: 1786885554}
-  - component: {fileID: 1786885553}
+  - component: {fileID: 1786885556}
   m_Layer: 5
   m_Name: RoomBuildMenuPanel
   m_TagString: Untagged
@@ -9366,24 +9366,6 @@ RectTransform:
   m_AnchoredPosition: {x: -960, y: 540}
   m_SizeDelta: {x: 1920, y: 1080}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1786885553
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1786885551}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0ee7043f999a33144b0145422c60ec3e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  buildSlotPrefab: {fileID: 7624879411539963615, guid: f3aa51d7c9f7b1b478e0524032b5abb0,
-    type: 3}
-  delBuildSlotPrefab: {fileID: 7624879411539963615, guid: 8b3009a71bfdaf64991278a88d6ce4ef,
-    type: 3}
-  roomDragBuilder: {fileID: 0}
-  addBuildButton: {fileID: 0}
 --- !u!114 &1786885554
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9422,6 +9404,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1786885551}
   m_CullTransparentMesh: 1
+--- !u!114 &1786885556
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1786885551}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9085ddfbec8394e46bb860c1596f690c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  wallIntSlotPrefab: {fileID: 7624879411539963615, guid: 92a986a6194b19146befc2a2ab8f7ab1,
+    type: 3}
+  doorSlotPrefab: {fileID: 7624879411539963615, guid: ab30993fab87ab2449bbfb9d1e3effc7,
+    type: 3}
 --- !u!1 &1795185268
 GameObject:
   m_ObjectHideFlags: 0

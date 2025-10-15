@@ -66,8 +66,8 @@ public class CameraController : MonoBehaviour
         if (buildingSystem == null)
             TryFindBuildingSystem();
 
-        // Блокируем ввод если открыт инвентарь или игра на паузе
-        if (!InventoryUI.IsAnyInventoryOpen && !IsGamePaused())
+        // Блокируем ввод если открыт инвентарь или игра на паузе (но НЕ во время строительства)
+        if (!InventoryUI.IsAnyInventoryOpen && !IsGamePausedExceptBuildMode())
         {
             HandleInput();
         }
@@ -78,18 +78,15 @@ public class CameraController : MonoBehaviour
 
     void LateUpdate()
     {
-        // Блокируем зум если открыт инвентарь или игра на паузе
-        if (!InventoryUI.IsAnyInventoryOpen && !IsGamePaused())
+        // Блокируем зум если открыт инвентарь или игра на паузе (но НЕ во время строительства)
+        if (!InventoryUI.IsAnyInventoryOpen && !IsGamePausedExceptBuildMode())
         {
             // Обрабатываем зум после того, как ShipBuildingSystem обработал ввод
             HandleZoom();
         }
 
-        // Камера движется плавно только если игра не на паузе
-        if (!IsGamePaused())
-        {
-            transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime, Mathf.Infinity, Time.unscaledDeltaTime);
-        }
+        // Камера движется плавно (используем unscaledDeltaTime чтобы работало даже на паузе строительства)
+        transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime, Mathf.Infinity, Time.unscaledDeltaTime);
     }
 
     void HandleInput()
@@ -281,5 +278,21 @@ public class CameraController : MonoBehaviour
     bool IsGamePaused()
     {
         return GamePauseManager.Instance != null && GamePauseManager.Instance.IsPaused();
+    }
+
+    /// <summary>
+    /// Проверить находится ли игра на паузе, исключая паузу режима строительства
+    /// </summary>
+    bool IsGamePausedExceptBuildMode()
+    {
+        if (GamePauseManager.Instance == null) return false;
+
+        // Если игра не на паузе, то все в порядке
+        if (!GamePauseManager.Instance.IsPaused()) return false;
+
+        // Если пауза активна, проверяем - это пауза строительства или обычная пауза
+        // Если это пауза строительства, возвращаем false (камера может двигаться)
+        // Если это обычная пауза, возвращаем true (камера заблокирована)
+        return !GamePauseManager.Instance.IsBuildModePause();
     }
 }

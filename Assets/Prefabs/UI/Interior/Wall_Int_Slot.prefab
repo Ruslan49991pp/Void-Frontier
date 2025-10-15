@@ -146,7 +146,7 @@ GameObject:
   - component: {fileID: 7112625769407571052}
   - component: {fileID: 174876177456277553}
   m_Layer: 5
-  m_Name: DoorSlot
+  m_Name: Wall_Int_Slot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -201,8 +201,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 0}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -276,7 +276,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 610a6c8a97c8dfd4095daab9904c3595, type: 3}
+  m_Sprite: {fileID: 21300000, guid: b682d2fdcd75d46439e994632ba07817, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
