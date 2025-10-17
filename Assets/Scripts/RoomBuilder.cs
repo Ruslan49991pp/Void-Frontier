@@ -437,7 +437,7 @@ public class RoomBuilder : MonoBehaviour
     /// Определить сторону/тип стены на основе соседних клеток
     /// Учитывает позиции пола для правильного определения внутренних/внешних углов
     /// </summary>
-    WallSide DetermineWallSideFromNeighbors(Vector2Int wallPos, HashSet<Vector2Int> wallSet, HashSet<Vector2Int> floorSet)
+    public WallSide DetermineWallSideFromNeighbors(Vector2Int wallPos, HashSet<Vector2Int> wallSet, HashSet<Vector2Int> floorSet)
     {
         // Проверяем соседние клетки (4 стороны)
         bool hasWallTop = wallSet.Contains(wallPos + Vector2Int.up);
@@ -720,7 +720,7 @@ public class RoomBuilder : MonoBehaviour
     /// <summary>
     /// Определить тип стены (прямая или угловая) по её стороне
     /// </summary>
-    WallType DetermineWallType(WallSide wallSide)
+    public WallType DetermineWallType(WallSide wallSide)
     {
         switch (wallSide)
         {
@@ -744,7 +744,7 @@ public class RoomBuilder : MonoBehaviour
     /// <summary>
     /// Добавить стену в глобальный реестр
     /// </summary>
-    void AddWallToGlobal(WallData wallData)
+    public void AddWallToGlobal(WallData wallData)
     {
         Vector2Int key = wallData.GetKey();
 
@@ -957,7 +957,7 @@ public class RoomBuilder : MonoBehaviour
     /// <summary>
     /// Обновить визуальное отображение всех стен (ОПТИМИЗИРОВАНО - инкрементальное обновление)
     /// </summary>
-    void UpdateWallVisuals()
+    public void UpdateWallVisuals()
     {
         FileLogger.Log($"DEBUG: UpdateWallVisuals started (INCREMENTAL). Current activeWalls count: {activeWalls.Count}, globalWalls count: {globalWalls.Count}");
 
@@ -1156,14 +1156,28 @@ public class RoomBuilder : MonoBehaviour
         GridManager gridManager = FindObjectOfType<GridManager>();
         if (gridManager != null)
         {
-            bool registered = gridManager.OccupyCell(wallData.position, wall, "Wall");
-            if (registered)
+            // Проверяем, не занята ли клетка уже (может быть занята во время строительства)
+            GridCell cell = gridManager.GetCell(wallData.position);
+            if (cell != null && cell.isOccupied)
             {
-                FileLogger.Log($"[WALL] ✓ Registered wall in GridManager at {wallData.position} - cell is now impassable");
+                // Клетка уже занята - это нормально если она была помечена во время строительства
+                // Просто обновляем объект в клетке на финальную стену
+                FileLogger.Log($"[WALL] Cell at {wallData.position} already occupied - updating with final wall object");
+                cell.SetOccupied(wall, "Wall");
+                FileLogger.Log($"[WALL] ✓ Updated wall in GridManager at {wallData.position} - cell is now impassable");
             }
             else
             {
-                FileLogger.LogError($"[WALL] ✗ FAILED to register wall at {wallData.position} - cell may already be occupied!");
+                // Клетка свободна - занимаем её обычным способом
+                bool registered = gridManager.OccupyCell(wallData.position, wall, "Wall");
+                if (registered)
+                {
+                    FileLogger.Log($"[WALL] ✓ Registered wall in GridManager at {wallData.position} - cell is now impassable");
+                }
+                else
+                {
+                    FileLogger.LogError($"[WALL] ✗ FAILED to register wall at {wallData.position} - unexpected error!");
+                }
             }
         }
         else

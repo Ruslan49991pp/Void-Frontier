@@ -30,6 +30,10 @@ public class CameraController : MonoBehaviour
     public SelectionManager selectionManager;
     public ShipBuildingSystem buildingSystem;
 
+    [Header("Follow Mode")]
+    private bool isFollowingTarget = false;
+    private Transform followTarget = null;
+
     // ����������
     private Vector3 targetPosition;
     private Vector3 velocity = Vector3.zero;
@@ -83,6 +87,15 @@ public class CameraController : MonoBehaviour
         {
             // Обрабатываем зум после того, как ShipBuildingSystem обработал ввод
             HandleZoom();
+        }
+
+        // Если активен режим следования за целью
+        if (isFollowingTarget && followTarget != null)
+        {
+            // Используем разумное смещение камеры относительно персонажа (сверху-сзади)
+            Vector3 desiredOffset = new Vector3(0, 10, -8);
+            targetPosition = followTarget.position + desiredOffset;
+            ClampToBounds();
         }
 
         // Камера движется плавно (используем unscaledDeltaTime чтобы работало даже на паузе строительства)
@@ -294,5 +307,37 @@ public class CameraController : MonoBehaviour
         // Если это пауза строительства, возвращаем false (камера может двигаться)
         // Если это обычная пауза, возвращаем true (камера заблокирована)
         return !GamePauseManager.Instance.IsBuildModePause();
+    }
+
+    /// <summary>
+    /// Начать следование камеры за целью (при зажатии ЛКМ на портрете)
+    /// </summary>
+    public void StartFollowingTarget(Transform target)
+    {
+        if (target == null) return;
+
+        followTarget = target;
+        isFollowingTarget = true;
+
+        Debug.Log($"[CameraController] Started following {target.name}");
+    }
+
+    /// <summary>
+    /// Остановить следование камеры за целью (при отпускании ЛКМ)
+    /// </summary>
+    public void StopFollowingTarget()
+    {
+        isFollowingTarget = false;
+        followTarget = null;
+
+        Debug.Log($"[CameraController] Stopped following target");
+    }
+
+    /// <summary>
+    /// Проверить, следует ли камера за целью
+    /// </summary>
+    public bool IsFollowingTarget()
+    {
+        return isFollowingTarget;
     }
 }

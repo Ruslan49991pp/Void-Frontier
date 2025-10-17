@@ -1289,19 +1289,31 @@ public class InventoryUI : MonoBehaviour
         ClearSlotUIElements();
 
         // Очищаем слоты экипировки только при уничтожении
-        foreach (var kvp in equipmentSlotUIs)
+        // ВАЖНО: Проверяем что словарь не null (может быть уничтожен при выходе из Play Mode)
+        if (equipmentSlotUIs != null)
         {
-            InventorySlotUI slotUI = kvp.Value;
-            if (slotUI != null)
+            try
             {
-                slotUI.OnSlotClicked -= OnEquipmentSlotClicked;
-                slotUI.OnSlotRightClicked -= OnEquipmentSlotRightClicked;
-                slotUI.OnSlotDoubleClicked -= OnEquipmentSlotDoubleClicked;
-                slotUI.OnSlotDragAndDrop -= OnSlotDragAndDrop;
-                DestroyImmediate(slotUI.gameObject);
+                foreach (var kvp in equipmentSlotUIs)
+                {
+                    InventorySlotUI slotUI = kvp.Value;
+                    if (slotUI != null)
+                    {
+                        slotUI.OnSlotClicked -= OnEquipmentSlotClicked;
+                        slotUI.OnSlotRightClicked -= OnEquipmentSlotRightClicked;
+                        slotUI.OnSlotDoubleClicked -= OnEquipmentSlotDoubleClicked;
+                        slotUI.OnSlotDragAndDrop -= OnSlotDragAndDrop;
+                        DestroyImmediate(slotUI.gameObject);
+                    }
+                }
+                equipmentSlotUIs.Clear();
+            }
+            catch (System.Exception)
+            {
+                // Игнорируем ошибки при уничтожении объектов
+                // Словарь может быть частично уничтожен
             }
         }
-        equipmentSlotUIs.Clear();
     }
 
     /// <summary>

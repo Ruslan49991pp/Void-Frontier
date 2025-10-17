@@ -134,6 +134,14 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         Character capturedCharacter = character;
         iconData.button.onClick.AddListener(() => OnIconClicked(capturedCharacter));
 
+        // Добавляем компонент для следования камеры при зажатии ЛКМ
+        PortraitCameraFollow cameraFollow = iconGO.GetComponent<PortraitCameraFollow>();
+        if (cameraFollow == null)
+        {
+            cameraFollow = iconGO.AddComponent<PortraitCameraFollow>();
+        }
+        cameraFollow.Initialize(capturedCharacter);
+
         // Находим и привязываем кнопку инвентаря
         Transform inventoryButtonTransform = iconGO.transform.Find("InventoryButton");
         if (inventoryButtonTransform != null)

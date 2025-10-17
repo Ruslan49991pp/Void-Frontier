@@ -233,11 +233,22 @@ public class LocationManager : MonoBehaviour
             objectInfo.health = 50f;
             objectInfo.canBeScavenged = true;
         }
-        
+
+        // ВАЖНО: Устанавливаем слой "Selectable" для raycast
+        int selectableLayer = LayerMask.NameToLayer("Selectable");
+        if (selectableLayer != -1)
+        {
+            prefab.layer = selectableLayer;
+        }
+        else
+        {
+            Debug.LogWarning($"[LocationManager] 'Selectable' layer not found! Prefab '{name}' may not be clickable.");
+        }
+
         // Скрываем префаб
         prefab.SetActive(false);
-        
-        
+
+
         return prefab;
     }
     
@@ -374,15 +385,55 @@ public class LocationManager : MonoBehaviour
                 );
                 Vector3 asteroidPosition = cell.worldPosition + areaCenterOffset;
                 
+                // Рандомизируем размер астероида (0.7 - 1.3 от базового размера)
+                float sizeMultiplier = Random.Range(0.7f, 1.3f);
+
                 // Без поворота - используем поворот префаба
                 GameObject asteroid = Instantiate(asteroidPrefab, asteroidPosition, Quaternion.identity, contentParent);
+                asteroid.transform.localScale *= sizeMultiplier; // Увеличиваем/уменьшаем размер
                 asteroid.SetActive(true);
-                
+
                 // Занимаем область 8x8 в сетке
                 gridManager.OccupyCellArea(cell.gridPosition, 8, 8, asteroid, "Asteroid");
-                
+
+                // Назначаем количество металла в зависимости от размера
+                LocationObjectInfo asteroidInfo = asteroid.GetComponent<LocationObjectInfo>();
+
+                // Если компонента нет - добавляем его
+                if (asteroidInfo == null)
+                {
+                    Debug.Log($"[LocationManager] Adding LocationObjectInfo to asteroid '{asteroid.name}'");
+                    asteroidInfo = asteroid.AddComponent<LocationObjectInfo>();
+                }
+
+                // Настраиваем информацию об астероиде
+                asteroidInfo.objectType = "Asteroid";
+                asteroidInfo.objectName = "Asteroid";
+                asteroidInfo.health = 200f;
+                asteroidInfo.isDestructible = false;
+                asteroidInfo.canBeScavenged = true;
+
+                // Металл зависит от размера: базовое 100-300, умноженное на размер
+                int baseMetal = Random.Range(100, 301);
+                asteroidInfo.maxMetalAmount = Mathf.RoundToInt(baseMetal * sizeMultiplier);
+                asteroidInfo.metalAmount = asteroidInfo.maxMetalAmount;
+
+                // ВАЖНО: Сохраняем позицию в сетке для корректной визуализации
+                asteroidInfo.gridStartPosition = cell.gridPosition;
+                asteroidInfo.gridSize = new Vector2Int(8, 8);
+
+                Debug.Log($"[LocationManager] Created asteroid '{asteroid.name}' at {asteroidPosition} with {asteroidInfo.metalAmount}/{asteroidInfo.maxMetalAmount} metal (size: {sizeMultiplier:F2})");
+
+                // Добавляем визуализатор занятых клеток для отладки
+                OccupiedCellsVisualizer visualizer = asteroid.AddComponent<OccupiedCellsVisualizer>();
+                visualizer.cellsX = 8;
+                visualizer.cellsY = 8;
+                visualizer.showOnStart = true;
+                visualizer.visualizationColor = new Color(1f, 0f, 0f, 0.3f); // Красный полупрозрачный
+                visualizer.cubeHeight = 0.2f;
+
                 RegisterObject(asteroid, "Asteroid");
-                
+
                 createdCount++;
             }
         }

@@ -21,6 +21,7 @@ public static class ItemNames
 
     // Ресурсы
     public const string RESOURCE = "Resource";
+    public const string METAL = "Metal";
 
     // Расходники
     public const string CONSUMABLE = "Consumable";

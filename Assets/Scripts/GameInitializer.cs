@@ -13,9 +13,15 @@ public class GameInitializer : MonoBehaviour
     public bool autoInitializePauseSystem = true;
     public bool autoInitializeSelectionInfoDisplay = true;
     public bool autoInitializeObjectSelectDisplay = true;
+    public bool autoInitializeItemFactory = true;
 
     void Awake()
     {
+        if (autoInitializeItemFactory)
+        {
+            EnsureItemFactory();
+        }
+
         if (autoInitializeBootstrap)
         {
             EnsureBootstrapManager();
@@ -380,5 +386,24 @@ public class GameInitializer : MonoBehaviour
         {
             panel.SetActive(false);
         }
+    }
+
+    /// <summary>
+    /// Убедиться что ItemFactory инициализирован с ItemDatabase
+    /// </summary>
+    void EnsureItemFactory()
+    {
+        // Загружаем ItemDatabase из Resources
+        ItemDatabase itemDatabase = Resources.Load<ItemDatabase>("ItemDatabase");
+
+        if (itemDatabase == null)
+        {
+            Debug.LogWarning("[GameInitializer] ItemDatabase not found in Resources! Create it via Assets -> Create -> Inventory -> Item Database");
+            return;
+        }
+
+        // Инициализируем ItemFactory
+        ItemFactory.Initialize(itemDatabase);
+        Debug.Log("[GameInitializer] ItemFactory initialized with ItemDatabase");
     }
 }

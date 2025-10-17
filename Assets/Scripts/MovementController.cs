@@ -55,6 +55,12 @@ public class MovementController : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(1)) // ПКМ
         {
+            // ВАЖНО: Проверяем, обработал ли SelectionManager этот клик (добыча, подбор предметов)
+            if (selectionManager != null && selectionManager.RightClickHandledThisFrame)
+            {
+                return; // SelectionManager уже обработал этот клик, не обрабатываем как движение
+            }
+
             // Защита от спама кликов
             if (Time.time - lastClickTime < CLICK_COOLDOWN)
             {

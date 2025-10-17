@@ -1007,7 +1007,7 @@ public class RoomDragBuilder : MonoBehaviour
     }
 
     /// <summary>
-    /// Подтвердить постройку - заменить Build_Ghost на Add_Build_Ghost
+    /// Подтвердить постройку - применить материал M_Add_Build_Ghost и запустить строительство
     /// </summary>
     public void ConfirmBuild()
     {
@@ -1019,28 +1019,184 @@ public class RoomDragBuilder : MonoBehaviour
             return;
         }
 
-
-        // Заменяем все Build_Ghost (стены) на Add_Build_Ghost
-        foreach (Vector2Int cellPos in roomPerimeter)
+        // Загружаем материал M_Add_Build_Ghost
+        Material addBuildMaterial = Resources.Load<Material>("Materials/M_Add_Build_Ghost");
+        if (addBuildMaterial == null)
         {
-            GameObject confirmedBlock = CreateGhostBlock(cellPos, addBuildGhostPrefab);
-            confirmedBlocks.Add(confirmedBlock);
+            Debug.LogError("[RoomDragBuilder] M_Add_Build_Ghost material not found in Resources/Materials/");
+            return;
         }
 
-        // Заменяем все Floor_Ghost (пол) на Add_Floor_Ghost
-        if (addFloorGhostPrefab != null)
+        // Список блоков для строительства
+        List<ConstructionBlock> constructionBlocks = new List<ConstructionBlock>();
+
+        // Применяем материал к существующим Build_Ghost блокам (стены)
+        foreach (var kvp in activeGhostBlocks)
         {
-            foreach (Vector2Int cellPos in roomFloor)
+            GameObject ghostBlock = kvp.Value;
+            Vector2Int gridPos = kvp.Key;
+
+            // Применяем материал M_Add_Build_Ghost
+            Renderer renderer = ghostBlock.GetComponent<Renderer>();
+            if (renderer != null)
             {
-                GameObject confirmedFloorBlock = CreateGhostBlock(cellPos, addFloorGhostPrefab);
-                confirmedFloorBlocks.Add(confirmedFloorBlock);
+                renderer.material = addBuildMaterial;
             }
+
+            // Добавляем блок в очередь строительства
+            Vector3 worldPos = ghostBlock.transform.position;
+            ConstructionBlock constructionBlock = new ConstructionBlock(gridPos, worldPos, ghostBlock, ConstructionBlock.BlockType.Wall);
+
+            // Callback для замены на финальный префаб после строительства
+            constructionBlock.OnConstructionComplete = () => ReplaceGhostWithWall(gridPos, ghostBlock);
+
+            constructionBlocks.Add(constructionBlock);
+            confirmedBlocks.Add(ghostBlock);
         }
 
-        // Удаляем Build_Ghost и Floor_Ghost блоки
-        ClearGhostBlocks();
+        // Применяем материал к Floor_Ghost блокам (пол)
+        foreach (var kvp in activeFloorBlocks)
+        {
+            GameObject ghostFloorBlock = kvp.Value;
+            Vector2Int gridPos = kvp.Key;
+
+            // Применяем материал M_Add_Build_Ghost (или другой для пола)
+            Renderer renderer = ghostFloorBlock.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.material = addBuildMaterial;
+            }
+
+            // Добавляем блок в очередь строительства
+            Vector3 worldPos = ghostFloorBlock.transform.position;
+            ConstructionBlock constructionBlock = new ConstructionBlock(gridPos, worldPos, ghostFloorBlock, ConstructionBlock.BlockType.Floor);
+
+            // Callback для замены на финальный префаб после строительства
+            constructionBlock.OnConstructionComplete = () => ReplaceGhostWithFloor(gridPos, ghostFloorBlock);
+
+            constructionBlocks.Add(constructionBlock);
+            confirmedFloorBlocks.Add(ghostFloorBlock);
+        }
+
+        Debug.Log($"[RoomDragBuilder] Confirmed {constructionBlocks.Count} blocks for construction");
+
+        // Регистрируем блоки в ConstructionManager для автоматического строительства
+        if (ConstructionManager.Instance != null)
+        {
+            ConstructionManager.Instance.AddConstructionBlocks(constructionBlocks);
+        }
+        else
+        {
+            Debug.LogError("[RoomDragBuilder] ConstructionManager not found in scene!");
+        }
 
         currentState = DragState.Confirmed;
+    }
+
+    /// <summary>
+    /// Заменить ghost-стену на финальный префаб после строительства
+    /// </summary>
+    void ReplaceGhostWithWall(Vector2Int gridPos, GameObject ghostBlock)
+    {
+        Debug.Log($"[RoomDragBuilder] Replacing wall ghost at {gridPos} with final wall");
+
+        // Уничтожаем ghost блок
+        if (ghostBlock != null)
+        {
+            Destroy(ghostBlock);
+        }
+
+        // Удаляем из confirmedBlocks
+        confirmedBlocks.Remove(ghostBlock);
+
+        // Добавляем стену в глобальный реестр RoomBuilder
+        // RoomBuilder автоматически создаст визуальную стену при следующем UpdateWallVisuals
+        if (RoomBuilder.Instance != null)
+        {
+            // Создаем HashSet для быстрой проверки
+            HashSet<Vector2Int> wallSet = new HashSet<Vector2Int>(roomPerimeter);
+            HashSet<Vector2Int> floorSet = new HashSet<Vector2Int>(roomFloor);
+
+            // Определяем тип стены на основе соседей
+            WallSide wallSide = RoomBuilder.Instance.DetermineWallSideFromNeighbors(gridPos, wallSet, floorSet);
+            bool isInnerCorner = savedInnerCorners.Contains(gridPos);
+            WallType wallType = isInnerCorner ? WallType.InnerCorner : RoomBuilder.Instance.DetermineWallType(wallSide);
+
+            // Создаем WallData
+            WallData wallData = new WallData(
+                gridPos,
+                WallDirection.Vertical,
+                Vector2Int.zero,
+                Vector2Int.zero,
+                wallSide,
+                wallType,
+                0
+            );
+
+            // Добавляем в глобальный реестр стен
+            RoomBuilder.Instance.AddWallToGlobal(wallData);
+
+            // Обновляем визуализацию стен
+            RoomBuilder.Instance.UpdateWallVisuals();
+
+            Debug.Log($"[RoomDragBuilder] Wall at {gridPos} added to registry: side={wallSide}, type={wallType}");
+        }
+        else
+        {
+            Debug.LogError("[RoomDragBuilder] RoomBuilder instance not found!");
+        }
+    }
+
+    /// <summary>
+    /// Заменить ghost-пол на финальный префаб после строительства
+    /// </summary>
+    void ReplaceGhostWithFloor(Vector2Int gridPos, GameObject ghostFloorBlock)
+    {
+        Debug.Log($"[RoomDragBuilder] Replacing floor ghost at {gridPos} with final floor tile");
+
+        // Уничтожаем ghost блок
+        if (ghostFloorBlock != null)
+        {
+            Destroy(ghostFloorBlock);
+        }
+
+        // Удаляем из confirmedFloorBlocks
+        confirmedFloorBlocks.Remove(ghostFloorBlock);
+
+        // Создаем настоящую плитку пола
+        GameObject floorTile = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        floorTile.name = $"ConstructedFloor_{gridPos.x}_{gridPos.y}";
+
+        // Позиция плитки (центр клетки)
+        Vector3 worldPos = gridManager.GridToWorld(gridPos);
+        worldPos.y = -0.05f; // Небольшое смещение вниз для пола
+        floorTile.transform.position = worldPos;
+
+        // Размер плитки (чуть меньше клетки чтобы видеть швы)
+        float cellSize = gridManager.cellSize;
+        floorTile.transform.localScale = new Vector3(cellSize * 0.95f, 0.1f, cellSize * 0.95f);
+
+        // Применяем материал пола
+        Material floorMaterial = Resources.Load<Material>("Materials/M_Floor");
+        Renderer renderer = floorTile.GetComponent<Renderer>();
+        if (renderer != null && floorMaterial != null)
+        {
+            renderer.material = floorMaterial;
+        }
+        else if (renderer != null)
+        {
+            // Если материал не найден, используем базовый серый цвет
+            renderer.material.color = new Color(0.5f, 0.5f, 0.5f);
+        }
+
+        // Убираем коллайдер у плитки (коллайдер выделения будет отдельно если нужен)
+        Collider tileCollider = floorTile.GetComponent<Collider>();
+        if (tileCollider != null)
+        {
+            Destroy(tileCollider);
+        }
+
+        Debug.Log($"[RoomDragBuilder] Floor tile created at {gridPos}");
     }
 
     /// <summary>

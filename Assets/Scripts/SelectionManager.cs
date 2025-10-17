@@ -11,6 +11,10 @@ public class SelectionManager : MonoBehaviour
     public Color selectionBoxBorderColor = new Color(0.8f, 0.8f, 1f, 1f);
     public float selectionIndicatorHeight = 2f;
 
+    [Header("Item Pickup Settings")]
+    [Tooltip("Включить подбор предметов при клике ПКМ на ресурс")]
+    public bool enableRightClickPickup = true;
+
     [Header("Hover Highlight")]
     public Color hoverColor = Color.cyan;
     
@@ -42,6 +46,9 @@ public class SelectionManager : MonoBehaviour
     // События
     public System.Action<List<GameObject>> OnSelectionChanged;
 
+    // Флаг для предотвращения обработки клика другими системами
+    private bool rightClickHandledThisFrame = false;
+
     // Hover система
     private GameObject currentHoveredObject = null;
     private Dictionary<MeshRenderer, Material> originalMaterials = new Dictionary<MeshRenderer, Material>();
@@ -50,6 +57,7 @@ public class SelectionManager : MonoBehaviour
 
     // Публичные свойства
     public bool IsBoxSelecting => isBoxSelecting;
+    public bool RightClickHandledThisFrame => rightClickHandledThisFrame;
     
     void Start()
     {
@@ -67,6 +75,9 @@ public class SelectionManager : MonoBehaviour
     
     void Update()
     {
+        // Сбрасываем флаг в начале каждого кадра
+        rightClickHandledThisFrame = false;
+
         // Блокируем ввод если открыт инвентарь или меню паузы
         if (!InventoryUI.IsAnyInventoryOpen && !IsGamePaused())
         {
@@ -207,6 +218,18 @@ public class SelectionManager : MonoBehaviour
                 PerformClickSelection(mouseDownPosition);
             }
             isMousePressed = false;
+        }
+
+        // ПКМ - взаимодействие с предметами (подбор ресурсов)
+        if (Input.GetMouseButtonDown(1))
+        {
+            bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
+                                   UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
+
+            if (!isPointerOverUI)
+            {
+                HandleRightClick();
+            }
         }
     }
     
@@ -374,6 +397,7 @@ public class SelectionManager : MonoBehaviour
                 Item item = hitObject.GetComponent<Item>();
                 if (item != null)
                 {
+                    Debug.Log($"[SelectionManager] Left-click selected item: {item.itemData.itemName}");
                     // Предметы выделяем по одному
                     ClearSelection();
                     ToggleSelection(hitObject);
@@ -560,17 +584,60 @@ public class SelectionManager : MonoBehaviour
     /// </summary>
     void UpdateSelectionIndicatorPositions()
     {
-        foreach (var kvp in selectionIndicators)
-        {
-            GameObject targetObject = kvp.Key;
-            GameObject indicator = kvp.Value;
+        // Создаем список уничтоженных объектов для удаления из словаря
+        List<GameObject> destroyedObjects = new List<GameObject>();
 
-            if (targetObject != null && indicator != null)
+        try
+        {
+            foreach (var kvp in selectionIndicators)
             {
-                // Обновляем позицию индикатора над движущимся объектом
-                Bounds bounds = GetObjectBounds(targetObject);
-                Vector3 newPosition = bounds.center + Vector3.up * (bounds.size.y * 0.5f + selectionIndicatorHeight);
-                indicator.transform.position = newPosition;
+                GameObject targetObject = kvp.Key;
+                GameObject indicator = kvp.Value;
+
+                // КРИТИЧЕСКИ ВАЖНО: Проверяем что объект не был уничтожен
+                // Unity уничтоженные объекты != null, но ReferenceEquals(obj, null) == true
+                bool isDestroyed = ReferenceEquals(targetObject, null);
+
+                if (isDestroyed)
+                {
+                    Debug.Log($"[SelectionManager] [UpdateSelectionIndicatorPositions] Found destroyed object in selectionIndicators, marking for removal");
+                    destroyedObjects.Add(targetObject);
+
+                    // Удаляем индикатор если он существует
+                    if (indicator != null)
+                    {
+                        DestroyImmediate(indicator);
+                    }
+                    continue;
+                }
+
+                if (targetObject != null && indicator != null)
+                {
+                    // Обновляем позицию индикатора над движущимся объектом
+                    Bounds bounds = GetObjectBounds(targetObject);
+                    Vector3 newPosition = bounds.center + Vector3.up * (bounds.size.y * 0.5f + selectionIndicatorHeight);
+                    indicator.transform.position = newPosition;
+                }
+                else if (targetObject == null)
+                {
+                    Debug.Log($"[SelectionManager] [UpdateSelectionIndicatorPositions] Target object became null, marking for removal");
+                    destroyedObjects.Add(targetObject);
+                }
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[SelectionManager] [UpdateSelectionIndicatorPositions] Exception while updating indicators: {ex.Message}");
+            Debug.LogError($"[SelectionManager] Stack trace: {ex.StackTrace}");
+        }
+
+        // Удаляем уничтоженные объекты из словаря
+        foreach (GameObject destroyedObj in destroyedObjects)
+        {
+            if (selectionIndicators.ContainsKey(destroyedObj))
+            {
+                Debug.Log($"[SelectionManager] [UpdateSelectionIndicatorPositions] Removing destroyed object from selectionIndicators dictionary");
+                selectionIndicators.Remove(destroyedObj);
             }
         }
     }
@@ -772,59 +839,81 @@ public class SelectionManager : MonoBehaviour
     {
         if (isBoxSelecting) return; // Не обрабатываем hover во время выделения рамкой
 
-        Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask, QueryTriggerInteraction.Collide);
-
-        GameObject hoveredObject = null;
-
-        // Ищем объект для подсветки
-        foreach (RaycastHit hit in hits)
+        try
         {
-            GameObject hitObject = hit.collider.gameObject;
+            Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask, QueryTriggerInteraction.Collide);
 
-            // Исключаем системные объекты
-            if (hitObject.name.Contains("Bounds") || hitObject.name.Contains("Grid") ||
-                hitObject.name.Contains("Location") && !hitObject.name.Contains("Test") ||
-                hitObject.name.Contains("Plane"))
+            GameObject hoveredObject = null;
+
+            // Ищем объект для подсветки
+            foreach (RaycastHit hit in hits)
             {
-                continue;
+                GameObject hitObject = hit.collider.gameObject;
+
+                // ЗАЩИТА: Проверяем что объект не был уничтожен
+                if (ReferenceEquals(hitObject, null) || hitObject == null)
+                {
+                    Debug.Log($"[SelectionManager] [HandleHover] Skipping destroyed hit object");
+                    continue;
+                }
+
+                // Исключаем системные объекты
+                if (hitObject.name.Contains("Bounds") || hitObject.name.Contains("Grid") ||
+                    hitObject.name.Contains("Location") && !hitObject.name.Contains("Test") ||
+                    hitObject.name.Contains("Plane"))
+                {
+                    continue;
+                }
+
+                // Ищем корневой объект для подсветки (префаб)
+                GameObject rootObject = FindHoverableRoot(hitObject);
+                if (rootObject != null && !ReferenceEquals(rootObject, null))
+                {
+                    // Проверяем, является ли это полом комнаты
+                    RoomInfo roomInfo = rootObject.GetComponentInParent<RoomInfo>();
+                    if (roomInfo != null)
+                    {
+                        // Если это пол комнаты, подсвечиваем родительскую комнату
+                        hoveredObject = roomInfo.gameObject;
+                    }
+                    else
+                    {
+                        hoveredObject = rootObject;
+                    }
+                    break;
+                }
             }
 
-            // Ищем корневой объект для подсветки (префаб)
-            GameObject rootObject = FindHoverableRoot(hitObject);
-            if (rootObject != null)
+            // Проверяем что currentHoveredObject не был уничтожен
+            if (!ReferenceEquals(currentHoveredObject, null) && currentHoveredObject == null)
             {
-                // Проверяем, является ли это полом комнаты
-                RoomInfo roomInfo = rootObject.GetComponentInParent<RoomInfo>();
-                if (roomInfo != null)
+                Debug.Log($"[SelectionManager] [HandleHover] currentHoveredObject was destroyed, clearing reference");
+                currentHoveredObject = null;
+            }
+
+            // Обновляем подсветку
+            if (hoveredObject != currentHoveredObject)
+            {
+                // Убираем подсветку с предыдущего объекта
+                if (currentHoveredObject != null && !ReferenceEquals(currentHoveredObject, null))
                 {
-                    // Если это пол комнаты, подсвечиваем родительскую комнату
-                    hoveredObject = roomInfo.gameObject;
+                    EndHover(currentHoveredObject);
                 }
-                else
+
+                // Добавляем подсветку новому объекту, только если он НЕ выделен
+                if (hoveredObject != null && !ReferenceEquals(hoveredObject, null) && !IsSelected(hoveredObject))
                 {
-                    hoveredObject = rootObject;
+                    StartHover(hoveredObject);
                 }
-                break;
+
+                currentHoveredObject = hoveredObject;
             }
         }
-
-        // Обновляем подсветку
-        if (hoveredObject != currentHoveredObject)
+        catch (System.Exception ex)
         {
-            // Убираем подсветку с предыдущего объекта
-            if (currentHoveredObject != null)
-            {
-                EndHover(currentHoveredObject);
-            }
-
-            // Добавляем подсветку новому объекту, только если он НЕ выделен
-            if (hoveredObject != null && !IsSelected(hoveredObject))
-            {
-                StartHover(hoveredObject);
-            }
-
-            currentHoveredObject = hoveredObject;
+            Debug.LogError($"[SelectionManager] [HandleHover] Exception: {ex.Message}");
+            Debug.LogError($"[SelectionManager] Stack trace: {ex.StackTrace}");
         }
     }
 
@@ -972,6 +1061,240 @@ public class SelectionManager : MonoBehaviour
         }
     }
 
+
+    /// <summary>
+    /// Обработка ПКМ - взаимодействие с предметами и объектами
+    /// </summary>
+    void HandleRightClick()
+    {
+        // Проверяем, есть ли выделенные персонажи
+        if (selectedObjects.Count == 0)
+        {
+            Debug.Log("[SelectionManager] No selected objects for interaction");
+            return;
+        }
+
+        // Получаем первого выделенного персонажа
+        Character selectedCharacter = null;
+        foreach (GameObject obj in selectedObjects)
+        {
+            selectedCharacter = obj.GetComponent<Character>();
+            if (selectedCharacter != null && selectedCharacter.IsPlayerCharacter())
+                break;
+        }
+
+        if (selectedCharacter == null)
+        {
+            Debug.Log("[SelectionManager] No player character selected for interaction");
+            return;
+        }
+
+        Debug.Log($"[SelectionManager] Right-click with character: {selectedCharacter.GetFullName()}");
+
+        // Raycast для поиска объекта под курсором
+        Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask, QueryTriggerInteraction.Collide);
+
+        Debug.Log($"[SelectionManager] RaycastAll hit {hits.Length} objects");
+
+        foreach (RaycastHit hit in hits)
+        {
+            GameObject hitObject = hit.collider.gameObject;
+            Debug.Log($"[SelectionManager] Hit object: {hitObject.name} (layer: {LayerMask.LayerToName(hitObject.layer)})");
+
+            // Проверяем, является ли это астероидом для добычи
+            LocationObjectInfo locationInfo = hitObject.GetComponent<LocationObjectInfo>();
+            if (locationInfo != null && locationInfo.IsOfType("Asteroid"))
+            {
+                Debug.Log($"[SelectionManager] ========== RIGHT-CLICK ON ASTEROID ==========");
+                Debug.Log($"[SelectionManager] Asteroid object: {hitObject.name}");
+                Debug.Log($"[SelectionManager] Metal amount: {locationInfo.metalAmount}/{locationInfo.maxMetalAmount}");
+                Debug.Log($"[SelectionManager] Selected character: {(selectedCharacter != null ? selectedCharacter.GetFullName() : "NULL")}");
+
+                if (locationInfo.metalAmount > 0)
+                {
+                    Debug.Log($"[SelectionManager] Asteroid has metal - starting mining process");
+
+                    // Находим или создаем MiningManager
+                    MiningManager miningManager = FindObjectOfType<MiningManager>();
+                    if (miningManager == null)
+                    {
+                        Debug.Log($"[SelectionManager] MiningManager not found - creating new instance");
+                        GameObject miningManagerObj = new GameObject("MiningManager");
+                        miningManager = miningManagerObj.AddComponent<MiningManager>();
+                        Debug.Log($"[SelectionManager] MiningManager created successfully");
+                    }
+                    else
+                    {
+                        Debug.Log($"[SelectionManager] MiningManager found in scene");
+                    }
+
+                    // Начинаем добычу
+                    Debug.Log($"[SelectionManager] Calling MiningManager.StartMining()");
+                    miningManager.StartMining(selectedCharacter, hitObject);
+                    Debug.Log($"[SelectionManager] StartMining() call completed");
+
+                    // ВАЖНО: Устанавливаем флаг чтобы другие системы не обрабатывали этот клик
+                    rightClickHandledThisFrame = true;
+                    return;
+                }
+                else
+                {
+                    Debug.Log("[SelectionManager] Asteroid is depleted - no mining possible");
+                    return;
+                }
+            }
+
+            // Проверяем, является ли это предметом
+            Item item = hitObject.GetComponent<Item>();
+            if (item != null && !ReferenceEquals(item, null))
+            {
+                Debug.Log($"[SelectionManager] Found Item component: {item.itemData.itemName}, canBePickedUp: {item.canBePickedUp}");
+
+                // Проверяем, включен ли подбор по ПКМ
+                if (!enableRightClickPickup)
+                {
+                    Debug.Log($"[SelectionManager] Right-click pickup is disabled, ignoring item");
+                    continue; // Пропускаем этот предмет и продолжаем поиск других объектов
+                }
+
+                if (item.canBePickedUp)
+                {
+                    Debug.Log($"[SelectionManager] Right-clicked on pickable item: {item.itemData.itemName}");
+
+                    // Отправляем персонажа к предмету
+                    CharacterMovement movement = selectedCharacter.GetComponent<CharacterMovement>();
+                    if (movement != null)
+                    {
+                        Vector3 itemPosition = item.transform.position;
+                        float distance = Vector3.Distance(selectedCharacter.transform.position, itemPosition);
+
+                        Debug.Log($"[SelectionManager] Distance to item: {distance}, pickup range: {item.pickupRange}");
+
+                        // Если персонаж уже рядом - подбираем сразу
+                        if (distance <= item.pickupRange)
+                        {
+                            PickupItem(selectedCharacter, item);
+                        }
+                        else
+                        {
+                            // Отправляем персонажа к предмету
+                            Debug.Log($"[SelectionManager] Sending {selectedCharacter.GetFullName()} to pickup: {item.itemData.itemName}");
+                            movement.MoveTo(itemPosition);
+
+                            // Запускаем корутину для подбора предмета после движения
+                            StartCoroutine(WaitForMovementAndPickup(movement, selectedCharacter, item));
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[SelectionManager] Character {selectedCharacter.GetFullName()} has no CharacterMovement component");
+                    }
+
+                    // ВАЖНО: Устанавливаем флаг чтобы другие системы не обрабатывали этот клик
+                    rightClickHandledThisFrame = true;
+                    return;
+                }
+            }
+            else if (item != null && ReferenceEquals(item, null))
+            {
+                Debug.Log($"[SelectionManager] [HandleRightClick] Found destroyed Item component, skipping");
+            }
+        }
+
+        Debug.Log("[SelectionManager] Right-click didn't hit any interactive objects");
+    }
+
+    /// <summary>
+    /// Корутина ожидания завершения движения и подбора предмета
+    /// </summary>
+    System.Collections.IEnumerator WaitForMovementAndPickup(CharacterMovement movement, Character character, Item item)
+    {
+        // Даем персонажу время начать движение (CharacterMovement использует StartMovementAfterDelay)
+        yield return null;
+        yield return null;
+
+        // ЗАЩИТА: Проверяем что item не был уничтожен
+        if (ReferenceEquals(item, null) || item == null || item.gameObject == null)
+        {
+            Debug.Log($"[SelectionManager] [WaitForMovementAndPickup] Item was destroyed before movement started, aborting");
+            yield break;
+        }
+
+        Debug.Log($"[SelectionManager] Waiting for {character.GetFullName()} to reach item, currently moving: {movement.IsMoving()}");
+
+        // Ждем пока персонаж движется
+        while (movement != null && movement.IsMoving())
+        {
+            // ЗАЩИТА: Проверяем каждый кадр что item еще существует
+            if (ReferenceEquals(item, null) || item == null || item.gameObject == null)
+            {
+                Debug.Log($"[SelectionManager] [WaitForMovementAndPickup] Item was destroyed during movement, aborting");
+                yield break;
+            }
+            yield return null;
+        }
+
+        Debug.Log($"[SelectionManager] {character.GetFullName()} finished moving");
+
+        // Проверяем что персонаж и предмет все еще существуют
+        if (character != null && !ReferenceEquals(item, null) && item != null && item.gameObject != null)
+        {
+            // Проверяем дистанцию после движения
+            float finalDistance = Vector3.Distance(character.transform.position, item.transform.position);
+            Debug.Log($"[SelectionManager] {character.GetFullName()} reached destination, distance to item: {finalDistance}, pickup range: {item.pickupRange}");
+
+            if (finalDistance <= item.pickupRange)
+            {
+                PickupItem(character, item);
+                // ВАЖНО: Останавливаем корутину после подбора, т.к. предмет будет уничтожен
+                yield break;
+            }
+            else
+            {
+                Debug.LogWarning($"[SelectionManager] {character.GetFullName()} reached destination but still too far from item");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[SelectionManager] Character or item no longer exists after movement");
+        }
+    }
+
+    /// <summary>
+    /// Подобрать предмет персонажем
+    /// </summary>
+    void PickupItem(Character character, Item item)
+    {
+        if (character == null || item == null)
+            return;
+
+        Debug.Log($"[SelectionManager] {character.GetFullName()} picking up: {item.itemData.itemName}");
+
+        // ВАЖНО: Снимаем выделение с предмета ПЕРЕД подбором
+        // чтобы UpdateSelectionIndicatorPositions() не пытался обратиться к уничтоженному объекту
+        if (IsSelected(item.gameObject))
+        {
+            RemoveFromSelection(item.gameObject);
+        }
+
+        // Сохраняем имя предмета ДО подбора (т.к. предмет будет уничтожен)
+        string itemName = item.itemData.itemName;
+
+        // Освобождаем клетку в GridManager
+        GridManager gridManager = FindObjectOfType<GridManager>();
+        if (gridManager != null)
+        {
+            Vector2Int gridPos = gridManager.WorldToGrid(item.transform.position);
+            gridManager.FreeCell(gridPos);
+        }
+
+        // Подбираем предмет (ВАЖНО: после этого item будет уничтожен!)
+        item.PickUp(character);
+
+        // Логируем используя сохраненное имя (не обращаемся к уничтоженному item)
+        Debug.Log($"[SelectionManager] {character.GetFullName()} picked up: {itemName}");
+    }
 
     void OnDestroy()
     {

@@ -12,31 +12,91 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 967a1fdd5db9af4459776b6fbc526386, type: 3}
   m_Name: ItemDatabase
   m_EditorClassIdentifier: 
-  items:
+  itemsInCode:
   - itemName: Weapon
     itemType: 0
-    icon: {fileID: 21300000, guid: 62639b2a9791da84580e1447705e3d0a, type: 3}
+    foundInCode: 1
+    icon: {fileID: 21300000, guid: d5f28d7b6ec1bb74f9981c6932b664c1, type: 3}
+    worldPrefab: {fileID: 0}
   - itemName: Helmet
     itemType: 1
-    icon: {fileID: 21300000, guid: 13fce94d83e67be418f23a9f0568b5e1, type: 3}
+    foundInCode: 1
+    icon: {fileID: 21300000, guid: 1f6a8d3ed34359a4e9ab4ac978c353fa, type: 3}
+    worldPrefab: {fileID: 0}
   - itemName: Body Armor
     itemType: 1
-    icon: {fileID: 21300000, guid: 5b3488ea47044de4ba7cf68897ccdd22, type: 3}
+    foundInCode: 1
+    icon: {fileID: 21300000, guid: 3b98feb061a028f44980cd10e3afad3e, type: 3}
+    worldPrefab: {fileID: 0}
   - itemName: Pants
     itemType: 1
+    foundInCode: 1
     icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
   - itemName: Boots
     itemType: 1
-    icon: {fileID: 21300000, guid: 755b7761233ae3d4b87cebddbd31dd72, type: 3}
+    foundInCode: 1
+    icon: {fileID: 21300000, guid: 0a68346c62949354a88dd7cae56c6ffc, type: 3}
+    worldPrefab: {fileID: 0}
   - itemName: Medkit
     itemType: 3
+    foundInCode: 1
     icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
   - itemName: Tool
     itemType: 2
+    foundInCode: 1
     icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
   - itemName: Resource
     itemType: 4
+    foundInCode: 1
     icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
+  - itemName: Metal
+    itemType: 4
+    foundInCode: 1
+    icon: {fileID: 21300000, guid: 3c80d7d27f60cdd45bc8dc3e14f1b4d3, type: 3}
+    worldPrefab: {fileID: 2088227197507170788, guid: 2cf67ddee62662643b08f5ef4924e5e6,
+      type: 3}
   - itemName: Consumable
     itemType: 5
+    foundInCode: 1
     icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
+  - itemName: Iron Ore
+    itemType: 4
+    foundInCode: 1
+    icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
+  - itemName: Mining Pick
+    itemType: 2
+    foundInCode: 1
+    icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
+  - itemName: Medical Supply
+    itemType: 3
+    foundInCode: 1
+    icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
+  - itemName: Utility Tool
+    itemType: 2
+    foundInCode: 1
+    icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
+  - itemName: Crafting Material
+    itemType: 4
+    foundInCode: 1
+    icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
+  - itemName: Consumable Item
+    itemType: 5
+    foundInCode: 1
+    icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
+  - itemName: "\u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0435"
+    itemType: 4
+    foundInCode: 1
+    icon: {fileID: 0}
+    worldPrefab: {fileID: 0}
+  customItems: []

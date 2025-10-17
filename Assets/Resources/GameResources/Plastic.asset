@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d65235806f83c242892c72c7ad5bef4, type: 3}
+  m_Name: Plastic
+  m_EditorClassIdentifier: 
+  resourceName: Plastic
+  description: 
+  icon: {fileID: 0}
+  prefab: {fileID: 0}
+  maxStackSize: 999
+  weightPerUnit: 0.1
+  valuePerUnit: 1
+  category: 0

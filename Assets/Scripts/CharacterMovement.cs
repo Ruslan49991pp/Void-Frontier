@@ -655,9 +655,21 @@ public class CharacterMovement : MonoBehaviour
         StopMovement();
 
         // Освобождаем клетку при уничтожении персонажа
-        if (gridManager != null && gridManager.IsValidGridPosition(lastOccupiedCell))
+        // ВАЖНО: Проверяем что gridManager все еще существует (может быть уничтожен раньше нас)
+        if (gridManager != null)
         {
-            gridManager.FreeCell(lastOccupiedCell);
+            try
+            {
+                if (gridManager.IsValidGridPosition(lastOccupiedCell))
+                {
+                    gridManager.FreeCell(lastOccupiedCell);
+                }
+            }
+            catch (System.Exception)
+            {
+                // Игнорируем ошибки при уничтожении объектов
+                // GridManager может быть частично уничтожен
+            }
         }
     }
 }

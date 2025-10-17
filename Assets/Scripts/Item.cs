@@ -220,6 +220,10 @@ public class Item : MonoBehaviour
             // Пытаемся добавить предмет в инвентарь
             if (inventory.AddItem(itemData, 1))
             {
+                // КРИТИЧЕСКИ ВАЖНО: Отключаем GameObject НЕМЕДЛЕННО
+                // Это останавливает ВСЕ Update() и предотвращает любые обращения к объекту
+                gameObject.SetActive(false);
+
                 // Успешно добавлен - удаляем объект из мира
                 Destroy(gameObject);
             }

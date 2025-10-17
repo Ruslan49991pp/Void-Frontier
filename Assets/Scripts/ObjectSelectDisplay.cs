@@ -87,6 +87,14 @@ public class ObjectSelectDisplay : MonoBehaviour
         {
             GameObject selectedObject = selectedObjects[0];
 
+            // КРИТИЧЕСКИ ВАЖНО: Проверяем что объект не был уничтожен
+            if (ReferenceEquals(selectedObject, null) || selectedObject == null)
+            {
+                Debug.Log($"[ObjectSelectDisplay] [OnSelectionChanged] Selected object is destroyed, hiding panel");
+                HidePanel();
+                return;
+            }
+
             // Проверяем, НЕ является ли это персонажем или врагом
             Character character = selectedObject.GetComponent<Character>();
             if (character != null)
@@ -96,12 +104,29 @@ public class ObjectSelectDisplay : MonoBehaviour
                 return;
             }
 
-            // Проверяем наличие LocationObjectInfo или RoomInfo
+            // Проверяем наличие LocationObjectInfo, RoomInfo или Item
             LocationObjectInfo locationInfo = selectedObject.GetComponent<LocationObjectInfo>();
             RoomInfo roomInfo = selectedObject.GetComponent<RoomInfo>();
+            Item item = null;
+
+            // ЗАЩИТА: Безопасно получаем Item компонент
+            try
+            {
+                item = selectedObject.GetComponent<Item>();
+                if (item != null && ReferenceEquals(item, null))
+                {
+                    Debug.Log($"[ObjectSelectDisplay] [OnSelectionChanged] Item component is destroyed, treating as null");
+                    item = null;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[ObjectSelectDisplay] [OnSelectionChanged] Exception getting Item component: {ex.Message}");
+                item = null;
+            }
 
             // Если есть информация об объекте - показываем панель
-            if (locationInfo != null || roomInfo != null)
+            if (locationInfo != null || roomInfo != null || item != null)
             {
                 currentObject = selectedObject;
                 UpdateObjectInfo();
@@ -124,26 +149,68 @@ public class ObjectSelectDisplay : MonoBehaviour
             return;
         }
 
+        // КРИТИЧЕСКИ ВАЖНО: Проверяем что currentObject не был уничтожен
+        if (ReferenceEquals(currentObject, null))
+        {
+            Debug.Log($"[ObjectSelectDisplay] [UpdateObjectInfo] currentObject is destroyed, clearing and hiding panel");
+            HidePanel();
+            return;
+        }
+
         string infoText = "";
 
-        // Проверяем RoomInfo
-        RoomInfo roomInfo = currentObject.GetComponent<RoomInfo>();
-        if (roomInfo != null)
+        try
         {
-            infoText = GetRoomInfoText(roomInfo);
-        }
-        else
-        {
-            // Проверяем LocationObjectInfo
-            LocationObjectInfo locationInfo = currentObject.GetComponent<LocationObjectInfo>();
-            if (locationInfo != null)
+            // Проверяем RoomInfo
+            RoomInfo roomInfo = currentObject.GetComponent<RoomInfo>();
+            if (roomInfo != null)
             {
-                infoText = GetLocationInfoText(locationInfo);
+                infoText = GetRoomInfoText(roomInfo);
             }
-        }
+            else
+            {
+                // Проверяем Item
+                Item item = null;
+                try
+                {
+                    item = currentObject.GetComponent<Item>();
+                    // Дополнительная проверка что Item не уничтожен
+                    if (item != null && ReferenceEquals(item, null))
+                    {
+                        Debug.Log($"[ObjectSelectDisplay] [UpdateObjectInfo] Item component is destroyed, treating as null");
+                        item = null;
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"[ObjectSelectDisplay] [UpdateObjectInfo] Exception getting Item component: {ex.Message}");
+                    item = null;
+                }
 
-        // Выводим информацию в TextObjectInfo
-        textObjectInfo.text = infoText;
+                if (item != null && item.itemData != null)
+                {
+                    infoText = GetItemInfoText(item);
+                }
+                else
+                {
+                    // Проверяем LocationObjectInfo
+                    LocationObjectInfo locationInfo = currentObject.GetComponent<LocationObjectInfo>();
+                    if (locationInfo != null)
+                    {
+                        infoText = GetLocationInfoText(locationInfo);
+                    }
+                }
+            }
+
+            // Выводим информацию в TextObjectInfo
+            textObjectInfo.text = infoText;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[ObjectSelectDisplay] [UpdateObjectInfo] Exception: {ex.Message}");
+            Debug.LogError($"[ObjectSelectDisplay] Stack trace: {ex.StackTrace}");
+            HidePanel();
+        }
     }
 
     /// <summary>
@@ -194,6 +261,8 @@ public class ObjectSelectDisplay : MonoBehaviour
     {
         string text = "";
 
+        Debug.Log($"[ObjectSelectDisplay] Getting info for object: {locationInfo.objectName}, Type: {locationInfo.objectType}");
+
         // Имя объекта
         if (!string.IsNullOrEmpty(locationInfo.objectName))
         {
@@ -209,16 +278,90 @@ public class ObjectSelectDisplay : MonoBehaviour
         // Здоровье
         text += $"Health: {locationInfo.health:F0} HP";
 
+        // Металл для астероидов
+        Debug.Log($"[ObjectSelectDisplay] Checking asteroid metal: IsOfType('Asteroid')={locationInfo.IsOfType("Asteroid")}, maxMetalAmount={locationInfo.maxMetalAmount}");
+
+        if (locationInfo.IsOfType("Asteroid") && locationInfo.maxMetalAmount > 0)
+        {
+            text += $"\nMetal: {locationInfo.metalAmount}/{locationInfo.maxMetalAmount}";
+            Debug.Log($"[ObjectSelectDisplay] Added metal info to text: {locationInfo.metalAmount}/{locationInfo.maxMetalAmount}");
+
+            if (locationInfo.metalAmount > 0)
+            {
+                text += "\n<color=yellow>Right-click to mine</color>";
+            }
+            else
+            {
+                text += "\n<color=red>Depleted</color>";
+            }
+        }
+        else
+        {
+            Debug.Log($"[ObjectSelectDisplay] NOT showing metal info - not an asteroid or no metal");
+        }
+
         // Дополнительные свойства
         if (locationInfo.isDestructible)
         {
             text += "\nDestructible";
         }
 
-        if (locationInfo.canBeScavenged)
+        if (locationInfo.canBeScavenged && !locationInfo.IsOfType("Asteroid"))
         {
             text += "\nSalvageable";
         }
+
+        Debug.Log($"[ObjectSelectDisplay] Final text:\n{text}");
+        return text;
+    }
+
+    /// <summary>
+    /// Получить текст информации о предмете
+    /// </summary>
+    string GetItemInfoText(Item item)
+    {
+        string text = "";
+        ItemData itemData = item.itemData;
+
+        // Имя предмета
+        if (!string.IsNullOrEmpty(itemData.itemName))
+        {
+            text += $"ITEM: {itemData.itemName}\n";
+        }
+
+        // Тип и редкость
+        text += $"Type: {itemData.itemType}\n";
+        text += $"Rarity: {itemData.rarity}\n";
+
+        // Описание
+        if (!string.IsNullOrEmpty(itemData.description))
+        {
+            text += $"\n{itemData.description}\n";
+        }
+
+        // Характеристики оружия
+        if (itemData.damage > 0)
+            text += $"\nDamage: {itemData.damage}";
+
+        // Характеристики брони
+        if (itemData.armor > 0)
+            text += $"\nArmor: {itemData.armor}";
+
+        // Лечение
+        if (itemData.healing > 0)
+            text += $"\nHealing: {itemData.healing}";
+
+        // Слот экипировки
+        if (itemData.equipmentSlot != EquipmentSlot.None)
+            text += $"\nSlot: {itemData.GetEquipmentSlotName()}";
+
+        // Вес и ценность
+        text += $"\nWeight: {itemData.weight}";
+        text += $"\nValue: {itemData.value}";
+
+        // Стек
+        if (itemData.maxStackSize > 1)
+            text += $"\nMax Stack: {itemData.maxStackSize}";
 
         return text;
     }

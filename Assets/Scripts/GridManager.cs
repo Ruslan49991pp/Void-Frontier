@@ -186,6 +186,10 @@ public class GridManager : MonoBehaviour
     /// </summary>
     public bool IsValidGridPosition(Vector2Int gridPosition)
     {
+        // Проверяем что gridLookup не был уничтожен
+        if (gridLookup == null)
+            return false;
+
         return gridLookup.ContainsKey(gridPosition);
     }
     
@@ -208,9 +212,9 @@ public class GridManager : MonoBehaviour
         {
             cell.SetOccupied(obj, objectType);
             OnCellOccupied?.Invoke(cell, obj);
-            
-            // Обновляем визуализацию только для объектов-препятствий (не персонажей и не кокпита)
-            if (showGridInGame && showOccupiedCells && objectType != "Character" && objectType != "Cockpit")
+
+            // Обновляем визуализацию только для объектов-препятствий (не персонажей, не кокпита и не ресурсов)
+            if (showGridInGame && showOccupiedCells && objectType != "Character" && objectType != "Cockpit" && objectType != "Resource")
             {
                 CreateOccupiedCellVisual(gridPosition);
             }
@@ -1104,10 +1108,10 @@ public class GridManager : MonoBehaviour
         // Очищаем словарь визуалов
         occupiedCellVisuals.Clear();
         
-        // Создаем кубики для всех занятых клеток (кроме персонажей и кокпита)
+        // Создаем кубики для всех занятых клеток (кроме персонажей, кокпита и ресурсов)
         foreach (var cell in gridLookup.Values)
         {
-            if (cell.isOccupied && cell.objectType != "Character" && cell.objectType != "Cockpit")
+            if (cell.isOccupied && cell.objectType != "Character" && cell.objectType != "Cockpit" && cell.objectType != "Resource")
             {
                 CreateOccupiedCellVisual(cell.gridPosition);
             }

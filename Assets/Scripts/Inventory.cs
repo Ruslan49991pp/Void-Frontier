@@ -109,7 +109,8 @@ public class Inventory : MonoBehaviour
     public bool unlimitedWeight = false;
 
     [Header("Auto-Pickup")]
-    public bool autoPickupEnabled = true;
+    [Tooltip("ОТКЛЮЧЕНО: автоподбор теперь работает только по ПКМ. Используйте SelectionManager для подбора предметов.")]
+    public bool autoPickupEnabled = false;
     public float autoPickupRange = 1.5f;
     public LayerMask itemLayer = -1;
 

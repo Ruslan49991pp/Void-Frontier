@@ -20,7 +20,11 @@ public class CharacterAI : MonoBehaviour
     {
         PlayerControlled,  // Под управлением игрока
         Move,             // Движение к цели
-        Idle              // Свободное блуждание
+        Idle,             // Свободное блуждание
+        Working,          // Работа (строительство и т.д.)
+        Mining,           // Добыча ресурсов из астероидов
+        Chasing,          // Преследование врага (движение к цели для атаки)
+        Attacking         // Атака врага (в радиусе атаки)
     }
 
     // Компоненты
@@ -29,6 +33,8 @@ public class CharacterAI : MonoBehaviour
     private SelectionManager selectionManager;
     private GridManager gridManager;
     private CombatSystem combatSystem;
+    private ConstructionManager constructionManager;
+    private MiningManager miningManager;
 
     // Переменные состояния
     private AIState currentState = AIState.PlayerControlled;
@@ -37,6 +43,8 @@ public class CharacterAI : MonoBehaviour
     private Coroutine idleCoroutine;
     private bool isWandering = false;
     private bool playerInitiatedMovement = false; // Флаг движения, инициированного игроком
+    private float lastConstructionCheckTime = 0f; // Время последней проверки строительства
+    private const float constructionCheckInterval = 2f; // Интервал проверки строительства (секунды)
 
     void Awake()
     {
@@ -52,6 +60,7 @@ public class CharacterAI : MonoBehaviour
         selectionManager = FindObjectOfType<SelectionManager>();
         gridManager = FindObjectOfType<GridManager>();
         combatSystem = FindObjectOfType<CombatSystem>();
+        constructionManager = ConstructionManager.Instance;
     }
 
     void Start()
@@ -59,10 +68,36 @@ public class CharacterAI : MonoBehaviour
         lastSelectionTime = Time.time;
         idleBasePosition = transform.position;
 
+        // Ищем MiningManager в Start() чтобы гарантировать что он успел инициализироваться
+        miningManager = FindObjectOfType<MiningManager>();
+        if (miningManager == null)
+        {
+            Debug.LogWarning($"[CharacterAI] MiningManager not found for {character?.GetFullName() ?? gameObject.name}");
+        }
+
         // Подписываемся на события выделения
         if (selectionManager != null)
         {
             selectionManager.OnSelectionChanged += OnSelectionChanged;
+        }
+
+        // ВАЖНО: При старте игры проверяем наличие строительства
+        // Это нужно для случая когда персонажи начинают в состоянии Idle
+        StartCoroutine(CheckConstructionOnStartup());
+    }
+
+    /// <summary>
+    /// Проверка строительства при запуске (через небольшую задержку)
+    /// </summary>
+    System.Collections.IEnumerator CheckConstructionOnStartup()
+    {
+        // Ждем 0.5 секунды чтобы все компоненты инициализировались
+        yield return new WaitForSeconds(0.5f);
+
+        // Если персонаж игрока и не занят - пытаемся назначить строительство
+        if (character != null && character.IsPlayerCharacter() && constructionManager != null)
+        {
+            constructionManager.TryAssignConstructionToIdleCharacter(character);
         }
     }
 
@@ -83,6 +118,15 @@ public class CharacterAI : MonoBehaviour
     /// </summary>
     void UpdateAIState()
     {
+        // Если персонаж работает, добывает ресурсы или в бою - не переключаем состояние автоматически
+        if (currentState == AIState.Working ||
+            currentState == AIState.Mining ||
+            currentState == AIState.Chasing ||
+            currentState == AIState.Attacking)
+        {
+            return;
+        }
+
         bool isSelected = character.IsSelected();
         bool isMoving = movement != null && movement.IsMoving();
         float timeSinceSelection = Time.time - lastSelectionTime;
@@ -157,6 +201,34 @@ public class CharacterAI : MonoBehaviour
 
             case AIState.Idle:
                 // Состояние обрабатывается корутиной
+                // ПЕРИОДИЧЕСКИ ПРОВЕРЯЕМ НАЛИЧИЕ СТРОИТЕЛЬСТВА
+                if (Time.time - lastConstructionCheckTime >= constructionCheckInterval)
+                {
+                    lastConstructionCheckTime = Time.time;
+
+                    if (character != null && character.IsPlayerCharacter() && constructionManager != null)
+                    {
+                        constructionManager.TryAssignConstructionToIdleCharacter(character);
+                    }
+                }
+                break;
+
+            case AIState.Working:
+                // Ничего не делаем - персонаж работает (строит и т.д.)
+                // Блуждание и автоматическое движение отключены
+                break;
+
+            case AIState.Mining:
+                // Ничего не делаем - добыча ресурсов обрабатывается MiningManager
+                // Блуждание и автоматическое движение отключены
+                break;
+
+            case AIState.Chasing:
+                // Ничего не делаем - преследование обрабатывается CombatSystem
+                break;
+
+            case AIState.Attacking:
+                // Ничего не делаем - атака обрабатывается CombatSystem
                 break;
         }
     }
@@ -206,6 +278,32 @@ public class CharacterAI : MonoBehaviour
                     movement.StopMovement();
                 }
                 break;
+
+            case AIState.Working:
+                // При выходе из состояния Working ничего особенного не делаем
+                // Персонаж завершил работу
+                break;
+
+            case AIState.Mining:
+                // При выходе из состояния Mining останавливаем движение
+                if (movement != null && movement.IsMoving())
+                {
+                    movement.StopMovement();
+                }
+                break;
+
+            case AIState.Chasing:
+                // При выходе из состояния Chasing останавливаем движение
+                if (movement != null && movement.IsMoving())
+                {
+                    movement.StopMovement();
+                }
+                break;
+
+            case AIState.Attacking:
+                // При выходе из состояния Attacking ничего особенного не делаем
+                // Атака завершена или прервана
+                break;
         }
     }
 
@@ -230,8 +328,58 @@ public class CharacterAI : MonoBehaviour
                 // Устанавливаем базовую позицию для блуждания
                 idleBasePosition = transform.position;
 
-                // Запускаем корутину блуждания
-                idleCoroutine = StartCoroutine(IdleWanderBehavior());
+                // АВТОМАТИЧЕСКИ ЗАПРАШИВАЕМ СТРОИТЕЛЬСТВО ЕСЛИ ПЕРСОНАЖ ИГРОКА
+                if (character != null && character.IsPlayerCharacter() && constructionManager != null)
+                {
+                    constructionManager.TryAssignConstructionToIdleCharacter(character);
+                }
+
+                // Запускаем корутину блуждания (только если НЕ перешли в строительство)
+                if (currentState == AIState.Idle)
+                {
+                    idleCoroutine = StartCoroutine(IdleWanderBehavior());
+                }
+                break;
+
+            case AIState.Working:
+                // При входе в состояние Working останавливаем все автоматическое движение
+                // Запоминаем текущую позицию
+                idleBasePosition = transform.position;
+
+                // Останавливаем любое текущее движение
+                if (movement != null && movement.IsMoving())
+                {
+                    movement.StopMovement();
+                }
+                break;
+
+            case AIState.Mining:
+                // При входе в состояние Mining останавливаем все автоматическое движение
+                // Запоминаем текущую позицию
+                idleBasePosition = transform.position;
+
+                // Останавливаем любое текущее движение
+                if (movement != null && movement.IsMoving())
+                {
+                    movement.StopMovement();
+                }
+                break;
+
+            case AIState.Chasing:
+                // При входе в состояние Chasing персонаж начинает преследовать цель
+                // Преследование управляется CombatSystem
+                // Запоминаем текущую позицию
+                idleBasePosition = transform.position;
+                break;
+
+            case AIState.Attacking:
+                // При входе в состояние Attacking персонаж начинает атаковать
+                // Атака управляется CombatSystem
+                // Останавливаем движение, если оно было
+                if (movement != null && movement.IsMoving())
+                {
+                    movement.StopMovement();
+                }
                 break;
         }
     }
@@ -434,6 +582,40 @@ public class CharacterAI : MonoBehaviour
         {
             combatSystem.StopCombatForCharacter(character);
         }
+
+        // ПРЕРЫВАЕМ СТРОИТЕЛЬСТВО если персонаж был в состоянии Working
+        if (currentState == AIState.Working)
+        {
+            // ВАЖНО: Останавливаем строительство в ConstructionManager
+            if (constructionManager != null)
+            {
+                constructionManager.StopConstructionForCharacter(character);
+            }
+            else
+            {
+                Debug.LogError($"[CharacterAI] ConstructionManager is NULL!");
+            }
+
+            // Переключаем состояние - это вызовет ExitState(Working) и остановит корутину строительства
+            SwitchToState(AIState.Move);
+        }
+
+        // ПРЕРЫВАЕМ ДОБЫЧУ если персонаж был в состоянии Mining
+        if (currentState == AIState.Mining)
+        {
+            // ВАЖНО: Останавливаем добычу в MiningManager
+            if (miningManager != null)
+            {
+                miningManager.StopMiningForCharacter(character);
+            }
+            else
+            {
+                Debug.LogError($"[CharacterAI] MiningManager is NULL!");
+            }
+
+            // Переключаем состояние - это вызовет ExitState(Mining) и остановит движение
+            SwitchToState(AIState.Move);
+        }
     }
 
     void OnDestroy()
@@ -453,15 +635,37 @@ public class CharacterAI : MonoBehaviour
 
     void OnDrawGizmosSelected()
     {
-        if (currentState == AIState.Idle && gridManager != null)
-        {
-            // Показываем область блуждания в Scene view
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawWireCube(idleBasePosition, new Vector3(wanderRadius * 2, 0.1f, wanderRadius * 2));
+        if (gridManager == null) return;
 
-            // Показываем базовую точку
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(idleBasePosition, 0.5f);
+        // Показываем состояние персонажа цветом
+        switch (currentState)
+        {
+            case AIState.PlayerControlled:
+                Gizmos.color = Color.cyan;
+                break;
+            case AIState.Move:
+                Gizmos.color = Color.blue;
+                break;
+            case AIState.Idle:
+                Gizmos.color = Color.yellow;
+                // Показываем область блуждания
+                Gizmos.DrawWireCube(idleBasePosition, new Vector3(wanderRadius * 2, 0.1f, wanderRadius * 2));
+                break;
+            case AIState.Working:
+                Gizmos.color = Color.green;
+                break;
+            case AIState.Mining:
+                Gizmos.color = new Color(0.5f, 0.3f, 0.1f); // Коричневый (цвет руды)
+                break;
+            case AIState.Chasing:
+                Gizmos.color = new Color(1f, 0.5f, 0f); // Оранжевый
+                break;
+            case AIState.Attacking:
+                Gizmos.color = Color.red;
+                break;
         }
+
+        // Показываем индикатор состояния над персонажем
+        Gizmos.DrawWireSphere(transform.position + Vector3.up * 2f, 0.3f);
     }
 }

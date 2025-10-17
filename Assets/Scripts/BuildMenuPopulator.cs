@@ -171,7 +171,9 @@ public class BuildMenuPopulator : MonoBehaviour
 
     void OnAddBuildClicked()
     {
-        roomDragBuilder.FinalizeBuild();
+        // Теперь вызываем ConfirmBuild() вместо FinalizeBuild()
+        // ConfirmBuild() применяет материал M_Add_Build_Ghost и запускает систему строительства персонажами
+        roomDragBuilder.ConfirmBuild();
     }
 
     void OnDelBuildSlotClicked()

@@ -20,7 +20,6 @@ public class RoomBuildMenuPopulator : MonoBehaviour
 
     private GameObject wallIntSlotInstance;
     private GameObject doorSlotInstance;
-    private bool isInitialized = false;
 
     void Start()
     {
@@ -86,14 +85,21 @@ public class RoomBuildMenuPopulator : MonoBehaviour
         {
             Debug.LogError("[RoomBuildMenuPopulator] Door_Slot prefab does not have a Button component anywhere in hierarchy!");
         }
-
-        isInitialized = true;
     }
 
     void OnWallIntSlotClicked()
     {
-        Debug.Log("[RoomBuildMenuPopulator] Wall_Int_Slot clicked!");
-        // TODO: Добавить логику для строительства внутренних стен
+        Debug.Log("[RoomBuildMenuPopulator] Wall_Int_Slot clicked! Activating interior wall drag mode...");
+
+        // Активируем режим строительства внутренних стен (новая система с drag)
+        if (InteriorWallDragBuilder.Instance != null)
+        {
+            InteriorWallDragBuilder.Instance.ActivateDragMode();
+        }
+        else
+        {
+            Debug.LogError("[RoomBuildMenuPopulator] InteriorWallDragBuilder.Instance is null!");
+        }
     }
 
     void OnDoorSlotClicked()

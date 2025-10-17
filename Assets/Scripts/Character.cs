@@ -704,7 +704,8 @@ public class Character : MonoBehaviour
                 // Союзники имеют больший инвентарь
                 characterInventory.maxSlots = 20;
                 characterInventory.maxWeight = 100f;
-                characterInventory.autoPickupEnabled = true;
+                // ОТКЛЮЧЕНО: автоподбор теперь работает только по ПКМ
+                characterInventory.autoPickupEnabled = false;
                 characterInventory.autoPickupRange = 1.5f;
 
                 // Генерируем стартовые предметы для союзников

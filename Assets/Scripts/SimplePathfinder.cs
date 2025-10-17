@@ -264,7 +264,7 @@ public class SimplePathfinder : MonoBehaviour
     }
     
     /// <summary>
-    /// Проверить, можно ли пройти через клетку (свободна или содержит персонажа)
+    /// Проверить, можно ли пройти через клетку (свободна или содержит персонажа/ресурс)
     /// </summary>
     bool IsCellPassable(Vector2Int pos)
     {
@@ -276,8 +276,9 @@ public class SimplePathfinder : MonoBehaviour
         if (cell == null || !cell.isOccupied)
             return true;
 
-        // Персонажи не блокируют путь (другие персонажи могут проходить через них)
-        bool passable = cell.objectType == "Character";
+        // Персонажи и ресурсы не блокируют путь (можно пройти через них)
+        // Ресурсы можно подбирать, персонажи могут проходить друг через друга
+        bool passable = cell.objectType == "Character" || cell.objectType == "Resource";
 
         return passable;
     }
