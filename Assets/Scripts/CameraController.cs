@@ -319,7 +319,7 @@ public class CameraController : MonoBehaviour
         followTarget = target;
         isFollowingTarget = true;
 
-        Debug.Log($"[CameraController] Started following {target.name}");
+
     }
 
     /// <summary>
@@ -330,7 +330,7 @@ public class CameraController : MonoBehaviour
         isFollowingTarget = false;
         followTarget = null;
 
-        Debug.Log($"[CameraController] Stopped following target");
+
     }
 
     /// <summary>

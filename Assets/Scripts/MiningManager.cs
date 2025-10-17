@@ -24,11 +24,15 @@ public class MiningManager : MonoBehaviour
         public GameObject asteroid;
         public LocationObjectInfo asteroidInfo;
         public Vector2Int asteroidGridPosition;
+        public Vector2Int reservedWorkPosition; // Зарезервированная позиция для работы
         public bool isActive;
         public Coroutine miningCoroutine;
     }
 
     private List<MiningTask> miningTasks = new List<MiningTask>();
+
+    // Словарь зарезервированных клеток для добычи (чтобы персонажи не занимали одну клетку)
+    private Dictionary<Vector2Int, Character> reservedMiningPositions = new Dictionary<Vector2Int, Character>();
 
     void Awake()
     {
@@ -40,7 +44,7 @@ public class MiningManager : MonoBehaviour
     /// </summary>
     public void StartMining(Character character, GameObject asteroid)
     {
-        Debug.Log($"[MiningManager] StartMining called for character: {(character != null ? character.GetFullName() : "NULL")}, asteroid: {(asteroid != null ? asteroid.name : "NULL")}");
+
 
         if (character == null || asteroid == null)
         {
@@ -52,7 +56,7 @@ public class MiningManager : MonoBehaviour
         MiningTask existingTask = miningTasks.Find(t => t.character == character);
         if (existingTask != null)
         {
-            Debug.Log($"[MiningManager] Character already has a mining task, stopping it");
+
             // Останавливаем предыдущую задачу
             StopMiningForCharacter(character);
         }
@@ -65,7 +69,7 @@ public class MiningManager : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[MiningManager] Asteroid info - Type: {asteroidInfo.objectType}, IsOfType('Asteroid'): {asteroidInfo.IsOfType("Asteroid")}");
+
 
         if (!asteroidInfo.IsOfType("Asteroid"))
         {
@@ -73,11 +77,11 @@ public class MiningManager : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[MiningManager] Asteroid {asteroid.name} has {asteroidInfo.metalAmount}/{asteroidInfo.maxMetalAmount} metal");
+
 
         if (asteroidInfo.metalAmount <= 0)
         {
-            Debug.Log($"[MiningManager] Asteroid {asteroid.name} is depleted");
+
             return;
         }
 
@@ -87,13 +91,13 @@ public class MiningManager : MonoBehaviour
         {
             // Для многоклеточных объектов используем сохраненную позицию
             asteroidGridPos = asteroidInfo.gridStartPosition;
-            Debug.Log($"[MiningManager] Using stored grid position {asteroidGridPos} for {asteroidInfo.gridSize.x}x{asteroidInfo.gridSize.y} asteroid");
+
         }
         else
         {
             // Для одноклеточных объектов вычисляем позицию
             asteroidGridPos = gridManager.WorldToGrid(asteroid.transform.position);
-            Debug.Log($"[MiningManager] Calculated grid position {asteroidGridPos} from world position");
+
         }
 
         // Создаем новую задачу добычи
@@ -108,7 +112,7 @@ public class MiningManager : MonoBehaviour
 
         miningTasks.Add(task);
 
-        Debug.Log($"MiningManager: {character.GetFullName()} starting to mine {asteroid.name} (Metal: {asteroidInfo.metalAmount})");
+
 
         // Запускаем процесс добычи
         task.miningCoroutine = StartCoroutine(MiningProcess(task));
@@ -119,17 +123,17 @@ public class MiningManager : MonoBehaviour
     /// </summary>
     IEnumerator MiningProcess(MiningTask task)
     {
-        Debug.Log($"[MiningManager] MiningProcess started for {task.character.GetFullName()}");
+
 
         Character character = task.character;
         CharacterMovement movement = character.GetComponent<CharacterMovement>();
         CharacterAI characterAI = character.GetComponent<CharacterAI>();
 
-        Debug.Log($"[MiningManager] Character position: {character.transform.position}, Asteroid grid position: {task.asteroidGridPosition}, size: {task.asteroidInfo.gridSize}");
+
 
         // Получаем ближайшую соседнюю клетку к астероиду
-        Vector2Int targetGridPosition = FindNearestAdjacentPosition(character.transform.position, task.asteroidGridPosition, task.asteroidInfo.gridSize);
-        Debug.Log($"[MiningManager] Target grid position for mining: {targetGridPosition}");
+        Vector2Int targetGridPosition = FindNearestAdjacentPosition(character.transform.position, task.asteroidGridPosition, task.asteroidInfo.gridSize, character);
+
 
         // Проверяем на сигнальное значение "не найдено" (-9999, -9999)
         if (targetGridPosition.x == -9999 && targetGridPosition.y == -9999)
@@ -139,7 +143,9 @@ public class MiningManager : MonoBehaviour
             yield break;
         }
 
-        Vector3 targetWorldPosition = gridManager.GridToWorld(targetGridPosition);
+        // РЕЗЕРВИРУЕМ найденную позицию для этого персонажа
+        task.reservedWorkPosition = targetGridPosition;
+        reservedMiningPositions[targetGridPosition] = character;
 
         // Проверяем расстояние - если персонаж уже рядом с астероидом, не двигаемся
         Vector2Int characterGridPos = gridManager.WorldToGrid(character.transform.position);
@@ -157,21 +163,24 @@ public class MiningManager : MonoBehaviour
             isAdjacentToAsteroid = true;
         }
 
-        if (!isAdjacentToAsteroid)
-        {
-            // Персонаж далеко - движемся к астероиду
-            Debug.Log($"MiningManager: {character.GetFullName()} moving to asteroid from {characterGridPos}");
+        // Цикл движения к астероиду с возможностью перенаправления
+        int maxRedirects = 5; // Максимум 5 перенаправлений чтобы избежать бесконечного цикла
+        int redirectCount = 0;
 
+        while (!isAdjacentToAsteroid && redirectCount < maxRedirects)
+        {
+            // Персонаж далеко - движемся к целевой позиции
             if (movement != null)
             {
+                Vector3 targetWorldPosition = gridManager.GridToWorld(task.reservedWorkPosition);
                 movement.MoveTo(targetWorldPosition);
 
-                // ВАЖНО: Даем CharacterMovement время начать движение (у него есть задержка старта)
-                Debug.Log($"MiningManager: Waiting for movement to start...");
+                // ВАЖНО: Даем CharacterMovement время начать движение
                 yield return new WaitForSeconds(0.15f);
-                Debug.Log($"MiningManager: Movement should have started, IsMoving = {movement.IsMoving()}");
 
-                // Ждем окончания движения
+                bool needsRedirect = false;
+
+                // Ждем окончания движения И проверяем, не занята ли зарезервированная клетка
                 while (movement.IsMoving())
                 {
                     yield return new WaitForSeconds(0.1f);
@@ -179,41 +188,83 @@ public class MiningManager : MonoBehaviour
                     // Проверяем, не прервалась ли задача
                     if (!task.isActive)
                     {
-                        Debug.Log($"MiningManager: Mining interrupted for {character.GetFullName()}");
                         yield break;
+                    }
+
+                    // ПРОВЕРКА ВО ВРЕМЯ ПУТИ: Не занята ли наша зарезервированная клетка?
+                    GridCell cellDuringMovement = gridManager.GetCell(task.reservedWorkPosition);
+                    Vector2Int currentGridPos = gridManager.WorldToGrid(character.transform.position);
+
+                    if (cellDuringMovement != null && cellDuringMovement.isOccupied && currentGridPos != task.reservedWorkPosition)
+                    {
+                        // Клетка занята во время пути! Останавливаем движение и ищем новую клетку
+                        movement.StopMovement();
+
+                        Vector2Int oldReservation = task.reservedWorkPosition;
+
+                        // Ищем новую свободную клетку
+                        Vector2Int newPosition = FindNearestAdjacentPosition(character.transform.position, task.asteroidGridPosition, task.asteroidInfo.gridSize, character);
+
+                        if (newPosition.x == -9999 && newPosition.y == -9999)
+                        {
+                            Debug.LogWarning($"MiningManager: {character.GetFullName()} cannot find free position - no adjacent cells available!");
+                            StopMiningForCharacter(character);
+                            yield break;
+                        }
+
+                        // Резервируем новую позицию ПЕРЕД освобождением старой
+                        task.reservedWorkPosition = newPosition;
+                        reservedMiningPositions[newPosition] = character;
+
+                        // Освобождаем старую резервацию
+                        if (reservedMiningPositions.ContainsKey(oldReservation))
+                        {
+                            if (reservedMiningPositions[oldReservation] == character)
+                            {
+                                reservedMiningPositions.Remove(oldReservation);
+                            }
+                        }
+
+                        redirectCount++;
+                        needsRedirect = true;
+                        break; // Выходим из while(movement.IsMoving()) чтобы начать новое движение
                     }
                 }
 
-                Debug.Log($"MiningManager: {character.GetFullName()} finished moving to asteroid");
+                if (needsRedirect)
+                {
+                    continue; // Начинаем новую итерацию цикла движения с новой целью
+                }
+            }
+
+            // После движения проверяем позицию
+            characterGridPos = gridManager.WorldToGrid(character.transform.position);
+
+            // Проверяем, достиг ли персонаж позиции рядом с астероидом
+            isAdjacentToAsteroid = false;
+            if ((characterGridPos.x == task.asteroidGridPosition.x - 1 && characterGridPos.y >= task.asteroidGridPosition.y - 1 && characterGridPos.y <= asteroidEnd.y + 1) ||
+                (characterGridPos.x == asteroidEnd.x + 1 && characterGridPos.y >= task.asteroidGridPosition.y - 1 && characterGridPos.y <= asteroidEnd.y + 1) ||
+                (characterGridPos.y == task.asteroidGridPosition.y - 1 && characterGridPos.x >= task.asteroidGridPosition.x - 1 && characterGridPos.x <= asteroidEnd.x + 1) ||
+                (characterGridPos.y == asteroidEnd.y + 1 && characterGridPos.x >= task.asteroidGridPosition.x - 1 && characterGridPos.x <= asteroidEnd.x + 1))
+            {
+                isAdjacentToAsteroid = true;
             }
         }
-        else
-        {
-            Debug.Log($"MiningManager: {character.GetFullName()} already adjacent to asteroid, skipping movement");
-        }
 
-        // ВАЖНО: После движения подтверждаем, что персонаж действительно рядом
-        characterGridPos = gridManager.WorldToGrid(character.transform.position);
-
-        // Проверяем снова, находится ли персонаж рядом с астероидом
-        isAdjacentToAsteroid = false;
-        if ((characterGridPos.x == task.asteroidGridPosition.x - 1 && characterGridPos.y >= task.asteroidGridPosition.y - 1 && characterGridPos.y <= asteroidEnd.y + 1) ||
-            (characterGridPos.x == asteroidEnd.x + 1 && characterGridPos.y >= task.asteroidGridPosition.y - 1 && characterGridPos.y <= asteroidEnd.y + 1) ||
-            (characterGridPos.y == task.asteroidGridPosition.y - 1 && characterGridPos.x >= task.asteroidGridPosition.x - 1 && characterGridPos.x <= asteroidEnd.x + 1) ||
-            (characterGridPos.y == asteroidEnd.y + 1 && characterGridPos.x >= task.asteroidGridPosition.x - 1 && characterGridPos.x <= asteroidEnd.x + 1))
+        // Проверка что достигли цели
+        if (redirectCount >= maxRedirects)
         {
-            isAdjacentToAsteroid = true;
-        }
-
-        if (!isAdjacentToAsteroid)
-        {
-            Debug.LogWarning($"MiningManager: {character.GetFullName()} failed to reach adjacent position to asteroid! Current: {characterGridPos}");
+            Debug.LogWarning($"MiningManager: {character.GetFullName()} exceeded maximum redirects ({maxRedirects})!");
             StopMiningForCharacter(character);
             yield break;
         }
 
+        // Если цикл успешно завершился, значит isAdjacentToAsteroid == true
+        // Персонаж гарантированно рядом с астероидом
+        characterGridPos = gridManager.WorldToGrid(character.transform.position);
+
         // Персонаж подтвержденно рядом с астероидом - переключаем в состояние Mining
-        Debug.Log($"MiningManager: {character.GetFullName()} confirmed adjacent at {characterGridPos}, switching to Mining state");
+
 
         if (characterAI != null)
         {
@@ -223,36 +274,36 @@ public class MiningManager : MonoBehaviour
         // Поворачиваем персонажа к астероиду
         RotateCharacterTowardsAsteroid(character, task.asteroid);
 
-        Debug.Log($"MiningManager: {character.GetFullName()} starting mining jumps");
+
 
         // Основной цикл добычи
-        Debug.Log($"[MiningManager] ========== ENTERING MINING LOOP ==========");
-        Debug.Log($"[MiningManager] Initial state - task.isActive: {task.isActive}, metalAmount: {task.asteroidInfo.metalAmount}");
+
+
 
         int loopIteration = 0;
         while (task.isActive && task.asteroidInfo.metalAmount > 0)
         {
             loopIteration++;
-            Debug.Log($"[MiningManager] ===== LOOP ITERATION {loopIteration} START =====");
-            Debug.Log($"[MiningManager] Loop conditions - task.isActive: {task.isActive}, metalAmount: {task.asteroidInfo.metalAmount}");
+
+
 
             // Проверяем, что персонаж жив
             if (character.IsDead())
             {
-                Debug.Log($"[MiningManager] Character {character.GetFullName()} is DEAD - stopping mining");
+
                 StopMiningForCharacter(character);
                 yield break;
             }
-            Debug.Log($"[MiningManager] Character {character.GetFullName()} is alive - continuing");
+
 
             // КРИТИЧНО: Проверяем позицию персонажа ПЕРЕД КАЖДЫМ прыжком
             characterGridPos = gridManager.WorldToGrid(character.transform.position);
-            Debug.Log($"[MiningManager] Character world position: {character.transform.position}");
-            Debug.Log($"[MiningManager] Character grid position: {characterGridPos}");
+
+
 
             // Пересчитываем asteroidEnd для проверки adjacency
             asteroidEnd = task.asteroidGridPosition + task.asteroidInfo.gridSize - Vector2Int.one;
-            Debug.Log($"[MiningManager] Asteroid area - start: {task.asteroidGridPosition}, end: {asteroidEnd}, size: {task.asteroidInfo.gridSize}");
+
 
             // Проверяем, находится ли персонаж всё ещё рядом с астероидом
             isAdjacentToAsteroid = false;
@@ -263,41 +314,41 @@ public class MiningManager : MonoBehaviour
             bool bottomSide = (characterGridPos.y == task.asteroidGridPosition.y - 1 && characterGridPos.x >= task.asteroidGridPosition.x - 1 && characterGridPos.x <= asteroidEnd.x + 1);
             bool topSide = (characterGridPos.y == asteroidEnd.y + 1 && characterGridPos.x >= task.asteroidGridPosition.x - 1 && characterGridPos.x <= asteroidEnd.x + 1);
 
-            Debug.Log($"[MiningManager] Adjacency check - left: {leftSide}, right: {rightSide}, bottom: {bottomSide}, top: {topSide}");
+
 
             if (leftSide || rightSide || bottomSide || topSide)
             {
                 isAdjacentToAsteroid = true;
             }
 
-            Debug.Log($"[MiningManager] Final adjacency result: {isAdjacentToAsteroid}");
+
 
             // Если персонаж больше не рядом с астероидом - НЕМЕДЛЕННО останавливаем добычу
             if (!isAdjacentToAsteroid)
             {
-                Debug.Log($"[MiningManager] CHARACTER NOT ADJACENT - Stopping mining!");
+
                 StopMiningForCharacter(character);
                 yield break;
             }
 
             // Выполняем прыжок (только если персонаж рядом!)
-            Debug.Log($"[MiningManager] Starting mining jump...");
+
             yield return StartCoroutine(PerformMiningJump(character));
-            Debug.Log($"[MiningManager] Mining jump completed");
+
 
             // Добываем металл
             int minedAmount = Mathf.Min(metalPerJump, task.asteroidInfo.metalAmount);
             int oldAmount = task.asteroidInfo.metalAmount;
             task.asteroidInfo.metalAmount -= minedAmount;
-            Debug.Log($"[MiningManager] Mining metal - amount: {minedAmount}, before: {oldAmount}, after: {task.asteroidInfo.metalAmount}");
+
 
             // Добавляем металл в инвентарь персонажа
             Inventory inventory = character.GetComponent<Inventory>();
             if (inventory != null)
             {
-                Debug.Log($"[MiningManager] Adding {minedAmount} metal to inventory");
+
                 AddMetalToInventory(inventory, minedAmount);
-                Debug.Log($"[MiningManager] Metal added to inventory successfully");
+
             }
             else
             {
@@ -307,36 +358,44 @@ public class MiningManager : MonoBehaviour
             // Проверяем, истощился ли астероид
             if (task.asteroidInfo.metalAmount <= 0)
             {
-                Debug.Log($"[MiningManager] ASTEROID DEPLETED - Breaking loop");
+
                 break;
             }
 
-            Debug.Log($"[MiningManager] Waiting {miningJumpInterval}s before next jump...");
-            Debug.Log($"[MiningManager] ===== LOOP ITERATION {loopIteration} END =====");
+
+
 
             // Ждем до следующего прыжка
             yield return new WaitForSeconds(miningJumpInterval);
 
-            Debug.Log($"[MiningManager] Wait completed, checking loop conditions again...");
+
         }
 
-        Debug.Log($"[MiningManager] ========== EXITED MINING LOOP ==========");
-        Debug.Log($"[MiningManager] Exit reason - task.isActive: {task.isActive}, metalAmount: {task.asteroidInfo.metalAmount}");
+
+
 
         // Добыча завершена
-        Debug.Log($"MiningManager: {character.GetFullName()} finished mining");
+
         StopMiningForCharacter(character);
     }
 
     /// <summary>
-    /// Найти ближайшую соседнюю позицию к астероиду (учитывает размер астероида)
+    /// Найти ближайшую соседнюю позицию к астероиду (старый метод для совместимости)
     /// </summary>
     Vector2Int FindNearestAdjacentPosition(Vector3 characterPosition, Vector2Int asteroidStartPos, Vector2Int asteroidSize)
+    {
+        return FindNearestAdjacentPosition(characterPosition, asteroidStartPos, asteroidSize, null);
+    }
+
+    /// <summary>
+    /// Найти ближайшую соседнюю позицию к астероиду (учитывает размер астероида и свои резервации)
+    /// </summary>
+    Vector2Int FindNearestAdjacentPosition(Vector3 characterPosition, Vector2Int asteroidStartPos, Vector2Int asteroidSize, Character requestingCharacter)
     {
         Vector2Int characterGridPos = gridManager.WorldToGrid(characterPosition);
         Vector2Int notFoundSentinel = new Vector2Int(-9999, -9999);
 
-        Debug.Log($"[MiningManager] FindNearestAdjacentPosition: Character at {characterGridPos}, Asteroid area: {asteroidStartPos} to ({asteroidStartPos.x + asteroidSize.x - 1}, {asteroidStartPos.y + asteroidSize.y - 1})");
+
 
         // Генерируем список всех клеток по периметру астероида
         List<Vector2Int> perimeterCells = new List<Vector2Int>();
@@ -365,7 +424,7 @@ public class MiningManager : MonoBehaviour
             perimeterCells.Add(new Vector2Int(asteroidStartPos.x + asteroidSize.x, y));
         }
 
-        Debug.Log($"[MiningManager] Generated {perimeterCells.Count} perimeter cells around asteroid");
+
 
         // Проверяем, находится ли персонаж уже на одной из перимерных клеток
         foreach (Vector2Int perimeterCell in perimeterCells)
@@ -375,7 +434,7 @@ public class MiningManager : MonoBehaviour
                 GridCell cell = gridManager.GetCell(perimeterCell);
                 if (cell != null && !cell.isOccupied)
                 {
-                    Debug.Log($"[MiningManager] Character already at perimeter cell {characterGridPos}");
+
                     return characterGridPos;
                 }
             }
@@ -410,6 +469,22 @@ public class MiningManager : MonoBehaviour
                 continue;
             }
 
+            // Проверяем, не зарезервирована ли клетка другим персонажем
+            if (reservedMiningPositions.ContainsKey(perimeterPos))
+            {
+                // Если это наша собственная резервация - можем использовать
+                if (requestingCharacter != null && reservedMiningPositions[perimeterPos] == requestingCharacter)
+                {
+                    // Это наша резервация, продолжаем проверку как свободную клетку
+                }
+                else
+                {
+                    // Зарезервирована кем-то другим
+                    occupiedCells++;
+                    continue;
+                }
+            }
+
             // Клетка свободна и валидна
             validCells++;
             Vector3 perimeterWorldPos = gridManager.GridToWorld(perimeterPos);
@@ -422,11 +497,11 @@ public class MiningManager : MonoBehaviour
             }
         }
 
-        Debug.Log($"[MiningManager] Perimeter check: {validCells} free, {occupiedCells} occupied, {invalidCells} invalid");
+
 
         if (closestPosition != notFoundSentinel)
         {
-            Debug.Log($"[MiningManager] Found closest free perimeter cell: {closestPosition} at distance {closestDistance:F2}");
+
         }
         else
         {
@@ -524,14 +599,14 @@ public class MiningManager : MonoBehaviour
         {
             // Увеличиваем количество через метод AddItem
             inventory.AddItem(metalSlot.itemData, amount);
-            Debug.Log($"MiningManager: Added {amount} metal. Total: {inventory.GetItemCount(metalSlot.itemData)}");
+
         }
         else
         {
             // Создаем новый предмет металла
             ItemData metalItem = CreateMetalItemData();
             inventory.AddItem(metalItem, amount);
-            Debug.Log($"MiningManager: Created new metal stack with {amount} metal");
+
         }
 
         // Обновляем UI инвентаря
@@ -551,14 +626,14 @@ public class MiningManager : MonoBehaviour
         System.Diagnostics.StackTrace stackTrace = new System.Diagnostics.StackTrace(1, true);
         string callerInfo = stackTrace.GetFrame(0)?.GetMethod()?.Name ?? "Unknown";
 
-        Debug.Log($"[MiningManager] ========== STOP MINING CALLED ==========");
-        Debug.Log($"[MiningManager] Called from: {callerInfo}");
-        Debug.Log($"[MiningManager] Character: {(character != null ? character.GetFullName() : "NULL")}");
+
+
+
 
         // Проверяем, что персонаж еще существует
         if (character == null)
         {
-            Debug.Log($"[MiningManager] Character is NULL - removing all null tasks");
+
             // Удаляем все задачи с null персонажами
             miningTasks.RemoveAll(t => t.character == null);
             return;
@@ -567,34 +642,42 @@ public class MiningManager : MonoBehaviour
         MiningTask task = miningTasks.Find(t => t.character == character);
         if (task != null)
         {
-            Debug.Log($"[MiningManager] Found mining task - setting isActive to false");
+
             task.isActive = false;
 
             if (task.miningCoroutine != null)
             {
-                Debug.Log($"[MiningManager] Stopping mining coroutine");
+
                 StopCoroutine(task.miningCoroutine);
             }
 
-            Debug.Log($"[MiningManager] Removing task from list");
+            // ВАЖНО: Освобождаем зарезервированную позицию
+            if (reservedMiningPositions.ContainsKey(task.reservedWorkPosition))
+            {
+                if (reservedMiningPositions[task.reservedWorkPosition] == character)
+                {
+                    reservedMiningPositions.Remove(task.reservedWorkPosition);
+                }
+            }
+
             miningTasks.Remove(task);
 
-            Debug.Log($"[MiningManager] Mining stopped for {character.GetFullName()}");
+
 
             // Возвращаем персонажа в состояние Idle
             CharacterAI characterAI = character.GetComponent<CharacterAI>();
             if (characterAI != null && characterAI.GetCurrentState() == CharacterAI.AIState.Mining)
             {
-                Debug.Log($"[MiningManager] Switching character AI state to Idle");
+
                 characterAI.SetAIState(CharacterAI.AIState.Idle);
             }
         }
         else
         {
-            Debug.Log($"[MiningManager] No mining task found for {character.GetFullName()}");
+
         }
 
-        Debug.Log($"[MiningManager] ========== STOP MINING COMPLETED ==========");
+
     }
 
     /// <summary>
@@ -622,6 +705,9 @@ public class MiningManager : MonoBehaviour
 
         // Очищаем все оставшиеся задачи с null персонажами
         miningTasks.Clear();
+
+        // Очищаем все резервации
+        reservedMiningPositions.Clear();
     }
 
     void OnDestroy()

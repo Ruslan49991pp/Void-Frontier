@@ -38,7 +38,7 @@ public class ResourceSlotUI : MonoBehaviour
             if (iconTransform != null)
             {
                 iconImage = iconTransform.GetComponent<Image>();
-                Debug.Log($"[ResourceSlotUI] Found 'Ico' component in prefab");
+
             }
             else
             {
@@ -53,7 +53,7 @@ public class ResourceSlotUI : MonoBehaviour
             if (textTransform != null)
             {
                 quantityText = textTransform.GetComponent<TextMeshProUGUI>();
-                Debug.Log($"[ResourceSlotUI] Found 'Text (TMP)' component in prefab");
+
             }
             else
             {
@@ -68,7 +68,7 @@ public class ResourceSlotUI : MonoBehaviour
             if (backgroundTransform != null)
             {
                 backgroundImage = backgroundTransform.GetComponent<Image>();
-                Debug.Log($"[ResourceSlotUI] Found 'Backgound' component in prefab");
+
             }
             else
             {
@@ -76,7 +76,7 @@ public class ResourceSlotUI : MonoBehaviour
                 backgroundImage = GetComponent<Image>();
                 if (backgroundImage != null)
                 {
-                    Debug.Log($"[ResourceSlotUI] Using root Image component as background");
+
                 }
             }
         }

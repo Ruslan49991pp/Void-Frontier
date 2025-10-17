@@ -1078,7 +1078,7 @@ public class RoomDragBuilder : MonoBehaviour
             confirmedFloorBlocks.Add(ghostFloorBlock);
         }
 
-        Debug.Log($"[RoomDragBuilder] Confirmed {constructionBlocks.Count} blocks for construction");
+
 
         // Регистрируем блоки в ConstructionManager для автоматического строительства
         if (ConstructionManager.Instance != null)
@@ -1098,7 +1098,7 @@ public class RoomDragBuilder : MonoBehaviour
     /// </summary>
     void ReplaceGhostWithWall(Vector2Int gridPos, GameObject ghostBlock)
     {
-        Debug.Log($"[RoomDragBuilder] Replacing wall ghost at {gridPos} with final wall");
+
 
         // Уничтожаем ghost блок
         if (ghostBlock != null)
@@ -1139,7 +1139,7 @@ public class RoomDragBuilder : MonoBehaviour
             // Обновляем визуализацию стен
             RoomBuilder.Instance.UpdateWallVisuals();
 
-            Debug.Log($"[RoomDragBuilder] Wall at {gridPos} added to registry: side={wallSide}, type={wallType}");
+
         }
         else
         {
@@ -1152,7 +1152,7 @@ public class RoomDragBuilder : MonoBehaviour
     /// </summary>
     void ReplaceGhostWithFloor(Vector2Int gridPos, GameObject ghostFloorBlock)
     {
-        Debug.Log($"[RoomDragBuilder] Replacing floor ghost at {gridPos} with final floor tile");
+
 
         // Уничтожаем ghost блок
         if (ghostFloorBlock != null)
@@ -1196,7 +1196,7 @@ public class RoomDragBuilder : MonoBehaviour
             Destroy(tileCollider);
         }
 
-        Debug.Log($"[RoomDragBuilder] Floor tile created at {gridPos}");
+
     }
 
     /// <summary>

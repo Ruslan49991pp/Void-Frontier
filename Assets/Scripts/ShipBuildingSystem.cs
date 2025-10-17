@@ -49,7 +49,6 @@ public class ShipBuildingSystem : MonoBehaviour
     private List<Vector2Int> straightWallPositions = new List<Vector2Int>(); // Позиции прямых стен для двери
     private Vector2Int doorPosition = Vector2Int.zero; // Текущая позиция двери
     private List<GameObject> previewCells = new List<GameObject>();
-    private GameUI gameUI;
     private List<GameObject> builtRooms = new List<GameObject>();
 
     // Автоматическое строительство при выборе двери (ОТКЛЮЧЕНО)
@@ -104,8 +103,6 @@ public class ShipBuildingSystem : MonoBehaviour
 
         if (playerCamera == null)
             playerCamera = Camera.main;
-
-        gameUI = FindObjectOfType<GameUI>();
 
         CreateDefaultRooms();
     }
@@ -1240,137 +1237,6 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Заменить стену на дверь в указанной позиции (СТАРЫЙ МЕТОД - НЕ ИСПОЛЬЗУЕТСЯ)
-    /// </summary>
-    void ReplaceWallWithDoor(Vector2Int position)
-    {
-        FileLogger.Log($"DEBUG: Starting wall replacement at {position}");
-
-        // Получаем RoomBuilder для доступа к стенам
-        RoomBuilder roomBuilder = RoomBuilder.Instance;
-        if (roomBuilder == null)
-        {
-            FileLogger.Log("ERROR: RoomBuilder not found!");
-            return;
-        }
-
-        // Загружаем префаб двери
-        GameObject doorPrefab = Resources.Load<GameObject>("Prefabs/SM_Door");
-        if (doorPrefab == null)
-        {
-            FileLogger.Log("ERROR: SM_Door prefab not found in Resources/Prefabs/!");
-            return;
-        }
-
-        // Ищем стену в указанной позиции через RoomBuilder
-        FileLogger.Log($"DEBUG: Looking for wall at position {position}");
-        GameObject wallToReplace = FindWallAtPosition(position);
-        if (wallToReplace == null)
-        {
-            FileLogger.Log($"ERROR: Wall not found at position {position}");
-            LogAllWallsOnScene(); // Дополнительный лог всех стен
-            return;
-        }
-
-        // Проверяем что объект стены все еще существует
-        if (wallToReplace == null)
-        {
-            FileLogger.Log($"ERROR: Wall object is null after finding it at {position}");
-            return;
-        }
-
-        FileLogger.Log($"DEBUG: Found wall to replace: {wallToReplace.name} at {wallToReplace.transform.position}");
-
-        // Сохраняем позицию и поворот старой стены
-        Vector3 wallPosition;
-        Quaternion wallRotation;
-        string wallName;
-
-        try
-        {
-            wallPosition = wallToReplace.transform.position;
-            wallRotation = wallToReplace.transform.rotation;
-            wallName = wallToReplace.name;
-            FileLogger.Log($"DEBUG: Wall position: {wallPosition}, rotation: {wallRotation.eulerAngles}");
-        }
-        catch (System.Exception e)
-        {
-            FileLogger.Log($"ERROR: Failed to get wall properties: {e.Message}");
-            return;
-        }
-
-        // Удаляем старую стену
-        try
-        {
-            DestroyImmediate(wallToReplace);
-            FileLogger.Log($"DEBUG: Wall {wallName} destroyed");
-        }
-        catch (System.Exception e)
-        {
-            FileLogger.Log($"ERROR: Failed to destroy wall: {e.Message}");
-            return;
-        }
-
-        // Создаем дверь
-        GameObject door = Instantiate(doorPrefab, wallPosition, wallRotation);
-        door.name = $"Door_{position.x}_{position.y}";
-
-        FileLogger.Log($"DEBUG: Door created: {door.name} at {door.transform.position}");
-        FileLogger.Log($"SUCCESS: Replaced wall with door at {position}");
-    }
-
-    /// <summary>
-    /// Логировать все стены на сцене для отладки
-    /// </summary>
-    void LogAllWallsOnScene()
-    {
-        GameObject[] allObjects = FindObjectsOfType<GameObject>();
-        int wallCount = 0;
-        FileLogger.Log("--- All walls on scene ---");
-        foreach (GameObject obj in allObjects)
-        {
-            if (obj.name.Contains("Wall") && !obj.name.Contains("Preview") && obj.activeInHierarchy)
-            {
-                Vector3 objWorldPos = obj.transform.position;
-                Vector2Int objGridPos = gridManager.WorldToGrid(objWorldPos);
-                FileLogger.Log($"Wall found: {obj.name} at world {objWorldPos} grid {objGridPos}");
-                wallCount++;
-            }
-        }
-        FileLogger.Log($"Total walls found: {wallCount}");
-        FileLogger.Log("--- End of wall list ---");
-    }
-
-    /// <summary>
-    /// Найти стену в указанной позиции
-    /// </summary>
-    GameObject FindWallAtPosition(Vector2Int position)
-    {
-        FileLogger.Log($"DEBUG: FindWallAtPosition looking for wall at {position}");
-
-        // Ищем среди всех объектов с тегом или именем стены
-        GameObject[] allObjects = FindObjectsOfType<GameObject>();
-        int wallsFound = 0;
-        foreach (GameObject obj in allObjects)
-        {
-            if (obj.name.Contains("Wall") && !obj.name.Contains("Preview"))
-            {
-                wallsFound++;
-                Vector3 objWorldPos = obj.transform.position;
-                Vector2Int objGridPos = gridManager.WorldToGrid(objWorldPos);
-                FileLogger.Log($"DEBUG: Checking wall {obj.name} at world {objWorldPos} grid {objGridPos}");
-                if (objGridPos == position)
-                {
-                    FileLogger.Log($"DEBUG: FOUND target wall: {obj.name} at {position}");
-                    return obj;
-                }
-            }
-        }
-        FileLogger.Log($"DEBUG: No wall found at {position}. Total walls checked: {wallsFound}");
-        return null;
-    }
-
-    /// <summary>
     /// Вернуться к размещению комнаты
     /// </summary>
     void ReturnToRoomPlacement()
@@ -1457,12 +1323,6 @@ public class ShipBuildingSystem : MonoBehaviour
         }
 
         ClearPreviewCells();
-
-        // Обновляем UI - убираем выбор здания
-        if (gameUI != null)
-        {
-            gameUI.ClearBuildingSelection();
-        }
 
         FileLogger.Log("Room selection cleared");
     }

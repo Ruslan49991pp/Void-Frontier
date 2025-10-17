@@ -164,19 +164,6 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что GameUI существует в сцене
-    /// </summary>
-    void EnsureGameUI()
-    {
-        GameUI gameUI = FindObjectOfType<GameUI>();
-        if (gameUI == null)
-        {
-            GameObject gameUIGO = new GameObject("GameUI");
-            gameUI = gameUIGO.AddComponent<GameUI>();
-        }
-    }
-
-    /// <summary>
     /// Убедиться что EventSystem существует для UI
     /// </summary>
     void EnsureEventSystem()
@@ -404,6 +391,5 @@ public class GameInitializer : MonoBehaviour
 
         // Инициализируем ItemFactory
         ItemFactory.Initialize(itemDatabase);
-        Debug.Log("[GameInitializer] ItemFactory initialized with ItemDatabase");
     }
 }

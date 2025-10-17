@@ -322,9 +322,6 @@ public class DebugSystemMonitor : MonoBehaviour
         SimplePathfinder pathfinder = FindObjectOfType<SimplePathfinder>();
         info.AppendLine($"SimplePathfinder: {(pathfinder != null ? "✓ ACTIVE" : "✗ MISSING")}");
 
-        GameUI gameUI = FindObjectOfType<GameUI>();
-        info.AppendLine($"GameUI: {(gameUI != null ? "✓ ACTIVE" : "✗ MISSING")}");
-
         debugText.text = info.ToString();
     }
 

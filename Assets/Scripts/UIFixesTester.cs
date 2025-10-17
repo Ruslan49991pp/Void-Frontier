@@ -62,17 +62,6 @@ public class UIFixesTester : MonoBehaviour
 
         }
 
-        // Проверяем GameUI
-        GameUI gameUI = FindObjectOfType<GameUI>();
-        if (gameUI != null)
-        {
-
-        }
-        else
-        {
-
-        }
-
         // Проверяем Canvas'ы
         Canvas[] canvases = FindObjectsOfType<Canvas>();
 

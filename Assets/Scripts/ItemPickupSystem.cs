@@ -42,7 +42,7 @@ public class ItemPickupSystem : MonoBehaviour
         // Если система отключена - отключаем весь компонент
         if (!enablePickupByKey)
         {
-            Debug.Log("[ItemPickupSystem] System is disabled, component will be inactive");
+
             enabled = false;
             return;
         }
@@ -101,7 +101,7 @@ public class ItemPickupSystem : MonoBehaviour
         // ЗАЩИТА: Проверяем что nearestItem не был уничтожен перед обращением
         if (nearestItem != null && ReferenceEquals(nearestItem, null))
         {
-            Debug.Log($"[ItemPickupSystem] [FindNearestItem] nearestItem was destroyed, clearing reference");
+
             nearestItem = null;
             originalMaterial = null;
         }
@@ -215,7 +215,7 @@ public class ItemPickupSystem : MonoBehaviour
         else if (nearestItem != null && ReferenceEquals(nearestItem, null))
         {
             // Item был уничтожен - очищаем ссылку
-            Debug.Log($"[ItemPickupSystem] [RemoveHighlight] nearestItem was destroyed, clearing reference");
+
             nearestItem = null;
             originalMaterial = null;
         }
@@ -229,7 +229,7 @@ public class ItemPickupSystem : MonoBehaviour
         // ЗАЩИТА: Проверяем что nearestItem не был уничтожен
         if (nearestItem != null && ReferenceEquals(nearestItem, null))
         {
-            Debug.Log($"[ItemPickupSystem] [ShowPickupHint] nearestItem was destroyed, hiding hint");
+
             HidePickupHint();
             nearestItem = null;
             return;
@@ -277,7 +277,7 @@ public class ItemPickupSystem : MonoBehaviour
         if (nearestItem == null || character == null)
             return;
 
-        Debug.Log($"[ItemPickupSystem] Attempting to pick up: {nearestItem.itemData.itemName}");
+
 
         // Проверяем, может ли персонаж поднять предмет
         if (nearestItem.CanBePickedUpBy(character))
@@ -293,7 +293,7 @@ public class ItemPickupSystem : MonoBehaviour
             // Подбираем предмет
             nearestItem.PickUp(character);
 
-            Debug.Log($"[ItemPickupSystem] Picked up: {nearestItem.itemData.itemName}");
+
 
             // Убираем подсказку
             HidePickupHint();

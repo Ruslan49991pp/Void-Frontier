@@ -90,7 +90,6 @@ public class ObjectSelectDisplay : MonoBehaviour
             // КРИТИЧЕСКИ ВАЖНО: Проверяем что объект не был уничтожен
             if (ReferenceEquals(selectedObject, null) || selectedObject == null)
             {
-                Debug.Log($"[ObjectSelectDisplay] [OnSelectionChanged] Selected object is destroyed, hiding panel");
                 HidePanel();
                 return;
             }
@@ -115,7 +114,6 @@ public class ObjectSelectDisplay : MonoBehaviour
                 item = selectedObject.GetComponent<Item>();
                 if (item != null && ReferenceEquals(item, null))
                 {
-                    Debug.Log($"[ObjectSelectDisplay] [OnSelectionChanged] Item component is destroyed, treating as null");
                     item = null;
                 }
             }
@@ -152,7 +150,6 @@ public class ObjectSelectDisplay : MonoBehaviour
         // КРИТИЧЕСКИ ВАЖНО: Проверяем что currentObject не был уничтожен
         if (ReferenceEquals(currentObject, null))
         {
-            Debug.Log($"[ObjectSelectDisplay] [UpdateObjectInfo] currentObject is destroyed, clearing and hiding panel");
             HidePanel();
             return;
         }
@@ -177,7 +174,6 @@ public class ObjectSelectDisplay : MonoBehaviour
                     // Дополнительная проверка что Item не уничтожен
                     if (item != null && ReferenceEquals(item, null))
                     {
-                        Debug.Log($"[ObjectSelectDisplay] [UpdateObjectInfo] Item component is destroyed, treating as null");
                         item = null;
                     }
                 }
@@ -187,9 +183,24 @@ public class ObjectSelectDisplay : MonoBehaviour
                     item = null;
                 }
 
-                if (item != null && item.itemData != null)
+                if (item != null && !ReferenceEquals(item, null))
                 {
-                    infoText = GetItemInfoText(item);
+                    // ЗАЩИТА: Безопасно получаем itemData с дополнительной проверкой
+                    ItemData itemData = null;
+                    try
+                    {
+                        itemData = item.itemData;
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogError($"[ObjectSelectDisplay] [UpdateObjectInfo] Exception accessing item.itemData: {ex.Message}");
+                        itemData = null;
+                    }
+
+                    if (itemData != null)
+                    {
+                        infoText = GetItemInfoText(item);
+                    }
                 }
                 else
                 {
@@ -261,8 +272,6 @@ public class ObjectSelectDisplay : MonoBehaviour
     {
         string text = "";
 
-        Debug.Log($"[ObjectSelectDisplay] Getting info for object: {locationInfo.objectName}, Type: {locationInfo.objectType}");
-
         // Имя объекта
         if (!string.IsNullOrEmpty(locationInfo.objectName))
         {
@@ -279,12 +288,9 @@ public class ObjectSelectDisplay : MonoBehaviour
         text += $"Health: {locationInfo.health:F0} HP";
 
         // Металл для астероидов
-        Debug.Log($"[ObjectSelectDisplay] Checking asteroid metal: IsOfType('Asteroid')={locationInfo.IsOfType("Asteroid")}, maxMetalAmount={locationInfo.maxMetalAmount}");
-
         if (locationInfo.IsOfType("Asteroid") && locationInfo.maxMetalAmount > 0)
         {
             text += $"\nMetal: {locationInfo.metalAmount}/{locationInfo.maxMetalAmount}";
-            Debug.Log($"[ObjectSelectDisplay] Added metal info to text: {locationInfo.metalAmount}/{locationInfo.maxMetalAmount}");
 
             if (locationInfo.metalAmount > 0)
             {
@@ -294,10 +300,6 @@ public class ObjectSelectDisplay : MonoBehaviour
             {
                 text += "\n<color=red>Depleted</color>";
             }
-        }
-        else
-        {
-            Debug.Log($"[ObjectSelectDisplay] NOT showing metal info - not an asteroid or no metal");
         }
 
         // Дополнительные свойства
@@ -311,7 +313,6 @@ public class ObjectSelectDisplay : MonoBehaviour
             text += "\nSalvageable";
         }
 
-        Debug.Log($"[ObjectSelectDisplay] Final text:\n{text}");
         return text;
     }
 
@@ -321,7 +322,31 @@ public class ObjectSelectDisplay : MonoBehaviour
     string GetItemInfoText(Item item)
     {
         string text = "";
-        ItemData itemData = item.itemData;
+
+        // ЗАЩИТА: Проверяем что item не был уничтожен
+        if (item == null || ReferenceEquals(item, null))
+        {
+            Debug.LogError($"[ObjectSelectDisplay] [GetItemInfoText] Item is null or destroyed");
+            return "Item no longer exists";
+        }
+
+        // ЗАЩИТА: Безопасно получаем itemData
+        ItemData itemData = null;
+        try
+        {
+            itemData = item.itemData;
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[ObjectSelectDisplay] [GetItemInfoText] Exception accessing item.itemData: {ex.Message}");
+            return "Error reading item data";
+        }
+
+        if (itemData == null)
+        {
+            Debug.LogError($"[ObjectSelectDisplay] [GetItemInfoText] itemData is null");
+            return "Item data not found";
+        }
 
         // Имя предмета
         if (!string.IsNullOrEmpty(itemData.itemName))

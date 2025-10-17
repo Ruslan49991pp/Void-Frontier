@@ -8,7 +8,6 @@ public class SceneSetup : MonoBehaviour
 {
     [Header("Setup Options")]
     [SerializeField] private bool setupOnStart = true;
-    [SerializeField] private bool createGameUI = true;
     [SerializeField] private bool createEventSystem = true;
     [SerializeField] private bool createGridManager = true;
     [SerializeField] private bool createLocationManager = true;
@@ -37,11 +36,6 @@ public class SceneSetup : MonoBehaviour
         if (createLocationManager)
         {
             CreateLocationManager();
-        }
-
-        if (createGameUI)
-        {
-            CreateGameUI();
         }
     }
 
@@ -73,16 +67,6 @@ public class SceneSetup : MonoBehaviour
         {
             var locationManagerGO = new GameObject("LocationManager");
             locationManagerGO.AddComponent<LocationManager>();
-        }
-    }
-
-    void CreateGameUI()
-    {
-        var existing = FindObjectOfType<GameUI>();
-        if (existing == null)
-        {
-            var gameUIGO = new GameObject("GameUI");
-            gameUIGO.AddComponent<GameUI>();
         }
     }
 }

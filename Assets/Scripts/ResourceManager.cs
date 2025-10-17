@@ -134,12 +134,12 @@ public class ResourceManager : ScriptableObject
 
         if (removed > 0)
         {
-            Debug.Log($"Удалено {removed} null элементов из базы данных");
+
             UnityEditor.EditorUtility.SetDirty(this);
         }
         else
         {
-            Debug.Log("NULL элементы не найдены");
+
         }
     }
 
@@ -186,7 +186,7 @@ public class ResourceManager : ScriptableObject
 
         if (errors == 0)
         {
-            Debug.Log($"База данных ресурсов валидна! Всего ресурсов: {GetTotalResourceCount()}");
+
         }
         else
         {
@@ -200,7 +200,7 @@ public class ResourceManager : ScriptableObject
     [ContextMenu("Показать статистику")]
     public void ShowStats()
     {
-        Debug.Log(GetCategoryStats());
+
     }
 #endif
 }

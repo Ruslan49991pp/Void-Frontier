@@ -19,7 +19,7 @@ public class ConstructionManager : MonoBehaviour
                 GameObject go = new GameObject("ConstructionManager");
                 instance = go.AddComponent<ConstructionManager>();
                 DontDestroyOnLoad(go); // Не уничтожать при загрузке новой сцены
-                Debug.Log("[ConstructionManager] Auto-created ConstructionManager instance");
+
             }
             return instance;
         }
@@ -472,7 +472,7 @@ public class ConstructionManager : MonoBehaviour
         RemoveProgressBar(block);
 
         // 4. Блок построен - заменяем на финальный префаб
-        Debug.Log($"[ConstructionManager] {character.GetFullName()} completed construction of block at {block.gridPosition}");
+
         block.isCompleted = true;
         block.OnConstructionComplete?.Invoke();
 
@@ -499,7 +499,7 @@ public class ConstructionManager : MonoBehaviour
         }
         else
         {
-            Debug.Log($"[ConstructionManager] All construction completed!");
+
         }
     }
 
@@ -638,7 +638,7 @@ public class ConstructionManager : MonoBehaviour
         constructionQueue.Clear();
         busyCharacters.Clear();
         constructionCoroutines.Clear(); // Очищаем словарь корутин
-        Debug.Log("[ConstructionManager] Construction queue cleared");
+
     }
 
     /// <summary>
@@ -663,14 +663,14 @@ public class ConstructionManager : MonoBehaviour
             return;
 
         ConstructionBlock block = busyCharacters[character];
-        Debug.Log($"[ConstructionManager] Принудительная остановка строительства для {character.GetFullName()}, блок: {block.gridPosition}");
+
 
         // ✓ КРИТИЧЕСКИ ВАЖНО: ОСТАНАВЛИВАЕМ КОРУТИНУ СТРОИТЕЛЬСТВА!
         if (constructionCoroutines.ContainsKey(character))
         {
             StopCoroutine(constructionCoroutines[character]);
             constructionCoroutines.Remove(character);
-            Debug.Log($"[ConstructionManager] ✓ Корутина строительства ОСТАНОВЛЕНА для {character.GetFullName()}");
+
         }
         else
         {
@@ -700,7 +700,7 @@ public class ConstructionManager : MonoBehaviour
         // Удаляем персонажа из занятых
         busyCharacters.Remove(character);
 
-        Debug.Log($"[ConstructionManager] Строительство остановлено, персонаж {character.GetFullName()} освобожден");
+
     }
 
     /// <summary>

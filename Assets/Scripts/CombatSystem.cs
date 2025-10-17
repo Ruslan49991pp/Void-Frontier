@@ -46,6 +46,9 @@ public class CombatSystem : MonoBehaviour
     // Защита от одновременного применения урона к одной цели
     private HashSet<Character> damageIndicationInProgress = new HashSet<Character>();
 
+    // Словарь зарезервированных боевых позиций (чтобы персонажи не останавливались в одной клетке)
+    private Dictionary<Vector2Int, Character> reservedCombatPositions = new Dictionary<Vector2Int, Character>();
+
     // Класс для хранения данных о боевых действиях персонажа
     private class CombatData
     {
@@ -54,6 +57,7 @@ public class CombatSystem : MonoBehaviour
         public bool isAttacking;
         public bool isPursuing;
         public Vector3 originalPosition;
+        public Vector2Int reservedCombatPosition; // Зарезервированная позиция для стрельбы
         public Coroutine combatCoroutine;
         public Coroutine attackAnimationCoroutine;
 
@@ -64,6 +68,7 @@ public class CombatSystem : MonoBehaviour
             isAttacking = false;
             isPursuing = false;
             originalPosition = Vector3.zero;
+            reservedCombatPosition = new Vector2Int(-9999, -9999); // Сигнальное значение "не установлено"
             combatCoroutine = null;
             attackAnimationCoroutine = null;
         }
@@ -281,6 +286,18 @@ public class CombatSystem : MonoBehaviour
             combatData.attackAnimationCoroutine = null;
         }
 
+        // ВАЖНО: Освобождаем зарезервированную боевую позицию
+        if (combatData.reservedCombatPosition.x != -9999 && combatData.reservedCombatPosition.y != -9999)
+        {
+            if (reservedCombatPositions.ContainsKey(combatData.reservedCombatPosition))
+            {
+                if (reservedCombatPositions[combatData.reservedCombatPosition] == attacker)
+                {
+                    reservedCombatPositions.Remove(combatData.reservedCombatPosition);
+                }
+            }
+        }
+
         // Останавливаем движение (только если персонаж еще существует)
         if (attacker != null)
         {
@@ -382,7 +399,7 @@ public class CombatSystem : MonoBehaviour
                         else
                         {
                             // Не нашли позицию - подходим ближе
-                            Vector3 targetPosition = GetNearestAttackPosition(combatData.target);
+                            Vector3 targetPosition = GetNearestAttackPosition(attacker, combatData.target);
                             movement.MoveTo(targetPosition);
                             combatData.isPursuing = true;
 
@@ -394,9 +411,58 @@ public class CombatSystem : MonoBehaviour
                     }
                 }
 
-                // Линия видимости чистая или оружие ближнего боя - останавливаемся и атакуем
+                // Линия видимости чистая или оружие ближнего боя - проверяем позицию перед остановкой
+                Vector2Int currentGridPos = gridManager.WorldToGrid(attacker.transform.position);
+                GridCell currentCell = gridManager.GetCell(currentGridPos);
+
+                // ПРОВЕРКА: Не занята ли текущая клетка или зарезервирована другим персонажем?
+                bool cellOccupied = currentCell != null && currentCell.isOccupied;
+                bool cellReservedByOther = reservedCombatPositions.ContainsKey(currentGridPos) &&
+                                          reservedCombatPositions[currentGridPos] != attacker;
+
+                if (cellOccupied || cellReservedByOther)
+                {
+                    // Клетка занята! Ищем ближайшую свободную клетку вокруг цели
+                    Vector3 freePosition = GetNearestAttackPosition(attacker, combatData.target);
+                    Vector2Int freeGridPos = gridManager.WorldToGrid(freePosition);
+
+                    // Если нашли другую клетку - двигаемся к ней
+                    if (freeGridPos != currentGridPos)
+                    {
+                        movement.MoveTo(freePosition);
+                        combatData.isPursuing = true;
+                        yield return new WaitForSeconds(0.1f);
+                        continue; // Продолжаем цикл, не останавливаемся
+                    }
+                }
+
+                // Клетка свободна - останавливаемся и атакуем
                 combatData.isPursuing = false;
                 movement.StopMovement();
+
+                // ВАЖНО: Выравниваем позицию по центру клетки для точной стрельбы
+                Vector3 cellCenterPosition = gridManager.GridToWorld(currentGridPos);
+                attacker.transform.position = cellCenterPosition;
+
+                if (combatData.reservedCombatPosition.x == -9999 && combatData.reservedCombatPosition.y == -9999)
+                {
+                    // Еще не резервировали - резервируем текущую позицию
+                    combatData.reservedCombatPosition = currentGridPos;
+                    reservedCombatPositions[currentGridPos] = attacker;
+                }
+                else if (combatData.reservedCombatPosition != currentGridPos)
+                {
+                    // Персонаж сдвинулся - освобождаем старую резервацию и резервируем новую
+                    if (reservedCombatPositions.ContainsKey(combatData.reservedCombatPosition))
+                    {
+                        if (reservedCombatPositions[combatData.reservedCombatPosition] == attacker)
+                        {
+                            reservedCombatPositions.Remove(combatData.reservedCombatPosition);
+                        }
+                    }
+                    combatData.reservedCombatPosition = currentGridPos;
+                    reservedCombatPositions[currentGridPos] = attacker;
+                }
 
                 // Проверяем кулдаун атаки - атака начинается ТОЛЬКО если не атакуем сейчас И прошел кулдаун
                 float timeSinceLastAttack = Time.time - combatData.lastAttackTime;
@@ -414,7 +480,7 @@ public class CombatSystem : MonoBehaviour
             else
             {
                 // Цель за пределами дистанции атаки - преследуем ее независимо от расстояния
-                Vector3 targetPosition = GetNearestAttackPosition(combatData.target);
+                Vector3 targetPosition = GetNearestAttackPosition(attacker, combatData.target);
 
                 // Проверяем, нужно ли обновить маршрут (если цель сдвинулась или персонаж не движется)
                 bool needToUpdatePath = !movement.IsMoving() ||
@@ -427,6 +493,19 @@ public class CombatSystem : MonoBehaviour
 
                     // НЕ вызываем OnPlayerInitiatedMovement() - это движение инициировано боевой системой, а не игроком
 
+                }
+
+                // Освобождаем резервацию если преследуем (не стоим на месте для стрельбы)
+                if (combatData.reservedCombatPosition.x != -9999 && combatData.reservedCombatPosition.y != -9999)
+                {
+                    if (reservedCombatPositions.ContainsKey(combatData.reservedCombatPosition))
+                    {
+                        if (reservedCombatPositions[combatData.reservedCombatPosition] == attacker)
+                        {
+                            reservedCombatPositions.Remove(combatData.reservedCombatPosition);
+                        }
+                    }
+                    combatData.reservedCombatPosition = new Vector2Int(-9999, -9999);
                 }
 
                 yield return new WaitForSeconds(0.1f); // Более частое обновление для лучшего преследования
@@ -837,32 +916,28 @@ public class CombatSystem : MonoBehaviour
             if (cell != null && cell.isOccupied)
                 continue; // Занято
 
-            Vector3 worldPos = gridManager.GridToWorld(gridPos);
+            // Проверяем что клетка не зарезервирована другим персонажем
+            if (reservedCombatPositions.ContainsKey(gridPos))
+            {
+                // Если это наша собственная резервация - можем использовать
+                if (attacker != null && reservedCombatPositions[gridPos] == attacker)
+                {
+                    // Проверяем линию видимости с этой позиции
+                    Vector3 worldPos = gridManager.GridToWorld(gridPos);
+                    if (CheckLineOfSightFromPosition(worldPos, target))
+                    {
+                        return worldPos;
+                    }
+                }
+                continue; // Зарезервирована кем-то другим
+            }
+
+            Vector3 worldPos2 = gridManager.GridToWorld(gridPos);
 
             // Проверяем линию видимости с этой позиции
-            Vector3 shooterPos = worldPos + Vector3.up * 1f;
-            Vector3 targetPos = target.transform.position + Vector3.up * 1f;
-
-            Vector3 direction = targetPos - shooterPos;
-            float distance = direction.magnitude;
-
-            RaycastHit hit;
-            if (Physics.Raycast(shooterPos, direction.normalized, out hit, distance, lineOfSightBlockers))
+            if (CheckLineOfSightFromPosition(worldPos2, target))
             {
-                Character hitCharacter = hit.collider.GetComponent<Character>();
-                if (hitCharacter == null)
-                    hitCharacter = hit.collider.GetComponentInParent<Character>();
-
-                if (hitCharacter == target)
-                {
-                    // Нашли позицию с чистым выстрелом!
-                    return worldPos;
-                }
-            }
-            else
-            {
-                // Нет препятствий - тоже подходит
-                return worldPos;
+                return worldPos2;
             }
         }
 
@@ -870,9 +945,51 @@ public class CombatSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить ближайшую позицию для атаки цели
+    /// Проверить линию видимости с заданной позиции до цели
+    /// </summary>
+    bool CheckLineOfSightFromPosition(Vector3 position, Character target)
+    {
+        Vector3 shooterPos = position + Vector3.up * 1f;
+        Vector3 targetPos = target.transform.position + Vector3.up * 1f;
+
+        Vector3 direction = targetPos - shooterPos;
+        float distance = direction.magnitude;
+
+        RaycastHit hit;
+        if (Physics.Raycast(shooterPos, direction.normalized, out hit, distance, lineOfSightBlockers))
+        {
+            Character hitCharacter = hit.collider.GetComponent<Character>();
+            if (hitCharacter == null)
+                hitCharacter = hit.collider.GetComponentInParent<Character>();
+
+            if (hitCharacter == target)
+            {
+                // Попали в цель - линия видимости чистая
+                return true;
+            }
+            else
+            {
+                // Попали в препятствие
+                return false;
+            }
+        }
+
+        // Нет препятствий - линия видимости чистая
+        return true;
+    }
+
+    /// <summary>
+    /// Получить ближайшую позицию для атаки цели (старый метод для совместимости)
     /// </summary>
     Vector3 GetNearestAttackPosition(Character target)
+    {
+        return GetNearestAttackPosition(null, target);
+    }
+
+    /// <summary>
+    /// Получить ближайшую позицию для атаки цели с учетом резерваций
+    /// </summary>
+    Vector3 GetNearestAttackPosition(Character attacker, Character target)
     {
         if (gridManager == null)
         {
@@ -880,9 +997,13 @@ public class CombatSystem : MonoBehaviour
             return target.transform.position + Vector3.right * attackRange;
         }
 
+        Vector2Int attackerGridPos = attacker != null ? gridManager.WorldToGrid(attacker.transform.position) : Vector2Int.zero;
         Vector2Int targetGridPos = gridManager.WorldToGrid(target.transform.position);
 
         // Ищем ближайшую свободную клетку в дистанции атаки
+        // Упорядочим по расстоянию если известна позиция атакующего
+        List<(Vector2Int offset, float distance)> offsetsWithDistance = new List<(Vector2Int, float)>();
+
         Vector2Int[] offsets = {
             new Vector2Int(1, 0),   // право
             new Vector2Int(-1, 0),  // лево
@@ -894,18 +1015,44 @@ public class CombatSystem : MonoBehaviour
             new Vector2Int(-1, -1)  // лево-низ
         };
 
+        // Сортируем позиции по расстоянию от атакующего
         foreach (Vector2Int offset in offsets)
         {
             Vector2Int attackGridPos = targetGridPos + offset;
+            float distance = attacker != null ? Vector2Int.Distance(attackerGridPos, attackGridPos) : 0f;
+            offsetsWithDistance.Add((offset, distance));
+        }
 
-            if (gridManager.IsValidGridPosition(attackGridPos))
+        // Сортируем по расстоянию (ближайшие первые)
+        offsetsWithDistance.Sort((a, b) => a.distance.CompareTo(b.distance));
+
+        // Проверяем позиции в порядке близости
+        foreach (var (offset, _) in offsetsWithDistance)
+        {
+            Vector2Int attackGridPos = targetGridPos + offset;
+
+            if (!gridManager.IsValidGridPosition(attackGridPos))
+                continue;
+
+            var cell = gridManager.GetCell(attackGridPos);
+
+            // Проверяем что клетка не занята
+            if (cell != null && cell.isOccupied)
+                continue;
+
+            // Проверяем что клетка не зарезервирована другим персонажем
+            if (reservedCombatPositions.ContainsKey(attackGridPos))
             {
-                var cell = gridManager.GetCell(attackGridPos);
-                if (cell == null || !cell.isOccupied)
+                // Если это наша собственная резервация - можем использовать
+                if (attacker != null && reservedCombatPositions[attackGridPos] == attacker)
                 {
                     return gridManager.GridToWorld(attackGridPos);
                 }
+                continue; // Зарезервирована кем-то другим
             }
+
+            // Клетка свободна!
+            return gridManager.GridToWorld(attackGridPos);
         }
 
         // Если не нашли свободную клетку, возвращаем позицию справа от цели
@@ -1022,6 +1169,9 @@ public class CombatSystem : MonoBehaviour
         }
 
         activeCombatants.Clear();
+
+        // Очищаем все резервации
+        reservedCombatPositions.Clear();
     }
 
     void OnDrawGizmosSelected()

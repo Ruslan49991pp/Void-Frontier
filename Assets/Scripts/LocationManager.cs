@@ -63,35 +63,10 @@ public class LocationManager : MonoBehaviour
     {
         InitializeLocation();
 
-        // Инициализируем UI систему здесь, когда все готово
-        EnsureGameUI();
-
         if (autoGenerateOnStart)
         {
             // Задержка чтобы GridManager успел создать персонажей и кокпит первыми
             StartCoroutine(DelayedGenerateLocation());
-        }
-    }
-
-    /// <summary>
-    /// Убедиться что GameUI существует
-    /// </summary>
-    void EnsureGameUI()
-    {
-        GameUI gameUI = FindObjectOfType<GameUI>();
-        if (gameUI == null)
-        {
-            GameObject gameUIGO = new GameObject("GameUI");
-            gameUI = gameUIGO.AddComponent<GameUI>();
-        }
-
-        // Убедимся что EventSystem тоже есть
-        UnityEngine.EventSystems.EventSystem eventSystem = FindObjectOfType<UnityEngine.EventSystems.EventSystem>();
-        if (eventSystem == null)
-        {
-            GameObject eventSystemGO = new GameObject("EventSystem");
-            eventSystem = eventSystemGO.AddComponent<UnityEngine.EventSystems.EventSystem>();
-            eventSystemGO.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
         }
     }
 
@@ -402,7 +377,6 @@ public class LocationManager : MonoBehaviour
                 // Если компонента нет - добавляем его
                 if (asteroidInfo == null)
                 {
-                    Debug.Log($"[LocationManager] Adding LocationObjectInfo to asteroid '{asteroid.name}'");
                     asteroidInfo = asteroid.AddComponent<LocationObjectInfo>();
                 }
 
@@ -421,8 +395,6 @@ public class LocationManager : MonoBehaviour
                 // ВАЖНО: Сохраняем позицию в сетке для корректной визуализации
                 asteroidInfo.gridStartPosition = cell.gridPosition;
                 asteroidInfo.gridSize = new Vector2Int(8, 8);
-
-                Debug.Log($"[LocationManager] Created asteroid '{asteroid.name}' at {asteroidPosition} with {asteroidInfo.metalAmount}/{asteroidInfo.maxMetalAmount} metal (size: {sizeMultiplier:F2})");
 
                 // Добавляем визуализатор занятых клеток для отладки
                 OccupiedCellsVisualizer visualizer = asteroid.AddComponent<OccupiedCellsVisualizer>();

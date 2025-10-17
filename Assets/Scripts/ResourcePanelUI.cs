@@ -39,8 +39,6 @@ public class ResourcePanelUI : MonoBehaviour
 
     void Awake()
     {
-        Debug.Log($"[ResourcePanelUI] Awake called on {gameObject.name}, path: {GetGameObjectPath(gameObject)}");
-
         // ЗАЩИТА: Проверяем, не является ли этот объект клоном слота (рекурсия!)
         if (gameObject.name.Contains("ResourceSlot") || (gameObject.name.Contains("(Clone)") && transform.parent != null && transform.parent.name.Contains("ResourceSlot")))
         {
@@ -79,7 +77,6 @@ public class ResourcePanelUI : MonoBehaviour
         // Защита от повторной инициализации
         if (isInitialized)
         {
-            Debug.LogWarning($"[ResourcePanelUI] Already initialized on {gameObject.name}, skipping Start()");
             return;
         }
 
@@ -125,7 +122,6 @@ public class ResourcePanelUI : MonoBehaviour
     {
         cachedCharacters = FindObjectsOfType<Character>();
         cachedItems = FindObjectsOfType<Item>();
-        Debug.Log($"[ResourcePanelUI] Cache refreshed: {cachedCharacters.Length} characters, {cachedItems.Length} items");
     }
 
     /// <summary>
@@ -135,7 +131,6 @@ public class ResourcePanelUI : MonoBehaviour
     {
         if (resourceManager == null || resourceSlotPrefab == null)
         {
-            Debug.LogWarning("[ResourcePanelUI] Cannot initialize: ResourceManager or prefab is missing");
             return;
         }
 
@@ -164,8 +159,6 @@ public class ResourcePanelUI : MonoBehaviour
         {
             CreateResourceSlot(resource);
         }
-
-        Debug.Log($"[ResourcePanelUI] Initialized {resourceSlots.Count} resource slots");
     }
 
     /// <summary>
@@ -193,8 +186,6 @@ public class ResourcePanelUI : MonoBehaviour
 
         // Сохраняем в словарь
         resourceSlots[resource.resourceName] = slotUI;
-
-        Debug.Log($"[ResourcePanelUI] Created slot for resource: {resource.resourceName}");
     }
 
     /// <summary>
@@ -211,7 +202,6 @@ public class ResourcePanelUI : MonoBehaviour
             }
 
             resourceSlots.Remove(resourceName);
-            Debug.Log($"[ResourcePanelUI] Removed slot for resource: {resourceName}");
         }
     }
 
@@ -380,14 +370,44 @@ public class ResourcePanelUI : MonoBehaviour
 
         foreach (Item item in cachedItems)
         {
-            if (item.itemData != null && item.itemData.itemType == ItemType.Resource)
+            // ЗАЩИТА: Проверяем что item не был уничтожен
+            if (item == null || ReferenceEquals(item, null))
             {
-                Vector2Int itemGridPos = gridManager.WorldToGrid(item.transform.position);
+                continue;
+            }
+
+            // ЗАЩИТА: Безопасно получаем itemData
+            ItemData itemData = null;
+            try
+            {
+                itemData = item.itemData;
+            }
+            catch (System.Exception)
+            {
+                // Item был уничтожен во время обращения
+                continue;
+            }
+
+            if (itemData != null && itemData.itemType == ItemType.Resource)
+            {
+                // ЗАЩИТА: Безопасно получаем позицию
+                Vector3 itemPosition;
+                try
+                {
+                    itemPosition = item.transform.position;
+                }
+                catch (System.Exception)
+                {
+                    // Item был уничтожен во время обращения
+                    continue;
+                }
+
+                Vector2Int itemGridPos = gridManager.WorldToGrid(itemPosition);
 
                 // Проверяем, находится ли предмет на территории корабля
                 if (shipTerritory.Contains(itemGridPos))
                 {
-                    string resourceName = item.itemData.itemName;
+                    string resourceName = itemData.itemName;
 
                     if (resources.ContainsKey(resourceName))
                     {
@@ -481,7 +501,6 @@ public class ResourcePanelUI : MonoBehaviour
 
     void OnDestroy()
     {
-        Debug.Log($"[ResourcePanelUI] OnDestroy called on {gameObject.name}");
         ClearResourceSlots();
         isInitialized = false;
     }

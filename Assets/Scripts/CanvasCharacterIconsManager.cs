@@ -178,20 +178,28 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         iconData.lastClickTime = currentTime;
         characterIcons[character] = iconData;
 
-        // Ctrl + клик
-        if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+        // Одинарный клик - только выделение
+        if (!isDoubleClick)
         {
-            selectionManager.ToggleSelection(character.gameObject);
+            // Ctrl + клик
+            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            {
+                selectionManager.ToggleSelection(character.gameObject);
+            }
+            else
+            {
+                selectionManager.ClearSelection();
+                selectionManager.AddToSelection(character.gameObject);
+            }
         }
+        // Двойной клик - выделение + фокус камеры
         else
         {
+            // Выделяем персонажа
             selectionManager.ClearSelection();
             selectionManager.AddToSelection(character.gameObject);
-        }
 
-        // Двойной клик - фокус камеры
-        if (isDoubleClick)
-        {
+            // Фокусируем камеру
             CameraController cameraController = FindObjectOfType<CameraController>();
             if (cameraController != null)
             {

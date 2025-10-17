@@ -74,16 +74,12 @@ public class OccupiedCellsVisualizer : MonoBehaviour
             objectGridPos = locationInfo.gridStartPosition;
             cellsX = locationInfo.gridSize.x;
             cellsY = locationInfo.gridSize.y;
-            Debug.Log($"[OccupiedCellsVisualizer] Using stored grid position {objectGridPos} from LocationObjectInfo");
         }
         else
         {
             // Fallback: вычисляем позицию из мировых координат
             objectGridPos = gridManager.WorldToGrid(transform.position);
-            Debug.Log($"[OccupiedCellsVisualizer] Calculated grid position {objectGridPos} from world position");
         }
-
-        Debug.Log($"[OccupiedCellsVisualizer] Visualizing {cellsX}x{cellsY} cells for {gameObject.name} at grid position {objectGridPos}");
 
         // Создаем родительский объект для визуализации
         GameObject visualParent = new GameObject("CellsVisualization");
@@ -130,17 +126,8 @@ public class OccupiedCellsVisualizer : MonoBehaviour
                 }
 
                 visualizationCubes.Add(cube);
-
-                // Проверяем статус клетки
-                GridCell cell = gridManager.GetCell(cellGridPos);
-                if (cell != null)
-                {
-                    Debug.Log($"  Cell ({cellGridPos.x}, {cellGridPos.y}): occupied={cell.isOccupied}, type={cell.objectType}");
-                }
             }
         }
-
-        Debug.Log($"[OccupiedCellsVisualizer] Created {visualizationCubes.Count} visualization cubes");
     }
 
     /// <summary>

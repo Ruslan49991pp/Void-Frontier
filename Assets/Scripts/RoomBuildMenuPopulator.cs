@@ -89,7 +89,7 @@ public class RoomBuildMenuPopulator : MonoBehaviour
 
     void OnWallIntSlotClicked()
     {
-        Debug.Log("[RoomBuildMenuPopulator] Wall_Int_Slot clicked! Activating interior wall drag mode...");
+
 
         // Активируем режим строительства внутренних стен (новая система с drag)
         if (InteriorWallDragBuilder.Instance != null)
@@ -104,7 +104,7 @@ public class RoomBuildMenuPopulator : MonoBehaviour
 
     void OnDoorSlotClicked()
     {
-        Debug.Log("[RoomBuildMenuPopulator] Door_Slot clicked!");
+
         // TODO: Добавить логику для установки дверей
     }
 

@@ -116,7 +116,7 @@ public class ResourceSpawner : MonoBehaviour
         }
 
         // Получаем данные ресурса "Металл"
-        ResourceData metalData = resourceManager.GetResourceByName("Металл");
+        ResourceData metalData = resourceManager.GetResourceByName(ItemNames.METAL);
         if (metalData == null)
         {
             Debug.LogWarning("[ResourceSpawner] Metal resource not found in ResourceManager!");
@@ -154,7 +154,7 @@ public class ResourceSpawner : MonoBehaviour
             }
         }
 
-        Debug.Log($"[ResourceSpawner] Spawned {successfulSpawns} metal resources out of {spawnCount} desired");
+
     }
 
     /// <summary>
