@@ -55,6 +55,10 @@ public class SelectionManager : MonoBehaviour
     private Dictionary<MeshRenderer, Material> hoverMaterials = new Dictionary<MeshRenderer, Material>();
     private List<MeshRenderer> currentHighlightedRenderers = new List<MeshRenderer>();
 
+    // ARCHITECTURE: Кэшированные ссылки на менеджеры через ServiceLocator
+    private GridManager gridManager;
+    private MiningManager miningManager;
+
     // Публичные свойства
     public bool IsBoxSelecting => isBoxSelecting;
     public bool RightClickHandledThisFrame => rightClickHandledThisFrame;
@@ -64,7 +68,19 @@ public class SelectionManager : MonoBehaviour
         if (playerCamera == null)
             playerCamera = Camera.main;
 
-
+        // ARCHITECTURE: Получаем менеджеры через ServiceLocator вместо FindObjectOfType
+        // Это намного быстрее и более надежно
+        if (ServiceLocator.IsInitialized)
+        {
+            gridManager = ServiceLocator.Get<GridManager>();
+            // MiningManager создается динамически, поэтому может отсутствовать
+            ServiceLocator.TryGet<MiningManager>(out miningManager);
+        }
+        else
+        {
+            Debug.LogWarning("[SelectionManager] ServiceLocator not initialized, falling back to FindObjectOfType");
+            gridManager = FindObjectOfType<GridManager>();
+        }
 
         InitializeUI();
         CreateSelectionIndicatorPrefab();
@@ -968,6 +984,7 @@ public class SelectionManager : MonoBehaviour
 
     /// <summary>
     /// Начать подсветку объекта и всех его дочерних MeshRenderer'ов
+    /// PERFORMANCE FIX: Переиспользуем материалы вместо создания/уничтожения
     /// </summary>
     void StartHover(GameObject obj)
     {
@@ -987,7 +1004,7 @@ public class SelectionManager : MonoBehaviour
                 originalMaterials[renderer] = renderer.material;
             }
 
-            // Создаем или получаем hover материал
+            // PERFORMANCE: Создаем hover материал только один раз и переиспользуем
             if (!hoverMaterials.ContainsKey(renderer))
             {
                 Material hoverMat = new Material(originalMaterials[renderer]);
@@ -1019,6 +1036,8 @@ public class SelectionManager : MonoBehaviour
 
     /// <summary>
     /// Очистить hover материалы для конкретного объекта
+    /// PERFORMANCE FIX: НЕ уничтожаем материалы, только восстанавливаем оригинальный
+    /// Hover материалы остаются в кэше для переиспользования
     /// </summary>
     void ClearHoverMaterialsForObject(GameObject obj)
     {
@@ -1034,21 +1053,8 @@ public class SelectionManager : MonoBehaviour
                 renderer.material = originalMaterials[renderer];
             }
 
-            // Удаляем записи о hover материалах
-            if (originalMaterials.ContainsKey(renderer))
-            {
-                originalMaterials.Remove(renderer);
-            }
-
-            if (hoverMaterials.ContainsKey(renderer))
-            {
-                Material hoverMat = hoverMaterials[renderer];
-                if (hoverMat != null)
-                {
-                    DestroyImmediate(hoverMat);
-                }
-                hoverMaterials.Remove(renderer);
-            }
+            // PERFORMANCE: НЕ удаляем записи из словарей - оставляем для переиспользования
+            // Материалы будут уничтожены только в OnDestroy()
 
             // Убираем из списка подсвеченных
             currentHighlightedRenderers.Remove(renderer);
@@ -1100,12 +1106,22 @@ public class SelectionManager : MonoBehaviour
             {
                 if (locationInfo.metalAmount > 0)
                 {
-                    // Находим или создаем MiningManager
-                    MiningManager miningManager = FindObjectOfType<MiningManager>();
+                    // ARCHITECTURE: Используем кэшированную ссылку или создаем новый MiningManager
                     if (miningManager == null)
                     {
-                        GameObject miningManagerObj = new GameObject("MiningManager");
-                        miningManager = miningManagerObj.AddComponent<MiningManager>();
+                        // Пытаемся получить через ServiceLocator
+                        if (!ServiceLocator.TryGet<MiningManager>(out miningManager))
+                        {
+                            // Создаем новый если не найден
+                            GameObject miningManagerObj = new GameObject("MiningManager");
+                            miningManager = miningManagerObj.AddComponent<MiningManager>();
+
+                            // Регистрируем в ServiceLocator для будущего использования
+                            if (ServiceLocator.IsInitialized)
+                            {
+                                ServiceLocator.Register<MiningManager>(miningManager);
+                            }
+                        }
                     }
 
                     // Начинаем добычу для ВСЕХ выделенных персонажей
@@ -1234,12 +1250,15 @@ public class SelectionManager : MonoBehaviour
             RemoveFromSelection(item.gameObject);
         }
 
-        // Освобождаем клетку в GridManager
-        GridManager gridManager = FindObjectOfType<GridManager>();
+        // ARCHITECTURE: Освобождаем клетку в GridManager используя кэшированную ссылку
         if (gridManager != null)
         {
             Vector2Int gridPos = gridManager.WorldToGrid(item.transform.position);
             gridManager.FreeCell(gridPos);
+        }
+        else
+        {
+            Debug.LogWarning("[SelectionManager] GridManager not available for freeing cell");
         }
 
         // Подбираем предмет (ВАЖНО: после этого item будет уничтожен!)

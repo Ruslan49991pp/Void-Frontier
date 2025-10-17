@@ -41,6 +41,11 @@ public class CameraController : MonoBehaviour
     private Vector2 boundsX = new Vector2(-50, 50);
     private Vector2 boundsZ = new Vector2(-50, 50);
 
+    // PERFORMANCE: Флаг для предотвращения повторных поисков ShipBuildingSystem
+    private bool hasTriedFindingBuildingSystem = false;
+    private float nextBuildingSystemSearchTime = 0f;
+    private const float BUILDING_SYSTEM_SEARCH_INTERVAL = 2f; // Повторять поиск раз в 2 секунды
+
     void Start()
     {
         if (cam == null) cam = GetComponent<Camera>() ?? Camera.main;
@@ -66,9 +71,13 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
-        // Ищем ShipBuildingSystem если еще не найден
-        if (buildingSystem == null)
+        // PERFORMANCE FIX: Ищем ShipBuildingSystem с интервалом, а не каждый кадр
+        if (buildingSystem == null && Time.time >= nextBuildingSystemSearchTime)
+        {
+            hasTriedFindingBuildingSystem = false; // Сбрасываем флаг для повторной попытки
             TryFindBuildingSystem();
+            nextBuildingSystemSearchTime = Time.time + BUILDING_SYSTEM_SEARCH_INTERVAL;
+        }
 
         // Блокируем ввод если открыт инвентарь или игра на паузе (но НЕ во время строительства)
         if (!InventoryUI.IsAnyInventoryOpen && !IsGamePausedExceptBuildMode())
@@ -264,17 +273,20 @@ public class CameraController : MonoBehaviour
     
     /// <summary>
     /// Попытаться найти ShipBuildingSystem
+    /// PERFORMANCE: Вызывается максимум раз в 2 секунды, а не каждый кадр
     /// </summary>
     void TryFindBuildingSystem()
     {
-        if (buildingSystem == null)
+        if (buildingSystem == null && !hasTriedFindingBuildingSystem)
         {
             buildingSystem = FindObjectOfType<ShipBuildingSystem>();
+            hasTriedFindingBuildingSystem = true;
+
             if (buildingSystem != null)
             {
-
+                // Найдено! Больше не нужно искать
             }
-            // Не выводим предупреждение - поиск будет повторяться автоматически
+            // Не выводим предупреждение - поиск будет повторяться с интервалом
         }
     }
 

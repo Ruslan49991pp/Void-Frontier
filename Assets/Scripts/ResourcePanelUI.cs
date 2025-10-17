@@ -28,11 +28,12 @@ public class ResourcePanelUI : MonoBehaviour
     private float updateTimer;
     private GridManager gridManager;
 
-    // Кэшируем массивы для оптимизации
+    // PERFORMANCE FIX: Кэшируем массивы и обновляем реже + используем события
     private Character[] cachedCharacters;
     private Item[] cachedItems;
     private float cacheRefreshTimer;
-    private float cacheRefreshInterval = 5f; // Обновляем кэш каждые 5 секунд
+    private float cacheRefreshInterval = 30f; // Увеличили с 5 до 30 секунд для производительности
+    private bool needsRefresh = false; // Флаг для принудительного обновления
 
     // Защита от повторной инициализации
     private bool isInitialized = false;
@@ -90,14 +91,37 @@ public class ResourcePanelUI : MonoBehaviour
             }
         }
 
+        // PERFORMANCE FIX: Подписываемся на события для event-driven обновления
+        Character.OnPlayerCharacterSpawned += OnCharacterSpawned;
+
         // НЕ создаем слоты заранее - они создаются динамически при наличии ресурсов
         RefreshCache();
         UpdateResourceDisplay();
         isInitialized = true;
     }
 
+    /// <summary>
+    /// Обработчик спавна персонажа - обновляем кэш
+    /// PERFORMANCE: Вызывается только когда спавнится персонаж, а не каждые 5 секунд
+    /// </summary>
+    void OnCharacterSpawned(Character character)
+    {
+        needsRefresh = true;
+    }
+
     void Update()
     {
+        // PERFORMANCE FIX: Обновляем кэш сразу если есть флаг, иначе по таймеру
+        if (needsRefresh)
+        {
+            needsRefresh = false;
+            RefreshCache();
+            UpdateResourceDisplay();
+            updateTimer = 0f; // Сбрасываем таймер обновления
+            cacheRefreshTimer = 0f; // Сбрасываем таймер кэша
+            return;
+        }
+
         // Обновляем панель с заданным интервалом
         updateTimer += Time.deltaTime;
         if (updateTimer >= updateInterval)
@@ -106,7 +130,7 @@ public class ResourcePanelUI : MonoBehaviour
             UpdateResourceDisplay();
         }
 
-        // Обновляем кэш периодически
+        // Обновляем кэш периодически (теперь раз в 30 секунд вместо 5)
         cacheRefreshTimer += Time.deltaTime;
         if (cacheRefreshTimer >= cacheRefreshInterval)
         {
@@ -501,6 +525,9 @@ public class ResourcePanelUI : MonoBehaviour
 
     void OnDestroy()
     {
+        // PERFORMANCE FIX: Отписываемся от событий
+        Character.OnPlayerCharacterSpawned -= OnCharacterSpawned;
+
         ClearResourceSlots();
         isInitialized = false;
     }

@@ -144,14 +144,24 @@ public class GridManager : MonoBehaviour
     
     /// <summary>
     /// Получить ячейку по координатам сетки
+    /// PERFORMANCE FIX: Прямое обращение к массиву вместо Dictionary lookup
     /// </summary>
     public GridCell GetCell(Vector2Int gridPosition)
     {
-        if (gridLookup.TryGetValue(gridPosition, out GridCell cell))
+        // Преобразуем координаты сетки (-halfWidth...halfWidth) в индексы массива (0...gridWidth)
+        int halfWidth = gridWidth / 2;
+        int halfHeight = gridHeight / 2;
+
+        int arrayX = gridPosition.x + halfWidth;
+        int arrayZ = gridPosition.y + halfHeight;
+
+        // Проверяем границы массива
+        if (arrayX < 0 || arrayX >= gridWidth || arrayZ < 0 || arrayZ >= gridHeight)
         {
-            return cell;
+            return null;
         }
-        return null;
+
+        return grid[arrayX, arrayZ];
     }
     
     /// <summary>
@@ -183,14 +193,23 @@ public class GridManager : MonoBehaviour
     
     /// <summary>
     /// Проверка валидности координат сетки
+    /// PERFORMANCE FIX: Прямая проверка границ вместо Dictionary lookup
     /// </summary>
     public bool IsValidGridPosition(Vector2Int gridPosition)
     {
-        // Проверяем что gridLookup не был уничтожен
-        if (gridLookup == null)
+        // Проверяем что grid не был уничтожен
+        if (grid == null)
             return false;
 
-        return gridLookup.ContainsKey(gridPosition);
+        // Преобразуем координаты сетки в индексы массива
+        int halfWidth = gridWidth / 2;
+        int halfHeight = gridHeight / 2;
+
+        int arrayX = gridPosition.x + halfWidth;
+        int arrayZ = gridPosition.y + halfHeight;
+
+        // Проверяем границы массива
+        return (arrayX >= 0 && arrayX < gridWidth && arrayZ >= 0 && arrayZ < gridHeight);
     }
     
     /// <summary>

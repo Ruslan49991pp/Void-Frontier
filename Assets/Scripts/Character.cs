@@ -154,19 +154,10 @@ public class Character : MonoBehaviour
 
     void Update()
     {
-        // Проверяем hover только если персонаж не выделен
-        if (!isSelected)
-        {
-            CheckMouseHover();
-        }
-        else
-        {
-            // Если персонаж выделен, убираем hover состояние
-            if (isHovered)
-            {
-                isHovered = false;
-            }
-        }
+        // PERFORMANCE FIX: Hover теперь обрабатывается централизованно через SelectionManager
+        // Убрали CheckMouseHover() который вызывался для КАЖДОГО персонажа каждый кадр
+        // Это экономит сотни raycast в секунду (10 персонажей = 600 raycast/сек)
+        // Теперь SelectionManager делает один raycast на все объекты
     }
     
     /// <summary>
@@ -635,8 +626,14 @@ public class Character : MonoBehaviour
     }
     
     /// <summary>
-    /// Проверка наведения мыши на персонажа
+    /// DEPRECATED: Проверка наведения мыши на персонажа
+    /// PERFORMANCE FIX: Этот метод больше не используется!
+    /// Hover теперь обрабатывается централизованно через SelectionManager.HandleHover()
+    /// Это экономит сотни raycast в секунду (один raycast вместо N raycast для N персонажей)
+    ///
+    /// Оставлен для справки, можно удалить в будущем
     /// </summary>
+    /*
     void CheckMouseHover()
     {
         if (mainCamera == null) return;
@@ -669,6 +666,7 @@ public class Character : MonoBehaviour
             SetColor(defaultColor);
         }
     }
+    */
 
     /// <summary>
     /// Отложенная настройка инвентаря для правильной инициализации
