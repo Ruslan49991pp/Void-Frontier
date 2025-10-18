@@ -4,8 +4,9 @@ using UnityEngine;
 
 /// <summary>
 /// Система боевых действий с преследованием врагов и анимацией атак
+/// ARCHITECTURE: Наследуется от BaseManager для интеграции с ServiceLocator
 /// </summary>
-public class CombatSystem : MonoBehaviour
+public class CombatSystem : BaseManager
 {
     [Header("Combat Settings")]
     public float attackRange = 1.5f; // Дистанция атаки (соседняя клетка)
@@ -64,31 +65,37 @@ public class CombatSystem : MonoBehaviour
         public CombatData()
         {
             target = null;
-            lastAttackTime = -999f;
+            lastAttackTime = GameConstants.Combat.INVALID_LAST_ATTACK_TIME;
             isAttacking = false;
             isPursuing = false;
             originalPosition = Vector3.zero;
-            reservedCombatPosition = new Vector2Int(-9999, -9999); // Сигнальное значение "не установлено"
+            reservedCombatPosition = new Vector2Int(GameConstants.Combat.INVALID_GRID_POSITION, GameConstants.Combat.INVALID_GRID_POSITION);
             combatCoroutine = null;
             attackAnimationCoroutine = null;
         }
     }
 
-    void Awake()
+    /// <summary>
+    /// Инициализация менеджера боя через ServiceLocator
+    /// </summary>
+    protected override void OnManagerInitialized()
     {
-        selectionManager = FindObjectOfType<SelectionManager>();
-        gridManager = FindObjectOfType<GridManager>();
+        base.OnManagerInitialized();
+
+        selectionManager = GetService<SelectionManager>();
+        gridManager = GetService<GridManager>();
         playerCamera = Camera.main;
-        enemyTargetingSystem = FindObjectOfType<EnemyTargetingSystem>();
+        enemyTargetingSystem = GetService<EnemyTargetingSystem>();
 
         LoadDamageIndicatorMaterial();
-    }
 
-    void Start()
-    {
         if (selectionManager == null)
         {
-            return;
+            LogError("SelectionManager not found!");
+        }
+        if (gridManager == null)
+        {
+            LogError("GridManager not found!");
         }
     }
 
@@ -287,7 +294,8 @@ public class CombatSystem : MonoBehaviour
         }
 
         // ВАЖНО: Освобождаем зарезервированную боевую позицию
-        if (combatData.reservedCombatPosition.x != -9999 && combatData.reservedCombatPosition.y != -9999)
+        if (combatData.reservedCombatPosition.x != GameConstants.Combat.INVALID_GRID_POSITION &&
+            combatData.reservedCombatPosition.y != GameConstants.Combat.INVALID_GRID_POSITION)
         {
             if (reservedCombatPositions.ContainsKey(combatData.reservedCombatPosition))
             {
@@ -393,7 +401,7 @@ public class CombatSystem : MonoBehaviour
 
                             // НЕ вызываем OnPlayerInitiatedMovement() - это движение инициировано боевой системой, а не игроком
 
-                            yield return new WaitForSeconds(0.1f);
+                            yield return new WaitForSeconds(GameConstants.Combat.COMBAT_FRAME_DELAY);
                             continue; // Пропускаем атаку, продолжаем движение
                         }
                         else
@@ -405,7 +413,7 @@ public class CombatSystem : MonoBehaviour
 
                             // НЕ вызываем OnPlayerInitiatedMovement() - это движение инициировано боевой системой, а не игроком
 
-                            yield return new WaitForSeconds(0.1f);
+                            yield return new WaitForSeconds(GameConstants.Combat.COMBAT_FRAME_DELAY);
                             continue;
                         }
                     }
@@ -431,7 +439,7 @@ public class CombatSystem : MonoBehaviour
                     {
                         movement.MoveTo(freePosition);
                         combatData.isPursuing = true;
-                        yield return new WaitForSeconds(0.1f);
+                        yield return new WaitForSeconds(GameConstants.Combat.COMBAT_FRAME_DELAY);
                         continue; // Продолжаем цикл, не останавливаемся
                     }
                 }
@@ -444,7 +452,8 @@ public class CombatSystem : MonoBehaviour
                 Vector3 cellCenterPosition = gridManager.GridToWorld(currentGridPos);
                 attacker.transform.position = cellCenterPosition;
 
-                if (combatData.reservedCombatPosition.x == -9999 && combatData.reservedCombatPosition.y == -9999)
+                if (combatData.reservedCombatPosition.x == GameConstants.Combat.INVALID_GRID_POSITION &&
+                    combatData.reservedCombatPosition.y == GameConstants.Combat.INVALID_GRID_POSITION)
                 {
                     // Еще не резервировали - резервируем текущую позицию
                     combatData.reservedCombatPosition = currentGridPos;
@@ -474,7 +483,7 @@ public class CombatSystem : MonoBehaviour
                 else
                 {
                     // Ждем готовности к следующей атаке
-                    yield return new WaitForSeconds(0.1f);
+                    yield return new WaitForSeconds(GameConstants.Combat.COMBAT_FRAME_DELAY);
                 }
             }
             else
@@ -484,7 +493,7 @@ public class CombatSystem : MonoBehaviour
 
                 // Проверяем, нужно ли обновить маршрут (если цель сдвинулась или персонаж не движется)
                 bool needToUpdatePath = !movement.IsMoving() ||
-                                       Vector3.Distance(movement.GetDestination(), targetPosition) > 1.5f;
+                                       Vector3.Distance(movement.GetDestination(), targetPosition) > GameConstants.Combat.PATH_UPDATE_THRESHOLD;
 
                 if (!combatData.isPursuing || needToUpdatePath)
                 {
@@ -496,7 +505,8 @@ public class CombatSystem : MonoBehaviour
                 }
 
                 // Освобождаем резервацию если преследуем (не стоим на месте для стрельбы)
-                if (combatData.reservedCombatPosition.x != -9999 && combatData.reservedCombatPosition.y != -9999)
+                if (combatData.reservedCombatPosition.x != GameConstants.Combat.INVALID_GRID_POSITION &&
+                    combatData.reservedCombatPosition.y != GameConstants.Combat.INVALID_GRID_POSITION)
                 {
                     if (reservedCombatPositions.ContainsKey(combatData.reservedCombatPosition))
                     {
@@ -505,10 +515,10 @@ public class CombatSystem : MonoBehaviour
                             reservedCombatPositions.Remove(combatData.reservedCombatPosition);
                         }
                     }
-                    combatData.reservedCombatPosition = new Vector2Int(-9999, -9999);
+                    combatData.reservedCombatPosition = new Vector2Int(GameConstants.Combat.INVALID_GRID_POSITION, GameConstants.Combat.INVALID_GRID_POSITION);
                 }
 
-                yield return new WaitForSeconds(0.1f); // Более частое обновление для лучшего преследования
+                yield return new WaitForSeconds(GameConstants.Combat.COMBAT_FRAME_DELAY); // Более частое обновление для лучшего преследования
             }
 
             yield return null;
@@ -568,7 +578,7 @@ public class CombatSystem : MonoBehaviour
         float attackCooldownTime = currentWeapon != null ? currentWeapon.GetAttackCooldown() : attackCooldown;
 
         // Ждем завершения атаки
-        yield return new WaitForSeconds(attackCooldownTime * 0.5f); // Половина времени для анимации
+        yield return new WaitForSeconds(attackCooldownTime * GameConstants.Combat.ATTACK_COOLDOWN_MULTIPLIER);
 
         // ВАЖНО: Устанавливаем время последней атаки ПОСЛЕ завершения всей атаки
         combatData.lastAttackTime = Time.time;
@@ -644,7 +654,7 @@ public class CombatSystem : MonoBehaviour
         attacker.transform.position = lungePosition;
 
         // Небольшая пауза в точке атаки
-        yield return new WaitForSeconds(0.1f);
+        yield return new WaitForSeconds(GameConstants.Combat.ATTACK_PAUSE_DURATION);
 
         // Фаза 2: Возврат на исходную позицию
         elapsedTime = 0f;
@@ -680,9 +690,9 @@ public class CombatSystem : MonoBehaviour
             yield break;
 
         Quaternion targetRotation = Quaternion.LookRotation(direction);
-        float rotationSpeed = 720f; // Градусов в секунду для быстрого поворота во время атаки
+        float rotationSpeed = GameConstants.Combat.ROTATION_SPEED_ATTACK;
 
-        while (Quaternion.Angle(attacker.transform.rotation, targetRotation) > 1f)
+        while (Quaternion.Angle(attacker.transform.rotation, targetRotation) > GameConstants.Combat.ROTATION_ANGLE_THRESHOLD)
         {
             attacker.transform.rotation = Quaternion.RotateTowards(
                 attacker.transform.rotation,
@@ -762,7 +772,7 @@ public class CombatSystem : MonoBehaviour
         if (target == null) return;
 
         // Создаем объект с текстом урона
-        Vector3 damagePosition = target.transform.position + Vector3.up * 1.8f;
+        Vector3 damagePosition = target.transform.position + Vector3.up * GameConstants.Combat.DAMAGE_TEXT_HEIGHT_OFFSET;
         GameObject damageTextObj = LookAtCamera.CreateBillboardText(
             $"-{damage:F0}",
             damagePosition,
@@ -787,7 +797,7 @@ public class CombatSystem : MonoBehaviour
     {
         TextMesh textMesh = damageTextObj.GetComponent<TextMesh>();
         Vector3 startPos = damageTextObj.transform.position;
-        Vector3 endPos = new Vector3(startPos.x, 10f, startPos.z);
+        Vector3 endPos = new Vector3(startPos.x, GameConstants.Combat.DAMAGE_TEXT_END_HEIGHT, startPos.z);
         Color startColor = textMesh.color;
 
         float elapsedTime = 0f;
@@ -840,8 +850,8 @@ public class CombatSystem : MonoBehaviour
             return false;
 
         // Позиция выстрела (на высоте персонажа)
-        Vector3 shooterPos = attacker.transform.position + Vector3.up * 1f;
-        Vector3 targetPos = target.transform.position + Vector3.up * 1f;
+        Vector3 shooterPos = attacker.transform.position + Vector3.up * GameConstants.Combat.SHOOTER_HEIGHT_OFFSET;
+        Vector3 targetPos = target.transform.position + Vector3.up * GameConstants.Combat.SHOOTER_HEIGHT_OFFSET;
 
         Vector3 direction = targetPos - shooterPos;
         float distance = direction.magnitude;
@@ -892,7 +902,7 @@ public class CombatSystem : MonoBehaviour
         int radiusCells = Mathf.CeilToInt(searchRadius);
         for (int radius = 1; radius <= radiusCells; radius++)
         {
-            for (int angle = 0; angle < 360; angle += 45) // 8 направлений
+            for (int angle = 0; angle < 360; angle += GameConstants.Combat.LINE_OF_SIGHT_SEARCH_ANGLE_STEP)
             {
                 float rad = angle * Mathf.Deg2Rad;
                 int offsetX = Mathf.RoundToInt(Mathf.Cos(rad) * radius);
@@ -949,8 +959,8 @@ public class CombatSystem : MonoBehaviour
     /// </summary>
     bool CheckLineOfSightFromPosition(Vector3 position, Character target)
     {
-        Vector3 shooterPos = position + Vector3.up * 1f;
-        Vector3 targetPos = target.transform.position + Vector3.up * 1f;
+        Vector3 shooterPos = position + Vector3.up * GameConstants.Combat.SHOOTER_HEIGHT_OFFSET;
+        Vector3 targetPos = target.transform.position + Vector3.up * GameConstants.Combat.SHOOTER_HEIGHT_OFFSET;
 
         Vector3 direction = targetPos - shooterPos;
         float distance = direction.magnitude;
@@ -1099,11 +1109,11 @@ public class CombatSystem : MonoBehaviour
                     }
                 }
 
-                // Используем максимальную дальность оружия + 50% запас для преследования
+                // Используем максимальную дальность оружия + запас для преследования
                 // Но не меньше стандартного pursuitRange
                 if (maxWeaponRange > 0)
                 {
-                    maxPursuitDistance = Mathf.Max(pursuitRange, maxWeaponRange * 1.5f);
+                    maxPursuitDistance = Mathf.Max(pursuitRange, maxWeaponRange * GameConstants.Combat.PURSUIT_RANGE_MULTIPLIER);
                 }
             }
 
@@ -1155,7 +1165,10 @@ public class CombatSystem : MonoBehaviour
         // Метод оставлен для обратной совместимости, но логи отключены
     }
 
-    void OnDestroy()
+    /// <summary>
+    /// Завершение работы менеджера боя
+    /// </summary>
+    protected override void OnManagerShutdown()
     {
         // Останавливаем все боевые действия
         List<Character> allCombatants = new List<Character>(activeCombatants.Keys);
@@ -1172,6 +1185,8 @@ public class CombatSystem : MonoBehaviour
 
         // Очищаем все резервации
         reservedCombatPositions.Clear();
+
+        base.OnManagerShutdown();
     }
 
     void OnDrawGizmosSelected()
@@ -1191,8 +1206,8 @@ public class CombatSystem : MonoBehaviour
 
             if (attacker != null && target != null)
             {
-                Vector3 shooterPos = attacker.transform.position + Vector3.up * 1f;
-                Vector3 targetPos = target.transform.position + Vector3.up * 1f;
+                Vector3 shooterPos = attacker.transform.position + Vector3.up * GameConstants.Combat.SHOOTER_HEIGHT_OFFSET;
+                Vector3 targetPos = target.transform.position + Vector3.up * GameConstants.Combat.SHOOTER_HEIGHT_OFFSET;
 
                 // Проверяем линию видимости
                 bool clearShot = HasClearLineOfSight(attacker, target);

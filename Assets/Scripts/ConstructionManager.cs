@@ -4,8 +4,9 @@ using UnityEngine;
 
 /// <summary>
 /// Менеджер строительства - управляет процессом строительства блоков корабля персонажами
+/// ARCHITECTURE: Наследуется от BaseManager для интеграции с ServiceLocator
 /// </summary>
-public class ConstructionManager : MonoBehaviour
+public class ConstructionManager : BaseManager
 {
     private static ConstructionManager instance;
 
@@ -24,6 +25,9 @@ public class ConstructionManager : MonoBehaviour
             return instance;
         }
     }
+
+    // Кешированная ссылка на GridManager для оптимизации
+    private GridManager gridManager;
 
     [Header("Construction Settings")]
     [Tooltip("Количество прыжков для постройки одного блока")]
@@ -69,8 +73,14 @@ public class ConstructionManager : MonoBehaviour
     // Полосы прогресса для блоков
     private Dictionary<ConstructionBlock, GameObject> progressBars = new Dictionary<ConstructionBlock, GameObject>();
 
-    void Awake()
+    /// <summary>
+    /// Инициализация менеджера строительства через ServiceLocator
+    /// </summary>
+    protected override void OnManagerInitialized()
     {
+        base.OnManagerInitialized();
+
+        // Singleton pattern
         if (instance == null)
         {
             instance = this;
@@ -79,6 +89,14 @@ public class ConstructionManager : MonoBehaviour
         else if (instance != this)
         {
             Destroy(gameObject);
+            return;
+        }
+
+        // Получаем GridManager через ServiceLocator
+        gridManager = GetService<GridManager>();
+        if (gridManager == null)
+        {
+            LogError("GridManager not found! Construction system will not work properly.");
         }
     }
 
@@ -216,10 +234,9 @@ public class ConstructionManager : MonoBehaviour
     /// </summary>
     Vector3? FindNearestValidConstructionPosition(Vector3 characterPosition, ConstructionBlock block)
     {
-        GridManager gridManager = FindObjectOfType<GridManager>();
         if (gridManager == null)
         {
-            Debug.LogWarning("[ConstructionManager] GridManager not found, using default adjacent position");
+            LogError("GridManager not available, using default adjacent position");
             return block.worldPosition + new Vector3(10f, 0, 0); // 10f - размер клетки по умолчанию
         }
 
@@ -340,10 +357,9 @@ public class ConstructionManager : MonoBehaviour
 
         // Получаем GridManager для проверки позиций в сетке
         Vector3 startPos = character.transform.position;
-        GridManager gridManager = FindObjectOfType<GridManager>();
         if (gridManager == null)
         {
-            Debug.LogError("[ConstructionManager] GridManager not found!");
+            LogError("GridManager not available!");
             OnConstructionFailed(character, block);
             yield break;
         }
@@ -547,16 +563,12 @@ public class ConstructionManager : MonoBehaviour
         // Строительство может быть продолжено другим персонажем
 
         // ОСВОБОЖДАЕМ КЛЕТКУ СТЕНЫ, ЕСЛИ ОНА БЫЛА ПОМЕЧЕНА КАК ЗАНЯТАЯ
-        if (block.blockType == ConstructionBlock.BlockType.Wall)
+        if (block.blockType == ConstructionBlock.BlockType.Wall && gridManager != null)
         {
-            GridManager gridManager = FindObjectOfType<GridManager>();
-            if (gridManager != null)
+            GridCell wallCell = gridManager.GetCell(block.gridPosition);
+            if (wallCell != null && wallCell.isOccupied)
             {
-                GridCell wallCell = gridManager.GetCell(block.gridPosition);
-                if (wallCell != null && wallCell.isOccupied)
-                {
-                    wallCell.isOccupied = false;
-                }
+                wallCell.isOccupied = false;
             }
         }
 
@@ -599,7 +611,6 @@ public class ConstructionManager : MonoBehaviour
         progressBars.Clear();
 
         // ОСВОБОЖДАЕМ КЛЕТКИ СТЕН, КОТОРЫЕ БЫЛИ ПОМЕЧЕНЫ КАК ЗАНЯТЫЕ ВО ВРЕМЯ СТРОИТЕЛЬСТВА
-        GridManager gridManager = FindObjectOfType<GridManager>();
         if (gridManager != null)
         {
             foreach (var block in constructionQueue)
@@ -681,16 +692,12 @@ public class ConstructionManager : MonoBehaviour
         // Полоса будет удалена только когда строительство завершится
 
         // ОСВОБОЖДАЕМ КЛЕТКУ СТЕНЫ, ЕСЛИ ОНА БЫЛА ПОМЕЧЕНА КАК ЗАНЯТАЯ
-        if (block.blockType == ConstructionBlock.BlockType.Wall)
+        if (block.blockType == ConstructionBlock.BlockType.Wall && gridManager != null)
         {
-            GridManager gridManager = FindObjectOfType<GridManager>();
-            if (gridManager != null)
+            GridCell wallCell = gridManager.GetCell(block.gridPosition);
+            if (wallCell != null && wallCell.isOccupied)
             {
-                GridCell wallCell = gridManager.GetCell(block.gridPosition);
-                if (wallCell != null && wallCell.isOccupied)
-                {
-                    wallCell.isOccupied = false;
-                }
+                wallCell.isOccupied = false;
             }
         }
 

@@ -123,7 +123,8 @@ public class MiningManager : MonoBehaviour
     /// </summary>
     IEnumerator MiningProcess(MiningTask task)
     {
-
+        // ARCHITECTURE: Публикуем событие начала добычи через EventBus
+        EventBus.Publish(new MiningStartedEvent(task.character, task.asteroid));
 
         Character character = task.character;
         CharacterMovement movement = character.GetComponent<CharacterMovement>();
@@ -277,9 +278,7 @@ public class MiningManager : MonoBehaviour
 
 
         // Основной цикл добычи
-
-
-
+        int totalMinedMetal = 0; // Для события MiningCompletedEvent
         int loopIteration = 0;
         while (task.isActive && task.asteroidInfo.metalAmount > 0)
         {
@@ -340,6 +339,7 @@ public class MiningManager : MonoBehaviour
             int minedAmount = Mathf.Min(metalPerJump, task.asteroidInfo.metalAmount);
             int oldAmount = task.asteroidInfo.metalAmount;
             task.asteroidInfo.metalAmount -= minedAmount;
+            totalMinedMetal += minedAmount; // Накапливаем для события
 
 
             // Добавляем металл в инвентарь персонажа
@@ -371,11 +371,10 @@ public class MiningManager : MonoBehaviour
 
         }
 
-
-
+        // ARCHITECTURE: Публикуем событие завершения добычи через EventBus
+        EventBus.Publish(new MiningCompletedEvent(character, task.asteroid, totalMinedMetal));
 
         // Добыча завершена
-
         StopMiningForCharacter(character);
     }
 

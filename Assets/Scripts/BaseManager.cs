@@ -10,8 +10,10 @@ using UnityEngine;
 /// 4. Общие утилиты для логирования и отладки
 ///
 /// ЖИЗНЕННЫЙ ЦИКЛ:
-///   Awake() -> InitializeManager() -> OnManagerInitialized()
+///   Start() -> InitializeManager() -> OnManagerInitialized()
 ///   OnDestroy() -> ShutdownManager() -> OnManagerShutdown()
+///
+/// ВАЖНО: Инициализация происходит в Start(), чтобы ServiceLocator был доступен
 ///
 /// ИСПОЛЬЗОВАНИЕ:
 ///   public class MyManager : BaseManager
@@ -46,10 +48,10 @@ public abstract class BaseManager : MonoBehaviour
     // ========================================================================
 
     /// <summary>
-    /// Awake вызывается при создании объекта
+    /// Start вызывается после Awake и после того как ServiceLocator инициализирован
     /// НЕ переопределяйте этот метод! Используйте OnManagerInitialized()
     /// </summary>
-    protected virtual void Awake()
+    protected virtual void Start()
     {
         InitializeManager();
     }

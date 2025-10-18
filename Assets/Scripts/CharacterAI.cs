@@ -57,9 +57,10 @@ public class CharacterAI : MonoBehaviour
             movement = gameObject.AddComponent<CharacterMovement>();
         }
 
-        selectionManager = FindObjectOfType<SelectionManager>();
-        gridManager = FindObjectOfType<GridManager>();
-        combatSystem = FindObjectOfType<CombatSystem>();
+        // PERFORMANCE: Используем ServiceLocator вместо FindObjectOfType (O(1) вместо O(n))
+        selectionManager = ServiceLocator.Get<SelectionManager>();
+        gridManager = ServiceLocator.Get<GridManager>();
+        combatSystem = ServiceLocator.Get<CombatSystem>();
         constructionManager = ConstructionManager.Instance;
     }
 
@@ -69,7 +70,8 @@ public class CharacterAI : MonoBehaviour
         idleBasePosition = transform.position;
 
         // Ищем MiningManager в Start() чтобы гарантировать что он успел инициализироваться
-        miningManager = FindObjectOfType<MiningManager>();
+        // PERFORMANCE: Используем ServiceLocator вместо FindObjectOfType (O(1) вместо O(n))
+        miningManager = ServiceLocator.Get<MiningManager>();
         if (miningManager == null)
         {
             Debug.LogWarning($"[CharacterAI] MiningManager not found for {character?.GetFullName() ?? gameObject.name}");

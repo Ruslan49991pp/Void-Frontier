@@ -37,7 +37,7 @@ public class Character : MonoBehaviour
     public Color hoverColor = Color.cyan;
     
     [Header("Stats")]
-    public float moveSpeed = 3f;
+    public float moveSpeed = GameConstants.Character.DEFAULT_MOVE_SPEED;
     
     // Статическая система генерации имен с отслеживанием использованных комбинаций
     private static readonly string[] FirstNames = {
@@ -81,8 +81,14 @@ public class Character : MonoBehaviour
     private Camera mainCamera;
     private CharacterAI characterAI;
     private Inventory characterInventory;
-    
-    // Статическое событие для уведомления о создании персонажа игрока
+
+    // Кешированные ссылки на системы через ServiceLocator (для оптимизации)
+    private CombatSystem cachedCombatSystem;
+    private InventoryUI cachedInventoryUI;
+
+    // DEPRECATED: Старое статическое событие - заменено на EventBus
+    // Оставлено для обратной совместимости, будет удалено в будущем
+    [System.Obsolete("Use EventBus.Subscribe<CharacterSpawnedEvent>() instead")]
     public static event System.Action<Character> OnPlayerCharacterSpawned;
 
     void Awake()
@@ -145,11 +151,16 @@ public class Character : MonoBehaviour
 
     void Start()
     {
-        // Уведомляем систему иконок о создании персонажа игрока
+        // ARCHITECTURE: Публикуем событие спавна персонажа через EventBus
+        EventBus.Publish(new CharacterSpawnedEvent(this));
+
+        // DEPRECATED: Поддержка старого API для обратной совместимости
+        #pragma warning disable CS0618 // Type or member is obsolete
         if (IsPlayerCharacter() && OnPlayerCharacterSpawned != null)
         {
             OnPlayerCharacterSpawned.Invoke(this);
         }
+        #pragma warning restore CS0618
     }
 
     void Update()
@@ -158,6 +169,32 @@ public class Character : MonoBehaviour
         // Убрали CheckMouseHover() который вызывался для КАЖДОГО персонажа каждый кадр
         // Это экономит сотни raycast в секунду (10 персонажей = 600 raycast/сек)
         // Теперь SelectionManager делает один raycast на все объекты
+    }
+
+    /// <summary>
+    /// Получить CombatSystem через ServiceLocator с кешированием
+    /// PERFORMANCE: Замена FindObjectOfType (O(n)) на ServiceLocator (O(1))
+    /// </summary>
+    CombatSystem GetCombatSystem()
+    {
+        if (cachedCombatSystem == null)
+        {
+            cachedCombatSystem = ServiceLocator.Get<CombatSystem>();
+        }
+        return cachedCombatSystem;
+    }
+
+    /// <summary>
+    /// Получить InventoryUI через ServiceLocator с кешированием
+    /// PERFORMANCE: Замена FindObjectOfType (O(n)) на ServiceLocator (O(1))
+    /// </summary>
+    InventoryUI GetInventoryUI()
+    {
+        if (cachedInventoryUI == null)
+        {
+            cachedInventoryUI = ServiceLocator.Get<InventoryUI>();
+        }
+        return cachedInventoryUI;
     }
     
     /// <summary>
@@ -171,7 +208,7 @@ public class Character : MonoBehaviour
         GenerateUniqueName();
         
         characterData.level = staticRandom.Next(1, 6);
-        characterData.maxHealth = 100f;
+        characterData.maxHealth = GameConstants.Character.DEFAULT_HEALTH;
         characterData.health = characterData.maxHealth;
         characterData.profession = Professions[staticRandom.Next(0, Professions.Length)];
         
@@ -185,7 +222,7 @@ public class Character : MonoBehaviour
     /// </summary>
     void GenerateUniqueName()
     {
-        int maxAttempts = 1000; // Предотвращение бесконечного цикла
+        int maxAttempts = GameConstants.Character.MAX_NAME_GENERATION_ATTEMPTS;
         int attempts = 0;
         
         do
@@ -232,7 +269,7 @@ public class Character : MonoBehaviour
     {
         usedNames.Clear();
         // Пересоздаем Random с новым seed для лучшей случайности
-        staticRandom = new System.Random(System.DateTime.Now.Millisecond + UnityEngine.Random.Range(0, 1000));
+        staticRandom = new System.Random(System.DateTime.Now.Millisecond + UnityEngine.Random.Range(0, GameConstants.Character.RANDOM_SEED_RANGE));
     }
     
     /// <summary>
@@ -336,14 +373,17 @@ public class Character : MonoBehaviour
     public void TakeDamage(float damage)
     {
         characterData.health = Mathf.Max(0, characterData.health - damage);
-        
+
+        // ARCHITECTURE: Публикуем событие получения урона через EventBus
+        EventBus.Publish(new CharacterDamagedEvent(this, damage));
+
         // Обновляем health в LocationObjectInfo
         var objectInfo = GetComponent<LocationObjectInfo>();
         if (objectInfo != null)
         {
             objectInfo.health = characterData.health;
         }
-        
+
         if (characterData.health <= 0 && !isDead)
         {
             // Выполняем смерть персонажа
@@ -360,8 +400,11 @@ public class Character : MonoBehaviour
 
         isDead = true;
 
-        // Поворачиваем персонажа на -90 градусов по оси X (падение)
-        transform.rotation = Quaternion.Euler(-90f, transform.rotation.eulerAngles.y, transform.rotation.eulerAngles.z);
+        // ARCHITECTURE: Публикуем событие смерти персонажа через EventBus
+        EventBus.Publish(new CharacterDiedEvent(this));
+
+        // Поворачиваем персонажа по оси X (падение)
+        transform.rotation = Quaternion.Euler(GameConstants.Character.DEATH_ROTATION_ANGLE, transform.rotation.eulerAngles.y, transform.rotation.eulerAngles.z);
 
         // Отключаем все компоненты управления и движения
         DisableCharacterControl();
@@ -406,7 +449,7 @@ public class Character : MonoBehaviour
         }
 
         // Останавливаем все боевые действия
-        CombatSystem combatSystem = FindObjectOfType<CombatSystem>();
+        CombatSystem combatSystem = GetCombatSystem();
         if (combatSystem != null)
         {
             combatSystem.StopCombatForCharacter(this);
@@ -425,7 +468,7 @@ public class Character : MonoBehaviour
     /// </summary>
     void StopCombatInvolvement()
     {
-        CombatSystem combatSystem = FindObjectOfType<CombatSystem>();
+        CombatSystem combatSystem = GetCombatSystem();
         if (combatSystem != null)
         {
             // Останавливаем бой если этот персонаж атаковал кого-то
@@ -467,7 +510,7 @@ public class Character : MonoBehaviour
         if (corpseInventory != null)
         {
             // Открываем инвентарь трупа
-            InventoryUI inventoryUI = FindObjectOfType<InventoryUI>();
+            InventoryUI inventoryUI = GetInventoryUI();
             if (inventoryUI != null)
             {
                 inventoryUI.SetCurrentInventory(corpseInventory, this);
@@ -567,10 +610,19 @@ public class Character : MonoBehaviour
         Faction oldFaction = characterData.faction;
         characterData.faction = faction;
 
-        // Если персонаж перешел в фракцию игрока, уведомляем систему иконок
-        if (oldFaction != Faction.Player && faction == Faction.Player && OnPlayerCharacterSpawned != null)
+        // Если персонаж перешел в фракцию игрока, публикуем событие спавна
+        if (oldFaction != Faction.Player && faction == Faction.Player)
         {
-            OnPlayerCharacterSpawned.Invoke(this);
+            // ARCHITECTURE: Публикуем событие через EventBus
+            EventBus.Publish(new CharacterSpawnedEvent(this));
+
+            // DEPRECATED: Поддержка старого API для обратной совместимости
+            #pragma warning disable CS0618
+            if (OnPlayerCharacterSpawned != null)
+            {
+                OnPlayerCharacterSpawned.Invoke(this);
+            }
+            #pragma warning restore CS0618
         }
     }
 
@@ -700,11 +752,11 @@ public class Character : MonoBehaviour
         {
             case Faction.Player:
                 // Союзники имеют больший инвентарь
-                characterInventory.maxSlots = 20;
-                characterInventory.maxWeight = 100f;
+                characterInventory.maxSlots = GameConstants.Character.PLAYER_INVENTORY_SLOTS;
+                characterInventory.maxWeight = GameConstants.Character.PLAYER_INVENTORY_MAX_WEIGHT;
                 // ОТКЛЮЧЕНО: автоподбор теперь работает только по ПКМ
                 characterInventory.autoPickupEnabled = false;
-                characterInventory.autoPickupRange = 1.5f;
+                characterInventory.autoPickupRange = GameConstants.Items.PICKUP_RANGE;
 
                 // Генерируем стартовые предметы для союзников
                 GeneratePlayerStartingItems();
@@ -712,8 +764,8 @@ public class Character : MonoBehaviour
 
             case Faction.Enemy:
                 // Враги имеют ограниченный инвентарь
-                characterInventory.maxSlots = 10;
-                characterInventory.maxWeight = 50f;
+                characterInventory.maxSlots = GameConstants.Character.ENEMY_INVENTORY_SLOTS;
+                characterInventory.maxWeight = GameConstants.Character.ENEMY_INVENTORY_MAX_WEIGHT;
                 characterInventory.autoPickupEnabled = false;
 
                 // Генерируем случайные предметы для врагов
@@ -722,8 +774,8 @@ public class Character : MonoBehaviour
 
             case Faction.Neutral:
                 // Нейтральные персонажи имеют средний инвентарь
-                characterInventory.maxSlots = 15;
-                characterInventory.maxWeight = 75f;
+                characterInventory.maxSlots = GameConstants.Character.NEUTRAL_INVENTORY_SLOTS;
+                characterInventory.maxWeight = GameConstants.Character.NEUTRAL_INVENTORY_MAX_WEIGHT;
                 characterInventory.autoPickupEnabled = false;
 
                 // Генерируем стартовые предметы для нейтральных персонажей
@@ -962,7 +1014,7 @@ public class Character : MonoBehaviour
                 Vector3 dropPosition = transform.position +
                     new Vector3(
                         UnityEngine.Random.Range(-1f, 1f),
-                        0.5f,
+                        GameConstants.Items.ITEM_SPAWN_HEIGHT,
                         UnityEngine.Random.Range(-1f, 1f)
                     );
 
@@ -1004,7 +1056,7 @@ public class Character : MonoBehaviour
     {
         // Показываем информацию о персонаже в Scene view
         Gizmos.color = isSelected ? selectedColor : defaultColor;
-        Gizmos.DrawWireSphere(transform.position + Vector3.up * 2.5f, 0.5f);
+        Gizmos.DrawWireSphere(transform.position + Vector3.up * GameConstants.Character.GIZMO_HEIGHT_OFFSET, GameConstants.Character.GIZMO_SPHERE_RADIUS);
 
         // Показываем радиус автоподбора для союзников
         if (characterInventory != null && IsPlayerCharacter() && characterInventory.autoPickupEnabled)
