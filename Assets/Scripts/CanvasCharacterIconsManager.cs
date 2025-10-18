@@ -17,6 +17,7 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         public GameObject iconObject;
         public Image background;
         public Image avatarImage;
+        public Image healthBarFill;  // ДОБАВЛЕНО: Health bar
         public TextMeshProUGUI nameLabel;
         public Button button;
         public Button inventoryButton;
@@ -38,11 +39,17 @@ public class CanvasCharacterIconsManager : MonoBehaviour
 
     void Start()
     {
+        Debug.Log("[CanvasCharacterIconsManager] Start() - initializing...");
+
         selectionManager = FindObjectOfType<SelectionManager>();
         if (selectionManager != null)
         {
             selectionManager.OnSelectionChanged += OnSelectionChanged;
         }
+
+        // ДОБАВЛЕНО: Подписка на события урона
+        EventBus.Subscribe<CharacterDamagedEvent>(OnCharacterDamaged);
+        Debug.Log("[CanvasCharacterIconsManager] Subscribed to EventBus<CharacterDamagedEvent>");
 
         // Создаем иконки через 0.5 секунд
         Invoke(nameof(CreateIcons), 0.5f);
@@ -92,6 +99,33 @@ public class CanvasCharacterIconsManager : MonoBehaviour
             if (iconData.nameLabel != null)
             {
                 iconData.nameLabel.text = character.characterData.firstName;
+            }
+        }
+
+        // ДОБАВЛЕНО: Находим Health Bar
+        Transform healthBarTransform = iconGO.transform.Find("HealthBar");
+        if (healthBarTransform != null)
+        {
+            Transform healthBarPlaneTransform = healthBarTransform.Find("HealthBar_Plane");
+            if (healthBarPlaneTransform != null)
+            {
+                iconData.healthBarFill = healthBarPlaneTransform.GetComponent<Image>();
+                if (iconData.healthBarFill != null)
+                {
+                    // Устанавливаем начальное здоровье через scale.x
+                    RectTransform healthBarRect = iconData.healthBarFill.GetComponent<RectTransform>();
+                    if (healthBarRect != null)
+                    {
+                        float healthPercent = character.GetHealthPercent();
+                        Vector3 currentScale = healthBarRect.localScale;
+                        healthBarRect.localScale = new Vector3(healthPercent, currentScale.y, currentScale.z);
+                        Debug.Log($"[CanvasCharacterIconsManager] Set initial health bar for {character.GetFullName()}: {healthPercent:F2}");
+                    }
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[CanvasCharacterIconsManager] HealthBar_Plane not found in prefab for {character.GetFullName()}");
             }
         }
 
@@ -289,11 +323,104 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         }
     }
 
+    // ДОБАВЛЕНО: Update для обновления health bar каждый кадр
+    void Update()
+    {
+        if (characterIcons.Count > 0)
+        {
+            UpdateHealthBars();
+        }
+    }
+
+    // ДОБАВЛЕНО: Обновление health bar для всех персонажей
+    void UpdateHealthBars()
+    {
+        foreach (var kvp in characterIcons)
+        {
+            Character character = kvp.Key;
+            IconData iconData = kvp.Value;
+
+            if (character != null && iconData.healthBarFill != null)
+            {
+                float healthPercent = character.GetHealthPercent();
+
+                // Обновляем scale.x
+                RectTransform healthBarRect = iconData.healthBarFill.GetComponent<RectTransform>();
+                if (healthBarRect != null)
+                {
+                    Vector3 currentScale = healthBarRect.localScale;
+                    healthBarRect.localScale = new Vector3(Mathf.Clamp01(healthPercent), currentScale.y, currentScale.z);
+                }
+
+                // Обновляем цвет health bar
+                if (healthPercent > 0.6f)
+                {
+                    iconData.healthBarFill.color = new Color(0.24913555f, 0.5849056f, 0, 1); // Зеленый
+                }
+                else if (healthPercent > 0.3f)
+                {
+                    iconData.healthBarFill.color = Color.yellow;
+                }
+                else
+                {
+                    iconData.healthBarFill.color = Color.red;
+                }
+            }
+        }
+    }
+
+    // ДОБАВЛЕНО: Обработчик события получения урона
+    void OnCharacterDamaged(CharacterDamagedEvent evt)
+    {
+        Debug.Log($"[CanvasCharacterIconsManager] OnCharacterDamaged! Character: {(evt.character != null ? evt.character.GetFullName() : "NULL")}, IsPlayer: {(evt.character != null ? evt.character.IsPlayerCharacter() : false)}");
+
+        if (evt.character != null && evt.character.IsPlayerCharacter())
+        {
+            Debug.Log($"[CanvasCharacterIconsManager] Ally {evt.character.GetFullName()} took {evt.damage:F1} damage, HP: {evt.character.GetHealthPercent() * 100f:F0}%");
+
+            // Принудительно обновляем иконку этого персонажа
+            if (characterIcons.ContainsKey(evt.character))
+            {
+                IconData iconData = characterIcons[evt.character];
+                if (iconData.healthBarFill != null)
+                {
+                    float healthPercent = evt.character.GetHealthPercent();
+
+                    RectTransform healthBarRect = iconData.healthBarFill.GetComponent<RectTransform>();
+                    if (healthBarRect != null)
+                    {
+                        Vector3 currentScale = healthBarRect.localScale;
+                        healthBarRect.localScale = new Vector3(healthPercent, currentScale.y, currentScale.z);
+                    }
+
+                    // Обновляем цвет
+                    if (healthPercent > 0.6f)
+                    {
+                        iconData.healthBarFill.color = new Color(0.24913555f, 0.5849056f, 0, 1);
+                    }
+                    else if (healthPercent > 0.3f)
+                    {
+                        iconData.healthBarFill.color = Color.yellow;
+                    }
+                    else
+                    {
+                        iconData.healthBarFill.color = Color.red;
+                    }
+
+                    Debug.Log($"[CanvasCharacterIconsManager] Health bar updated: scale.x={healthPercent:F2}");
+                }
+            }
+        }
+    }
+
     void OnDestroy()
     {
         if (selectionManager != null)
         {
             selectionManager.OnSelectionChanged -= OnSelectionChanged;
         }
+
+        // ДОБАВЛЕНО: Отписка от EventBus
+        EventBus.Unsubscribe<CharacterDamagedEvent>(OnCharacterDamaged);
     }
 }

@@ -219,7 +219,8 @@
       "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_constants_character.log\")",
       "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_gamebootstrap_fix.log\")",
       "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_systems_creation.log\")",
-      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_auto_deploy.log\")"
+      "Bash(start \"\" \"C:\\Program Files\\Unity\\Hub\\Editor\\2022.3.62f1\\Editor\\Unity.exe\" -projectPath \"C:\\UnityProjects\\VoidFrontier\" -batchmode -quit -executeMethod BuildScript.CompileOnly -logFile \"C:\\temp\\unity_auto_deploy.log\")",
+      "Bash(del \"C:\\UnityProjects\\VoidFrontier\\Assets\\Scripts\\PlayerCharacterIconsManager.cs\")"
     ],
     "deny": [],
     "ask": []

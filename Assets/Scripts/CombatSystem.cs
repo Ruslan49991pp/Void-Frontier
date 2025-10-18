@@ -386,36 +386,43 @@ public class CombatSystem : BaseManager
 
                 if (needsLineOfSight)
                 {
-                    hasLineOfSight = HasClearLineOfSight(attacker, combatData.target);
+                    bool blockedByAlly;
+                    hasLineOfSight = HasClearLineOfSight(attacker, combatData.target, out blockedByAlly);
 
                     if (!hasLineOfSight)
                     {
-                        // Линия видимости заблокирована - ищем позицию с чистым выстрелом
-                        Vector3? clearShotPosition = FindPositionWithClearShot(attacker, combatData.target, currentAttackRange);
-
-                        if (clearShotPosition.HasValue)
+                        // Если заблокировано союзником - продолжаем стрелять (дружественный огонь)
+                        // Если заблокировано стеной/препятствием - ищем новую позицию
+                        if (!blockedByAlly)
                         {
-                            // Нашли позицию - двигаемся туда
-                            movement.MoveTo(clearShotPosition.Value);
-                            combatData.isPursuing = true;
+                            // Линия видимости заблокирована стеной/препятствием - ищем позицию с чистым выстрелом
+                            Vector3? clearShotPosition = FindPositionWithClearShot(attacker, combatData.target, currentAttackRange);
 
-                            // НЕ вызываем OnPlayerInitiatedMovement() - это движение инициировано боевой системой, а не игроком
+                            if (clearShotPosition.HasValue)
+                            {
+                                // Нашли позицию - двигаемся туда
+                                movement.MoveTo(clearShotPosition.Value);
+                                combatData.isPursuing = true;
 
-                            yield return new WaitForSeconds(GameConstants.Combat.COMBAT_FRAME_DELAY);
-                            continue; // Пропускаем атаку, продолжаем движение
+                                // НЕ вызываем OnPlayerInitiatedMovement() - это движение инициировано боевой системой, а не игроком
+
+                                yield return new WaitForSeconds(GameConstants.Combat.COMBAT_FRAME_DELAY);
+                                continue; // Пропускаем атаку, продолжаем движение
+                            }
+                            else
+                            {
+                                // Не нашли позицию - подходим ближе
+                                Vector3 targetPosition = GetNearestAttackPosition(attacker, combatData.target);
+                                movement.MoveTo(targetPosition);
+                                combatData.isPursuing = true;
+
+                                // НЕ вызываем OnPlayerInitiatedMovement() - это движение инициировано боевой системой, а не игроком
+
+                                yield return new WaitForSeconds(GameConstants.Combat.COMBAT_FRAME_DELAY);
+                                continue;
+                            }
                         }
-                        else
-                        {
-                            // Не нашли позицию - подходим ближе
-                            Vector3 targetPosition = GetNearestAttackPosition(attacker, combatData.target);
-                            movement.MoveTo(targetPosition);
-                            combatData.isPursuing = true;
-
-                            // НЕ вызываем OnPlayerInitiatedMovement() - это движение инициировано боевой системой, а не игроком
-
-                            yield return new WaitForSeconds(GameConstants.Combat.COMBAT_FRAME_DELAY);
-                            continue;
-                        }
+                        // Если заблокировано союзником - не двигаемся, продолжаем к атаке (дружественный огонь произойдет)
                     }
                 }
 
@@ -844,8 +851,13 @@ public class CombatSystem : BaseManager
     /// <summary>
     /// Проверить есть ли прямая линия видимости между атакующим и целью
     /// </summary>
-    bool HasClearLineOfSight(Character attacker, Character target)
+    /// <param name="attacker">Атакующий персонаж</param>
+    /// <param name="target">Целевой персонаж</param>
+    /// <param name="blockedByAlly">OUT: true если линия заблокирована союзником (а не стеной)</param>
+    bool HasClearLineOfSight(Character attacker, Character target, out bool blockedByAlly)
     {
+        blockedByAlly = false;
+
         if (attacker == null || target == null)
             return false;
 
@@ -870,15 +882,31 @@ public class CombatSystem : BaseManager
                 // Попали в цель - линия видимости чистая
                 return true;
             }
+            else if (hitCharacter != null && hitCharacter.IsAllyWith(attacker))
+            {
+                // Попали в союзника - линия заблокирована союзником
+                blockedByAlly = true;
+                return false;
+            }
             else
             {
-                // Попали в препятствие
+                // Попали в препятствие (стену/препятствие)
+                blockedByAlly = false;
                 return false;
             }
         }
 
         // Ничего не попало - линия видимости чистая
         return true;
+    }
+
+    /// <summary>
+    /// Проверить есть ли прямая линия видимости (старый метод для совместимости)
+    /// </summary>
+    bool HasClearLineOfSight(Character attacker, Character target)
+    {
+        bool blockedByAlly;
+        return HasClearLineOfSight(attacker, target, out blockedByAlly);
     }
 
     /// <summary>
@@ -1010,64 +1038,75 @@ public class CombatSystem : BaseManager
         Vector2Int attackerGridPos = attacker != null ? gridManager.WorldToGrid(attacker.transform.position) : Vector2Int.zero;
         Vector2Int targetGridPos = gridManager.WorldToGrid(target.transform.position);
 
-        // Ищем ближайшую свободную клетку в дистанции атаки
-        // Упорядочим по расстоянию если известна позиция атакующего
-        List<(Vector2Int offset, float distance)> offsetsWithDistance = new List<(Vector2Int, float)>();
-
-        Vector2Int[] offsets = {
-            new Vector2Int(1, 0),   // право
-            new Vector2Int(-1, 0),  // лево
-            new Vector2Int(0, 1),   // верх
-            new Vector2Int(0, -1),  // низ
-            new Vector2Int(1, 1),   // право-верх
-            new Vector2Int(-1, 1),  // лево-верх
-            new Vector2Int(1, -1),  // право-низ
-            new Vector2Int(-1, -1)  // лево-низ
-        };
-
-        // Сортируем позиции по расстоянию от атакующего
-        foreach (Vector2Int offset in offsets)
+        // Ищем свободную клетку расширенным поиском (радиус 1, потом радиус 2)
+        // Это позволяет найти позиции даже когда ближайшие заняты
+        for (int searchRadius = 1; searchRadius <= 3; searchRadius++)
         {
-            Vector2Int attackGridPos = targetGridPos + offset;
-            float distance = attacker != null ? Vector2Int.Distance(attackerGridPos, attackGridPos) : 0f;
-            offsetsWithDistance.Add((offset, distance));
-        }
+            List<(Vector2Int offset, float distance)> offsetsWithDistance = new List<(Vector2Int, float)>();
 
-        // Сортируем по расстоянию (ближайшие первые)
-        offsetsWithDistance.Sort((a, b) => a.distance.CompareTo(b.distance));
-
-        // Проверяем позиции в порядке близости
-        foreach (var (offset, _) in offsetsWithDistance)
-        {
-            Vector2Int attackGridPos = targetGridPos + offset;
-
-            if (!gridManager.IsValidGridPosition(attackGridPos))
-                continue;
-
-            var cell = gridManager.GetCell(attackGridPos);
-
-            // Проверяем что клетка не занята
-            if (cell != null && cell.isOccupied)
-                continue;
-
-            // Проверяем что клетка не зарезервирована другим персонажем
-            if (reservedCombatPositions.ContainsKey(attackGridPos))
+            // Генерируем все позиции в текущем радиусе
+            for (int x = -searchRadius; x <= searchRadius; x++)
             {
-                // Если это наша собственная резервация - можем использовать
-                if (attacker != null && reservedCombatPositions[attackGridPos] == attacker)
+                for (int y = -searchRadius; y <= searchRadius; y++)
                 {
-                    return gridManager.GridToWorld(attackGridPos);
+                    // Пропускаем позицию цели и внутренние радиусы (уже проверены)
+                    if (x == 0 && y == 0) continue;
+                    if (searchRadius > 1 && Mathf.Abs(x) < searchRadius && Mathf.Abs(y) < searchRadius) continue;
+
+                    Vector2Int offset = new Vector2Int(x, y);
+                    Vector2Int attackGridPos = targetGridPos + offset;
+
+                    float distance = attacker != null ? Vector2Int.Distance(attackerGridPos, attackGridPos) : 0f;
+                    offsetsWithDistance.Add((offset, distance));
                 }
-                continue; // Зарезервирована кем-то другим
             }
 
-            // Клетка свободна!
-            return gridManager.GridToWorld(attackGridPos);
+            // Сортируем по расстоянию от атакующего (ближайшие первые)
+            offsetsWithDistance.Sort((a, b) => a.distance.CompareTo(b.distance));
+
+            // Проверяем позиции в порядке близости
+            foreach (var (offset, _) in offsetsWithDistance)
+            {
+                Vector2Int attackGridPos = targetGridPos + offset;
+
+                if (!gridManager.IsValidGridPosition(attackGridPos))
+                    continue;
+
+                var cell = gridManager.GetCell(attackGridPos);
+
+                // Проверяем что клетка не занята
+                if (cell != null && cell.isOccupied)
+                    continue;
+
+                // Проверяем что клетка не зарезервирована другим персонажем
+                if (reservedCombatPositions.ContainsKey(attackGridPos))
+                {
+                    // Если это наша собственная резервация - можем использовать
+                    if (attacker != null && reservedCombatPositions[attackGridPos] == attacker)
+                    {
+                        return gridManager.GridToWorld(attackGridPos);
+                    }
+                    continue; // Зарезервирована кем-то другим
+                }
+
+                // Проверяем что позиция не на линии огня союзников
+                Vector3 worldPos = gridManager.GridToWorld(attackGridPos);
+                if (IsPositionOnFireLine(worldPos, attacker))
+                {
+                    continue; // Позиция на линии огня - пропускаем
+                }
+
+                // Клетка свободна и безопасна!
+                return worldPos;
+            }
         }
 
-        // Если не нашли свободную клетку, возвращаем позицию справа от цели
-        Vector2Int fallbackPos = targetGridPos + Vector2Int.right;
-        return gridManager.GridToWorld(fallbackPos);
+        // Если даже после расширенного поиска не нашли свободную клетку,
+        // возвращаем ближайшую к атакующему позицию (даже если она занята)
+        // Система движения сама обработает это
+        Vector3 directionToTarget = (target.transform.position - (attacker != null ? attacker.transform.position : Vector3.zero)).normalized;
+        Vector3 fallbackPos = target.transform.position - directionToTarget * 2f;
+        return fallbackPos;
     }
 
     /// <summary>
@@ -1187,6 +1226,62 @@ public class CombatSystem : BaseManager
         reservedCombatPositions.Clear();
 
         base.OnManagerShutdown();
+    }
+
+    /// <summary>
+    /// Проверить, находится ли позиция на линии огня союзников
+    /// </summary>
+    bool IsPositionOnFireLine(Vector3 checkPosition, Character excludeAttacker)
+    {
+        if (gridManager == null) return false;
+
+        // Проверяем все активные боевые действия
+        foreach (var kvp in activeCombatants)
+        {
+            Character shooter = kvp.Key;
+            Character target = kvp.Value.target;
+
+            // Пропускаем проверяемого персонажа
+            if (shooter == excludeAttacker || shooter == null || target == null)
+                continue;
+
+            // Проверяем только союзников
+            if (excludeAttacker != null)
+            {
+                bool shooterIsPlayer = shooter.IsPlayerCharacter();
+                bool excludeIsPlayer = excludeAttacker.IsPlayerCharacter();
+
+                // Проверяем только союзников (оба игроки или оба враги)
+                if (shooterIsPlayer != excludeIsPlayer)
+                    continue;
+            }
+
+            // Получаем линию огня
+            Vector3 shooterPos = shooter.transform.position + Vector3.up * GameConstants.Combat.SHOOTER_HEIGHT_OFFSET;
+            Vector3 targetPos = target.transform.position + Vector3.up * GameConstants.Combat.SHOOTER_HEIGHT_OFFSET;
+            Vector3 checkPos = checkPosition + Vector3.up * GameConstants.Combat.SHOOTER_HEIGHT_OFFSET;
+
+            // Проверяем, находится ли checkPosition близко к линии огня
+            Vector3 lineDir = (targetPos - shooterPos).normalized;
+            float distanceAlongLine = Vector3.Dot(checkPos - shooterPos, lineDir);
+
+            // Проверяем только если позиция между стрелком и целью
+            float lineLength = Vector3.Distance(shooterPos, targetPos);
+            if (distanceAlongLine > 0 && distanceAlongLine < lineLength)
+            {
+                // Вычисляем ближайшую точку на линии
+                Vector3 closestPoint = shooterPos + lineDir * distanceAlongLine;
+                float distanceToLine = Vector3.Distance(checkPos, closestPoint);
+
+                // Если ближе чем 1.5 метра к линии огня - небезопасно
+                if (distanceToLine < 1.5f)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     void OnDrawGizmosSelected()

@@ -372,7 +372,13 @@ public class Character : MonoBehaviour
     /// </summary>
     public void TakeDamage(float damage)
     {
+        float oldHealth = characterData.health;
         characterData.health = Mathf.Max(0, characterData.health - damage);
+        float newHealth = characterData.health;
+
+        // DEBUG: Логируем получение урона
+        string factionName = IsPlayerCharacter() ? "ALLY" : "ENEMY";
+        Debug.Log($"[DAMAGE] {factionName} {GetFullName()} took {damage:F1} damage! HP: {oldHealth:F1} -> {newHealth:F1} ({GetHealthPercent() * 100f:F0}%)");
 
         // ARCHITECTURE: Публикуем событие получения урона через EventBus
         EventBus.Publish(new CharacterDamagedEvent(this, damage));
@@ -387,6 +393,7 @@ public class Character : MonoBehaviour
         if (characterData.health <= 0 && !isDead)
         {
             // Выполняем смерть персонажа
+            Debug.Log($"[DEATH] {factionName} {GetFullName()} has died!");
             Die();
         }
     }

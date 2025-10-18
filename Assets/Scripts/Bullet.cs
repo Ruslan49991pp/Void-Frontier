@@ -212,11 +212,26 @@ public class Bullet : MonoBehaviour
     /// </summary>
     private void ProcessCharacterHit(Character target, RaycastHit hit)
     {
-        // Наносим урон
+        // Проверяем friendly fire (попадание по союзнику)
+        bool isFriendlyFire = false;
+        if (shooter != null && target != null)
+        {
+            bool shooterIsPlayer = shooter.IsPlayerCharacter();
+            bool targetIsPlayer = target.IsPlayerCharacter();
+
+            // Friendly fire: оба игроки или оба враги
+            if (shooterIsPlayer == targetIsPlayer)
+            {
+                isFriendlyFire = true;
+                Debug.LogWarning($"[FRIENDLY FIRE] {shooter.GetFullName()} accidentally hit ally {target.GetFullName()} for {damage:F0} damage!");
+            }
+        }
+
+        // Наносим урон (независимо от фракции - friendly fire работает!)
         target.TakeDamage(damage);
 
-        // Показываем эффект попадания
-        ShowHitEffect(hit.point, target);
+        // Показываем эффект попадания (разный цвет для friendly fire)
+        ShowHitEffect(hit.point, target, isFriendlyFire);
 
         hasHitTarget = true;
     }
@@ -227,7 +242,7 @@ public class Bullet : MonoBehaviour
     private void ProcessObstacleHit(RaycastHit hit)
     {
         // Показываем эффект попадания в препятствие
-        ShowHitEffect(hit.point, null);
+        ShowHitEffect(hit.point, null, false);
 
         // Пуля останавливается при попадании в препятствие
         if (!penetrateTargets)
@@ -239,7 +254,7 @@ public class Bullet : MonoBehaviour
     /// <summary>
     /// Показать эффект попадания
     /// </summary>
-    private void ShowHitEffect(Vector3 hitPoint, Character hitTarget)
+    private void ShowHitEffect(Vector3 hitPoint, Character hitTarget, bool isFriendlyFire = false)
     {
         // Создаем простой эффект попадания
         GameObject hitEffect = new GameObject("BulletHitEffect");
@@ -283,7 +298,17 @@ public class Bullet : MonoBehaviour
         if (effectRenderer != null)
         {
             Material effectMaterial = new Material(Shader.Find("Standard"));
-            effectMaterial.color = hitTarget != null ? Color.red : Color.gray;
+
+            // Разный цвет в зависимости от типа попадания
+            if (hitTarget != null)
+            {
+                effectMaterial.color = isFriendlyFire ? Color.yellow : Color.red; // Желтый для friendly fire
+            }
+            else
+            {
+                effectMaterial.color = Color.gray; // Серый для препятствий
+            }
+
             effectMaterial.SetFloat("_Mode", 0);
             effectMaterial.EnableKeyword("_EMISSION");
             effectMaterial.SetColor("_EmissionColor", effectMaterial.color);
