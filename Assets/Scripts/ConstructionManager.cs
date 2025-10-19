@@ -1,10 +1,10 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Менеджер строительства - управляет процессом строительства блоков корабля персонажами
-/// ARCHITECTURE: Наследуется от BaseManager для интеграции с ServiceLocator
+/// РњРµРЅРµРґР¶РµСЂ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° - СѓРїСЂР°РІР»СЏРµС‚ РїСЂРѕС†РµСЃСЃРѕРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° Р±Р»РѕРєРѕРІ РєРѕСЂР°Р±Р»СЏ РїРµСЂСЃРѕРЅР°Р¶Р°РјРё
+/// ARCHITECTURE: РќР°СЃР»РµРґСѓРµС‚СЃСЏ РѕС‚ BaseManager РґР»СЏ РёРЅС‚РµРіСЂР°С†РёРё СЃ ServiceLocator
 /// </summary>
 public class ConstructionManager : BaseManager
 {
@@ -16,65 +16,65 @@ public class ConstructionManager : BaseManager
         {
             if (instance == null)
             {
-                // Создаем GameObject с компонентом ConstructionManager
+                // РЎРѕР·РґР°РµРј GameObject СЃ РєРѕРјРїРѕРЅРµРЅС‚РѕРј ConstructionManager
                 GameObject go = new GameObject("ConstructionManager");
                 instance = go.AddComponent<ConstructionManager>();
-                DontDestroyOnLoad(go); // Не уничтожать при загрузке новой сцены
+                DontDestroyOnLoad(go); // РќРµ СѓРЅРёС‡С‚РѕР¶Р°С‚СЊ РїСЂРё Р·Р°РіСЂСѓР·РєРµ РЅРѕРІРѕР№ СЃС†РµРЅС‹
 
             }
             return instance;
         }
     }
 
-    // Кешированная ссылка на GridManager для оптимизации
+    // РљРµС€РёСЂРѕРІР°РЅРЅР°СЏ СЃСЃС‹Р»РєР° РЅР° GridManager РґР»СЏ РѕРїС‚РёРјРёР·Р°С†РёРё
     private GridManager gridManager;
 
     [Header("Construction Settings")]
-    [Tooltip("Количество прыжков для постройки одного блока")]
+    [Tooltip("РљРѕР»РёС‡РµСЃС‚РІРѕ РїСЂС‹Р¶РєРѕРІ РґР»СЏ РїРѕСЃС‚СЂРѕР№РєРё РѕРґРЅРѕРіРѕ Р±Р»РѕРєР°")]
     public int jumpsRequired = 5;
 
-    [Tooltip("Время между прыжками в секундах")]
+    [Tooltip("Р’СЂРµРјСЏ РјРµР¶РґСѓ РїСЂС‹Р¶РєР°РјРё РІ СЃРµРєСѓРЅРґР°С…")]
     public float jumpInterval = 0.5f;
 
-    [Tooltip("Высота прыжка")]
+    [Tooltip("Р’С‹СЃРѕС‚Р° РїСЂС‹Р¶РєР°")]
     public float jumpHeight = 0.5f;
 
-    [Tooltip("Дистанция до блока для начала строительства (1 клетка - персонаж должен быть на соседней клетке)")]
-    public float constructionRange = 10.5f; // Размер клетки 10f, соседняя клетка = 10f, берем чуть больше для погрешности
+    [Tooltip("Р”РёСЃС‚Р°РЅС†РёСЏ РґРѕ Р±Р»РѕРєР° РґР»СЏ РЅР°С‡Р°Р»Р° СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° (1 РєР»РµС‚РєР° - РїРµСЂСЃРѕРЅР°Р¶ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РЅР° СЃРѕСЃРµРґРЅРµР№ РєР»РµС‚РєРµ)")]
+    public float constructionRange = 10.5f; // Р Р°Р·РјРµСЂ РєР»РµС‚РєРё 10f, СЃРѕСЃРµРґРЅСЏСЏ РєР»РµС‚РєР° = 10f, Р±РµСЂРµРј С‡СѓС‚СЊ Р±РѕР»СЊС€Рµ РґР»СЏ РїРѕРіСЂРµС€РЅРѕСЃС‚Рё
 
     [Header("Progress Bar Settings")]
-    [Tooltip("Высота полосы прогресса над блоком")]
+    [Tooltip("Р’С‹СЃРѕС‚Р° РїРѕР»РѕСЃС‹ РїСЂРѕРіСЂРµСЃСЃР° РЅР°Рґ Р±Р»РѕРєРѕРј")]
     public float progressBarHeight = 2.5f;
 
-    [Tooltip("Ширина полосы прогресса")]
+    [Tooltip("РЁРёСЂРёРЅР° РїРѕР»РѕСЃС‹ РїСЂРѕРіСЂРµСЃСЃР°")]
     public float progressBarWidth = 12f;
 
-    [Tooltip("Высота полосы прогресса")]
+    [Tooltip("Р’С‹СЃРѕС‚Р° РїРѕР»РѕСЃС‹ РїСЂРѕРіСЂРµСЃСЃР°")]
     public float progressBarThickness = 2f;
 
-    [Tooltip("Масштаб Canvas для полосы прогресса")]
-    public float progressBarScale = 0.12f; // Уменьшено на 40% (0.2 * 0.6 = 0.12)
+    [Tooltip("РњР°СЃС€С‚Р°Р± Canvas РґР»СЏ РїРѕР»РѕСЃС‹ РїСЂРѕРіСЂРµСЃСЃР°")]
+    public float progressBarScale = 0.12f; // РЈРјРµРЅСЊС€РµРЅРѕ РЅР° 40% (0.2 * 0.6 = 0.12)
 
-    [Tooltip("Цвет фона полосы")]
+    [Tooltip("Р¦РІРµС‚ С„РѕРЅР° РїРѕР»РѕСЃС‹")]
     public Color progressBarBackgroundColor = new Color(0.2f, 0.2f, 0.2f, 0.8f);
 
-    [Tooltip("Цвет заполнения полосы")]
+    [Tooltip("Р¦РІРµС‚ Р·Р°РїРѕР»РЅРµРЅРёСЏ РїРѕР»РѕСЃС‹")]
     public Color progressBarFillColor = new Color(0.9f, 0.2f, 0.2f, 0.9f);
 
-    // Список блоков для строительства
+    // РЎРїРёСЃРѕРє Р±Р»РѕРєРѕРІ РґР»СЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     private List<ConstructionBlock> constructionQueue = new List<ConstructionBlock>();
 
-    // Персонажи занятые строительством
+    // РџРµСЂСЃРѕРЅР°Р¶Рё Р·Р°РЅСЏС‚С‹Рµ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕРј
     private Dictionary<Character, ConstructionBlock> busyCharacters = new Dictionary<Character, ConstructionBlock>();
 
-    // КОРУТИНЫ СТРОИТЕЛЬСТВА для каждого персонажа (для остановки)
+    // РљРћР РЈРўРРќР« РЎРўР РћРРўР•Р›Р¬РЎРўР’Рђ РґР»СЏ РєР°Р¶РґРѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р° (РґР»СЏ РѕСЃС‚Р°РЅРѕРІРєРё)
     private Dictionary<Character, Coroutine> constructionCoroutines = new Dictionary<Character, Coroutine>();
 
-    // Полосы прогресса для блоков
+    // РџРѕР»РѕСЃС‹ РїСЂРѕРіСЂРµСЃСЃР° РґР»СЏ Р±Р»РѕРєРѕРІ
     private Dictionary<ConstructionBlock, GameObject> progressBars = new Dictionary<ConstructionBlock, GameObject>();
 
     /// <summary>
-    /// Инициализация менеджера строительства через ServiceLocator
+    /// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РјРµРЅРµРґР¶РµСЂР° СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° С‡РµСЂРµР· ServiceLocator
     /// </summary>
     protected override void OnManagerInitialized()
     {
@@ -92,7 +92,7 @@ public class ConstructionManager : BaseManager
             return;
         }
 
-        // Получаем GridManager через ServiceLocator
+        // РџРѕР»СѓС‡Р°РµРј GridManager С‡РµСЂРµР· ServiceLocator
         gridManager = GetService<GridManager>();
         if (gridManager == null)
         {
@@ -101,27 +101,27 @@ public class ConstructionManager : BaseManager
     }
 
     /// <summary>
-    /// Добавить блоки для строительства
+    /// Р”РѕР±Р°РІРёС‚СЊ Р±Р»РѕРєРё РґР»СЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     public void AddConstructionBlocks(List<ConstructionBlock> blocks)
     {
         constructionQueue.AddRange(blocks);
-        // НЕ назначаем строительство сразу всем персонажам!
-        // Персонажи будут автоматически запрашивать задачи когда перейдут в состояние Idle
+        // РќР• РЅР°Р·РЅР°С‡Р°РµРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ СЃСЂР°Р·Сѓ РІСЃРµРј РїРµСЂСЃРѕРЅР°Р¶Р°Рј!
+        // РџРµСЂСЃРѕРЅР°Р¶Рё Р±СѓРґСѓС‚ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё Р·Р°РїСЂР°С€РёРІР°С‚СЊ Р·Р°РґР°С‡Рё РєРѕРіРґР° РїРµСЂРµР№РґСѓС‚ РІ СЃРѕСЃС‚РѕСЏРЅРёРµ Idle
     }
 
     /// <summary>
-    /// Назначить строительство всем персонажам игрока на карте
+    /// РќР°Р·РЅР°С‡РёС‚СЊ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РІСЃРµРј РїРµСЂСЃРѕРЅР°Р¶Р°Рј РёРіСЂРѕРєР° РЅР° РєР°СЂС‚Рµ
     /// </summary>
     void AssignConstructionToAllCharacters()
     {
-        // Находим всех персонажей игрока
+        // РќР°С…РѕРґРёРј РІСЃРµС… РїРµСЂСЃРѕРЅР°Р¶РµР№ РёРіСЂРѕРєР°
         Character[] allCharacters = FindObjectsOfType<Character>();
         foreach (Character character in allCharacters)
         {
             if (character.IsPlayerCharacter() && !character.IsDead())
             {
-                // Если персонаж не занят строительством, назначаем ему блок
+                // Р•СЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ РЅРµ Р·Р°РЅСЏС‚ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕРј, РЅР°Р·РЅР°С‡Р°РµРј РµРјСѓ Р±Р»РѕРє
                 if (!busyCharacters.ContainsKey(character))
                 {
                     AssignConstructionTask(character);
@@ -131,82 +131,80 @@ public class ConstructionManager : BaseManager
     }
 
     /// <summary>
-    /// ПУБЛИЧНЫЙ МЕТОД: Попытка назначить строительство персонажу (вызывается из CharacterAI)
-    /// Назначает строительство ТОЛЬКО если персонаж в состоянии Idle
+    /// РџРЈР‘Р›РР§РќР«Р™ РњР•РўРћР”: РџРѕРїС‹С‚РєР° РЅР°Р·РЅР°С‡РёС‚СЊ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РїРµСЂСЃРѕРЅР°Р¶Сѓ (РІС‹Р·С‹РІР°РµС‚СЃСЏ РёР· CharacterAI)
+    /// РќР°Р·РЅР°С‡Р°РµС‚ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РўРћР›Р¬РљРћ РµСЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ РІ СЃРѕСЃС‚РѕСЏРЅРёРё Idle
     /// </summary>
     public void TryAssignConstructionToIdleCharacter(Character character)
     {
-        // Проверка 1: Персонаж должен быть игроком
+        // РџСЂРѕРІРµСЂРєР° 1: РџРµСЂСЃРѕРЅР°Р¶ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РёРіСЂРѕРєРѕРј
         if (!character.IsPlayerCharacter())
         {
             return;
         }
 
-        // Проверка 2: Персонаж не должен быть мертв
+        // РџСЂРѕРІРµСЂРєР° 2: РџРµСЂСЃРѕРЅР°Р¶ РЅРµ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РјРµСЂС‚РІ
         if (character.IsDead())
         {
             return;
         }
 
-        // Проверка 3: Персонаж не должен быть уже занят строительством
+        // РџСЂРѕРІРµСЂРєР° 3: РџРµСЂСЃРѕРЅР°Р¶ РЅРµ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ СѓР¶Рµ Р·Р°РЅСЏС‚ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕРј
         if (busyCharacters.ContainsKey(character))
         {
             return;
         }
 
-        // Проверка 4: Должны быть доступные блоки для строительства
+        // РџСЂРѕРІРµСЂРєР° 4: Р”РѕР»Р¶РЅС‹ Р±С‹С‚СЊ РґРѕСЃС‚СѓРїРЅС‹Рµ Р±Р»РѕРєРё РґР»СЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
         if (constructionQueue.Count == 0)
         {
             return;
         }
 
-        // Проверка 5: Персонаж должен быть в состоянии Idle
+        // РџСЂРѕРІРµСЂРєР° 5: РџРµСЂСЃРѕРЅР°Р¶ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РІ СЃРѕСЃС‚РѕСЏРЅРёРё Idle
         CharacterAI characterAI = character.GetComponent<CharacterAI>();
         if (characterAI == null || characterAI.GetCurrentState() != CharacterAI.AIState.Idle)
         {
             return;
         }
 
-        // ВСЕ ПРОВЕРКИ ПРОШЛИ - назначаем строительство
+        // Р’РЎР• РџР РћР’Р•Р РљР РџР РћРЁР›Р - РЅР°Р·РЅР°С‡Р°РµРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ
         AssignConstructionTask(character);
     }
 
     /// <summary>
-    /// Назначить задачу строительства персонажу
+    /// РќР°Р·РЅР°С‡РёС‚СЊ Р·Р°РґР°С‡Сѓ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° РїРµСЂСЃРѕРЅР°Р¶Сѓ
     /// </summary>
     void AssignConstructionTask(Character character)
     {
-        // Проверяем что персонаж еще не занят строительством
+        // РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ РµС‰Рµ РЅРµ Р·Р°РЅСЏС‚ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕРј
         if (busyCharacters.ContainsKey(character))
         {
-            Debug.LogWarning($"[ConstructionManager] {character.GetFullName()} is already busy with construction!");
             return;
         }
 
-        // Находим ближайший свободный блок
+        // РќР°С…РѕРґРёРј Р±Р»РёР¶Р°Р№С€РёР№ СЃРІРѕР±РѕРґРЅС‹Р№ Р±Р»РѕРє
         ConstructionBlock nearestBlock = FindNearestAvailableBlock(character.transform.position);
 
         if (nearestBlock != null)
         {
-            // Двойная проверка - блок действительно свободен?
+            // Р”РІРѕР№РЅР°СЏ РїСЂРѕРІРµСЂРєР° - Р±Р»РѕРє РґРµР№СЃС‚РІРёС‚РµР»СЊРЅРѕ СЃРІРѕР±РѕРґРµРЅ?
             if (nearestBlock.isAssigned)
             {
-                Debug.LogWarning($"[ConstructionManager] Block at {nearestBlock.gridPosition} is already assigned to another character!");
                 return;
             }
 
-            // Помечаем блок как занятый СРАЗУ
+            // РџРѕРјРµС‡Р°РµРј Р±Р»РѕРє РєР°Рє Р·Р°РЅСЏС‚С‹Р№ РЎР РђР—РЈ
             nearestBlock.isAssigned = true;
             busyCharacters[character] = nearestBlock;
 
-            // Запускаем процесс строительства И СОХРАНЯЕМ ССЫЛКУ НА КОРУТИНУ
+            // Р—Р°РїСѓСЃРєР°РµРј РїСЂРѕС†РµСЃСЃ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° Р РЎРћРҐР РђРќРЇР•Рњ РЎРЎР«Р›РљРЈ РќРђ РљРћР РЈРўРРќРЈ
             Coroutine coroutine = StartCoroutine(ConstructBlock(character, nearestBlock));
             constructionCoroutines[character] = coroutine;
         }
     }
 
     /// <summary>
-    /// Найти ближайший свободный блок для строительства
+    /// РќР°Р№С‚Рё Р±Р»РёР¶Р°Р№С€РёР№ СЃРІРѕР±РѕРґРЅС‹Р№ Р±Р»РѕРє РґР»СЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     ConstructionBlock FindNearestAvailableBlock(Vector3 position)
     {
@@ -230,23 +228,23 @@ public class ConstructionManager : BaseManager
     }
 
     /// <summary>
-    /// Найти ближайшую свободную позицию рядом с блоком для строительства
+    /// РќР°Р№С‚Рё Р±Р»РёР¶Р°Р№С€СѓСЋ СЃРІРѕР±РѕРґРЅСѓСЋ РїРѕР·РёС†РёСЋ СЂСЏРґРѕРј СЃ Р±Р»РѕРєРѕРј РґР»СЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     Vector3? FindNearestValidConstructionPosition(Vector3 characterPosition, ConstructionBlock block)
     {
         if (gridManager == null)
         {
             LogError("GridManager not available, using default adjacent position");
-            return block.worldPosition + new Vector3(10f, 0, 0); // 10f - размер клетки по умолчанию
+            return block.worldPosition + new Vector3(10f, 0, 0); // 10f - СЂР°Р·РјРµСЂ РєР»РµС‚РєРё РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
         }
 
-        // Проверяем 4 соседние клетки (верх, низ, лево, право)
+        // РџСЂРѕРІРµСЂСЏРµРј 4 СЃРѕСЃРµРґРЅРёРµ РєР»РµС‚РєРё (РІРµСЂС…, РЅРёР·, Р»РµРІРѕ, РїСЂР°РІРѕ)
         Vector2Int[] adjacentOffsets = new Vector2Int[]
         {
-            new Vector2Int(0, 1),   // верх
-            new Vector2Int(0, -1),  // низ
-            new Vector2Int(-1, 0),  // лево
-            new Vector2Int(1, 0)    // право
+            new Vector2Int(0, 1),   // РІРµСЂС…
+            new Vector2Int(0, -1),  // РЅРёР·
+            new Vector2Int(-1, 0),  // Р»РµРІРѕ
+            new Vector2Int(1, 0)    // РїСЂР°РІРѕ
         };
 
         Vector3? nearestPosition = null;
@@ -257,16 +255,16 @@ public class ConstructionManager : BaseManager
         {
             Vector2Int adjacentGridPos = block.gridPosition + offset;
 
-            // Проверяем что клетка валидна и проходима
+            // РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РєР»РµС‚РєР° РІР°Р»РёРґРЅР° Рё РїСЂРѕС…РѕРґРёРјР°
             if (gridManager.IsValidGridPosition(adjacentGridPos))
             {
                 GridCell cell = gridManager.GetCell(adjacentGridPos);
                 bool isOccupied = (cell != null && cell.isOccupied);
 
-                // ПРОВЕРЯЕМ: нет ли на этой клетке блока СТЕНЫ в очереди строительства
+                // РџР РћР’Р•Р РЇР•Рњ: РЅРµС‚ Р»Рё РЅР° СЌС‚РѕР№ РєР»РµС‚РєРµ Р±Р»РѕРєР° РЎРўР•РќР« РІ РѕС‡РµСЂРµРґРё СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
                 bool hasWallInQueue = IsWallBlockInQueue(adjacentGridPos);
 
-                // Клетка должна быть свободна И на ней не должно быть стены в очереди строительства
+                // РљР»РµС‚РєР° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ СЃРІРѕР±РѕРґРЅР° Р РЅР° РЅРµР№ РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ СЃС‚РµРЅС‹ РІ РѕС‡РµСЂРµРґРё СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
                 if (cell != null && !cell.isOccupied && !hasWallInQueue)
                 {
                     Vector3 worldPos = gridManager.GridToWorld(adjacentGridPos);
@@ -284,14 +282,13 @@ public class ConstructionManager : BaseManager
 
         if (!nearestPosition.HasValue)
         {
-            Debug.LogWarning($"[ConstructionManager] → NO valid construction position found near block at {block.gridPosition}!");
         }
 
         return nearestPosition;
     }
 
     /// <summary>
-    /// Проверить, есть ли блок стены в очереди строительства на данной клетке
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РµСЃС‚СЊ Р»Рё Р±Р»РѕРє СЃС‚РµРЅС‹ РІ РѕС‡РµСЂРµРґРё СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° РЅР° РґР°РЅРЅРѕР№ РєР»РµС‚РєРµ
     /// </summary>
     bool IsWallBlockInQueue(Vector2Int gridPosition)
     {
@@ -308,54 +305,55 @@ public class ConstructionManager : BaseManager
     }
 
     /// <summary>
-    /// Повернуть персонажа лицом к блоку (по 8 направлениям: прямые и диагонали)
+    /// РџРѕРІРµСЂРЅСѓС‚СЊ РїРµСЂСЃРѕРЅР°Р¶Р° Р»РёС†РѕРј Рє Р±Р»РѕРєСѓ (РїРѕ 8 РЅР°РїСЂР°РІР»РµРЅРёСЏРј: РїСЂСЏРјС‹Рµ Рё РґРёР°РіРѕРЅР°Р»Рё)
     /// </summary>
     void RotateCharacterTowardsBlock(Character character, ConstructionBlock block)
     {
-        // Вычисляем направление от персонажа к блоку
+        // Р’С‹С‡РёСЃР»СЏРµРј РЅР°РїСЂР°РІР»РµРЅРёРµ РѕС‚ РїРµСЂСЃРѕРЅР°Р¶Р° Рє Р±Р»РѕРєСѓ
         Vector3 direction = block.worldPosition - character.transform.position;
-        direction.y = 0; // Игнорируем вертикальную составляющую
+        direction.y = 0; // РРіРЅРѕСЂРёСЂСѓРµРј РІРµСЂС‚РёРєР°Р»СЊРЅСѓСЋ СЃРѕСЃС‚Р°РІР»СЏСЋС‰СѓСЋ
 
         if (direction.magnitude < 0.1f)
         {
-            // Персонаж уже на том же месте что и блок - не поворачиваем
+            // РџРµСЂСЃРѕРЅР°Р¶ СѓР¶Рµ РЅР° С‚РѕРј Р¶Рµ РјРµСЃС‚Рµ С‡С‚Рѕ Рё Р±Р»РѕРє - РЅРµ РїРѕРІРѕСЂР°С‡РёРІР°РµРј
             return;
         }
 
-        // Вычисляем угол в градусах
+        // Р’С‹С‡РёСЃР»СЏРµРј СѓРіРѕР» РІ РіСЂР°РґСѓСЃР°С…
         float angle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
 
-        // Нормализуем угол к диапазону [0, 360)
+        // РќРѕСЂРјР°Р»РёР·СѓРµРј СѓРіРѕР» Рє РґРёР°РїР°Р·РѕРЅСѓ [0, 360)
         if (angle < 0) angle += 360f;
 
-        // Округляем до ближайшего из 8 направлений (0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°)
+        // РћРєСЂСѓРіР»СЏРµРј РґРѕ Р±Р»РёР¶Р°Р№С€РµРіРѕ РёР· 8 РЅР°РїСЂР°РІР»РµРЅРёР№ (0В°, 45В°, 90В°, 135В°, 180В°, 225В°, 270В°, 315В°)
         float snappedAngle = Mathf.Round(angle / 45f) * 45f;
 
-        // Применяем поворот
+        // РџСЂРёРјРµРЅСЏРµРј РїРѕРІРѕСЂРѕС‚
         character.transform.rotation = Quaternion.Euler(0, snappedAngle, 0);
     }
 
     /// <summary>
-    /// Процесс строительства блока персонажем
+    /// РџСЂРѕС†РµСЃСЃ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° Р±Р»РѕРєР° РїРµСЂСЃРѕРЅР°Р¶РµРј
     /// </summary>
     IEnumerator ConstructBlock(Character character, ConstructionBlock block)
     {
-        // 1. Отправляем персонажа к блоку
+        // 1. РћС‚РїСЂР°РІР»СЏРµРј РїРµСЂСЃРѕРЅР°Р¶Р° Рє Р±Р»РѕРєСѓ
         CharacterMovement movement = character.GetComponent<CharacterMovement>();
         if (movement == null)
         {
-            Debug.LogError($"[ConstructionManager] Character {character.GetFullName()} has no CharacterMovement component");
             yield break;
         }
 
-        // ПЕРЕКЛЮЧАЕМ AI персонажа в состояние Working (строительство)
+        // РџР•Р Р•РљР›Р®Р§РђР•Рњ AI РїРµСЂСЃРѕРЅР°Р¶Р° РІ СЃРѕСЃС‚РѕСЏРЅРёРµ Working (СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ)
         CharacterAI characterAI = character.GetComponent<CharacterAI>();
         if (characterAI != null)
         {
+            // FIX: Р"РІРёР³Р°РµРјСЃСЏ Рє СЂР°Р±РѕС‚Рµ - Р±Р»РѕРєРёСЂСѓРµРј РєРѕРЅС‚СЂР°С‚Р°РєСѓ
+            characterAI.SetMovingToJob(true);
             characterAI.SetAIState(CharacterAI.AIState.Working);
         }
 
-        // Получаем GridManager для проверки позиций в сетке
+        // РџРѕР»СѓС‡Р°РµРј GridManager РґР»СЏ РїСЂРѕРІРµСЂРєРё РїРѕР·РёС†РёР№ РІ СЃРµС‚РєРµ
         Vector3 startPos = character.transform.position;
         if (gridManager == null)
         {
@@ -364,8 +362,8 @@ public class ConstructionManager : BaseManager
             yield break;
         }
 
-        // ЕСЛИ БЛОК - СТЕНА, СРАЗУ ПОМЕЧАЕМ КЛЕТКУ КАК ЗАНЯТУЮ
-        // Это предотвратит попадание других персонажей в клетку во время строительства
+        // Р•РЎР›Р Р‘Р›РћРљ - РЎРўР•РќРђ, РЎР РђР—РЈ РџРћРњР•Р§РђР•Рњ РљР›Р•РўРљРЈ РљРђРљ Р—РђРќРЇРўРЈР®
+        // Р­С‚Рѕ РїСЂРµРґРѕС‚РІСЂР°С‚РёС‚ РїРѕРїР°РґР°РЅРёРµ РґСЂСѓРіРёС… РїРµСЂСЃРѕРЅР°Р¶РµР№ РІ РєР»РµС‚РєСѓ РІРѕ РІСЂРµРјСЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
         if (block.blockType == ConstructionBlock.BlockType.Wall)
         {
             GridCell wallCell = gridManager.GetCell(block.gridPosition);
@@ -375,47 +373,46 @@ public class ConstructionManager : BaseManager
             }
         }
 
-        // Преобразуем мировую позицию персонажа в координаты сетки
+        // РџСЂРµРѕР±СЂР°Р·СѓРµРј РјРёСЂРѕРІСѓСЋ РїРѕР·РёС†РёСЋ РїРµСЂСЃРѕРЅР°Р¶Р° РІ РєРѕРѕСЂРґРёРЅР°С‚С‹ СЃРµС‚РєРё
         Vector2Int characterGridPos = gridManager.WorldToGrid(startPos);
 
-        // Проверяем, находится ли персонаж УЖЕ на соседней клетке
+        // РџСЂРѕРІРµСЂСЏРµРј, РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё РїРµСЂСЃРѕРЅР°Р¶ РЈР–Р• РЅР° СЃРѕСЃРµРґРЅРµР№ РєР»РµС‚РєРµ
         int gridDistanceX = Mathf.Abs(characterGridPos.x - block.gridPosition.x);
         int gridDistanceY = Mathf.Abs(characterGridPos.y - block.gridPosition.y);
         int maxGridDistance = Mathf.Max(gridDistanceX, gridDistanceY);
         bool isAdjacentToBlock = (maxGridDistance == 1);
 
-        // Если персонаж УЖЕ на соседней клетке, НЕ перемещаем его
+        // Р•СЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ РЈР–Р• РЅР° СЃРѕСЃРµРґРЅРµР№ РєР»РµС‚РєРµ, РќР• РїРµСЂРµРјРµС‰Р°РµРј РµРіРѕ
         if (isAdjacentToBlock)
         {
-            // Пропускаем перемещение, идем сразу к анимации строительства
+            // РџСЂРѕРїСѓСЃРєР°РµРј РїРµСЂРµРјРµС‰РµРЅРёРµ, РёРґРµРј СЃСЂР°Р·Сѓ Рє Р°РЅРёРјР°С†РёРё СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
         }
         else
         {
-            // Персонаж НЕ на соседней клетке - нужно переместить его
-            // Находим ближайшую свободную клетку рядом с блоком
+            // РџРµСЂСЃРѕРЅР°Р¶ РќР• РЅР° СЃРѕСЃРµРґРЅРµР№ РєР»РµС‚РєРµ - РЅСѓР¶РЅРѕ РїРµСЂРµРјРµСЃС‚РёС‚СЊ РµРіРѕ
+            // РќР°С…РѕРґРёРј Р±Р»РёР¶Р°Р№С€СѓСЋ СЃРІРѕР±РѕРґРЅСѓСЋ РєР»РµС‚РєСѓ СЂСЏРґРѕРј СЃ Р±Р»РѕРєРѕРј
             Vector3? targetPosition = FindNearestValidConstructionPosition(startPos, block);
 
             if (!targetPosition.HasValue)
             {
-                Debug.LogWarning($"[ConstructionManager] No valid construction position found near block at {block.gridPosition}");
                 OnConstructionFailed(character, block);
                 yield break;
             }
 
             movement.MoveTo(targetPosition.Value);
 
-            // Ждем пока персонаж идет
-            yield return new WaitForSeconds(0.2f); // Даем время начать движение
+            // Р–РґРµРј РїРѕРєР° РїРµСЂСЃРѕРЅР°Р¶ РёРґРµС‚
+            yield return new WaitForSeconds(0.2f); // Р”Р°РµРј РІСЂРµРјСЏ РЅР°С‡Р°С‚СЊ РґРІРёР¶РµРЅРёРµ
             while (movement.IsMoving())
             {
-                // Проверяем что персонаж не умер
+                // РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ РЅРµ СѓРјРµСЂ
                 if (character.IsDead())
                 {
                     OnConstructionFailed(character, block);
                     yield break;
                 }
 
-                // ПРОВЕРЯЕМ ПРЕРЫВАНИЕ ВО ВРЕМЯ ДВИЖЕНИЯ К БЛОКУ
+                // РџР РћР’Р•Р РЇР•Рњ РџР Р•Р Р«Р’РђРќРР• Р’Рћ Р’Р Р•РњРЇ Р”Р’РР–Р•РќРРЇ Рљ Р‘Р›РћРљРЈ
                 if (characterAI != null && characterAI.GetCurrentState() != CharacterAI.AIState.Working)
                 {
                     OnConstructionFailed(character, block);
@@ -425,7 +422,7 @@ public class ConstructionManager : BaseManager
                 yield return null;
             }
 
-            // 2. Проверяем что персонаж теперь на соседней клетке
+            // 2. РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ С‚РµРїРµСЂСЊ РЅР° СЃРѕСЃРµРґРЅРµР№ РєР»РµС‚РєРµ
             Vector3 finalPos = character.transform.position;
             Vector2Int finalGridPos = gridManager.WorldToGrid(finalPos);
             int finalGridDistanceX = Mathf.Abs(finalGridPos.x - block.gridPosition.x);
@@ -434,48 +431,53 @@ public class ConstructionManager : BaseManager
 
             if (finalMaxGridDistance > 1)
             {
-                Debug.LogWarning($"[ConstructionManager] {character.GetFullName()} couldn't reach block at {block.gridPosition}, grid distance: {finalMaxGridDistance} cells > 1");
                 OnConstructionFailed(character, block);
                 yield break;
             }
-        } // Закрываем блок else
+        } // Р—Р°РєСЂС‹РІР°РµРј Р±Р»РѕРє else
 
-        // ПОВОРАЧИВАЕМ персонажа лицом к блоку
+        // РџРћР’РћР РђР§РР’РђР•Рњ РїРµСЂСЃРѕРЅР°Р¶Р° Р»РёС†РѕРј Рє Р±Р»РѕРєСѓ
         RotateCharacterTowardsBlock(character, block);
 
-        // Создаем полосу прогресса для блока
+        // FIX: Р"РћРЁР›Р! РЎР±СЂР°СЃС‹РІР°РµРј С„Р»Р°Рі
+        if (characterAI != null)
+        {
+            characterAI.SetMovingToJob(false);
+        }
+
+        // РЎРѕР·РґР°РµРј РїРѕР»РѕСЃСѓ РїСЂРѕРіСЂРµСЃСЃР° РґР»СЏ Р±Р»РѕРєР°
         CreateProgressBar(block);
 
-        // 3. Прыгаем 5 раз (анимация строительства)
+        // 3. РџСЂС‹РіР°РµРј 5 СЂР°Р· (Р°РЅРёРјР°С†РёСЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°)
         for (int i = 0; i < jumpsRequired; i++)
         {
-            // Проверяем что персонаж не умер
+            // РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ РЅРµ СѓРјРµСЂ
             if (character.IsDead())
             {
                 OnConstructionFailed(character, block);
                 yield break;
             }
 
-            // ПРОВЕРЯЕМ ЧТО ПЕРСОНАЖ ВСЕ ЕЩЕ В СОСТОЯНИИ Working (строительство не прервано)
+            // РџР РћР’Р•Р РЇР•Рњ Р§РўРћ РџР•Р РЎРћРќРђР– Р’РЎР• Р•Р©Р• Р’ РЎРћРЎРўРћРЇРќРР Working (СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РЅРµ РїСЂРµСЂРІР°РЅРѕ)
             if (characterAI != null && characterAI.GetCurrentState() != CharacterAI.AIState.Working)
             {
                 OnConstructionFailed(character, block);
                 yield break;
             }
 
-            // Прыжок
+            // РџСЂС‹Р¶РѕРє
             yield return StartCoroutine(Jump(character));
 
-            // Обновляем прогресс строительства
+            // РћР±РЅРѕРІР»СЏРµРј РїСЂРѕРіСЂРµСЃСЃ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
             float progress = (float)(i + 1) / jumpsRequired;
             UpdateProgressBar(block, progress);
 
-            // Пауза между прыжками
+            // РџР°СѓР·Р° РјРµР¶РґСѓ РїСЂС‹Р¶РєР°РјРё
             if (i < jumpsRequired - 1)
             {
                 yield return new WaitForSeconds(jumpInterval);
 
-                // ПРОВЕРЯЕМ ПРЕРЫВАНИЕ ПОСЛЕ ПАУЗЫ
+                // РџР РћР’Р•Р РЇР•Рњ РџР Р•Р Р«Р’РђРќРР• РџРћРЎР›Р• РџРђРЈР—Р«
                 if (characterAI != null && characterAI.GetCurrentState() != CharacterAI.AIState.Working)
                 {
                     OnConstructionFailed(character, block);
@@ -484,31 +486,31 @@ public class ConstructionManager : BaseManager
             }
         }
 
-        // Удаляем полосу прогресса
+        // РЈРґР°Р»СЏРµРј РїРѕР»РѕСЃСѓ РїСЂРѕРіСЂРµСЃСЃР°
         RemoveProgressBar(block);
 
-        // 4. Блок построен - заменяем на финальный префаб
+        // 4. Р‘Р»РѕРє РїРѕСЃС‚СЂРѕРµРЅ - Р·Р°РјРµРЅСЏРµРј РЅР° С„РёРЅР°Р»СЊРЅС‹Р№ РїСЂРµС„Р°Р±
 
         block.isCompleted = true;
         block.OnConstructionComplete?.Invoke();
 
-        // ПЕРЕКЛЮЧАЕМ AI персонажа обратно в состояние PlayerControlled
+        // РџР•Р Р•РљР›Р®Р§РђР•Рњ AI РїРµСЂСЃРѕРЅР°Р¶Р° РѕР±СЂР°С‚РЅРѕ РІ СЃРѕСЃС‚РѕСЏРЅРёРµ PlayerControlled
         if (characterAI != null)
         {
             characterAI.SetAIState(CharacterAI.AIState.PlayerControlled);
         }
 
-        // Удаляем из очереди
+        // РЈРґР°Р»СЏРµРј РёР· РѕС‡РµСЂРµРґРё
         constructionQueue.Remove(block);
         busyCharacters.Remove(character);
 
-        // Удаляем корутину из словаря (строительство завершено нормально)
+        // РЈРґР°Р»СЏРµРј РєРѕСЂСѓС‚РёРЅСѓ РёР· СЃР»РѕРІР°СЂСЏ (СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ Р·Р°РІРµСЂС€РµРЅРѕ РЅРѕСЂРјР°Р»СЊРЅРѕ)
         if (constructionCoroutines.ContainsKey(character))
         {
             constructionCoroutines.Remove(character);
         }
 
-        // Назначаем следующий блок этому персонажу
+        // РќР°Р·РЅР°С‡Р°РµРј СЃР»РµРґСѓСЋС‰РёР№ Р±Р»РѕРє СЌС‚РѕРјСѓ РїРµСЂСЃРѕРЅР°Р¶Сѓ
         if (constructionQueue.Count > 0)
         {
             AssignConstructionTask(character);
@@ -520,7 +522,7 @@ public class ConstructionManager : BaseManager
     }
 
     /// <summary>
-    /// Анимация прыжка персонажа
+    /// РђРЅРёРјР°С†РёСЏ РїСЂС‹Р¶РєР° РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     IEnumerator Jump(Character character)
     {
@@ -529,7 +531,7 @@ public class ConstructionManager : BaseManager
         float jumpDuration = 0.3f;
         float elapsed = 0f;
 
-        // Прыжок вверх
+        // РџСЂС‹Р¶РѕРє РІРІРµСЂС…
         while (elapsed < jumpDuration / 2f)
         {
             elapsed += Time.deltaTime;
@@ -538,7 +540,7 @@ public class ConstructionManager : BaseManager
             yield return null;
         }
 
-        // Падение вниз
+        // РџР°РґРµРЅРёРµ РІРЅРёР·
         elapsed = 0f;
         while (elapsed < jumpDuration / 2f)
         {
@@ -548,21 +550,19 @@ public class ConstructionManager : BaseManager
             yield return null;
         }
 
-        // Гарантируем возврат на исходную позицию
+        // Р“Р°СЂР°РЅС‚РёСЂСѓРµРј РІРѕР·РІСЂР°С‚ РЅР° РёСЃС…РѕРґРЅСѓСЋ РїРѕР·РёС†РёСЋ
         character.transform.position = startPosition;
     }
 
     /// <summary>
-    /// Обработка неудачного строительства
+    /// РћР±СЂР°Р±РѕС‚РєР° РЅРµСѓРґР°С‡РЅРѕРіРѕ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     void OnConstructionFailed(Character character, ConstructionBlock block)
     {
-        Debug.LogWarning($"[ConstructionManager] Construction failed for {character.GetFullName()} at block {block.gridPosition}");
+        // РќР• СѓРґР°Р»СЏРµРј РїРѕР»РѕСЃСѓ РїСЂРѕРіСЂРµСЃСЃР° - РѕРЅР° РґРѕР»Р¶РЅР° РѕСЃС‚Р°С‚СЊСЃСЏ РІРёРґРёРјРѕР№!
+        // РЎС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСЂРѕРґРѕР»Р¶РµРЅРѕ РґСЂСѓРіРёРј РїРµСЂСЃРѕРЅР°Р¶РµРј
 
-        // НЕ удаляем полосу прогресса - она должна остаться видимой!
-        // Строительство может быть продолжено другим персонажем
-
-        // ОСВОБОЖДАЕМ КЛЕТКУ СТЕНЫ, ЕСЛИ ОНА БЫЛА ПОМЕЧЕНА КАК ЗАНЯТАЯ
+        // РћРЎР’РћР‘РћР–Р”РђР•Рњ РљР›Р•РўРљРЈ РЎРўР•РќР«, Р•РЎР›Р РћРќРђ Р‘Р«Р›Рђ РџРћРњР•Р§Р•РќРђ РљРђРљ Р—РђРќРЇРўРђРЇ
         if (block.blockType == ConstructionBlock.BlockType.Wall && gridManager != null)
         {
             GridCell wallCell = gridManager.GetCell(block.gridPosition);
@@ -572,7 +572,7 @@ public class ConstructionManager : BaseManager
             }
         }
 
-        // ПЕРЕКЛЮЧАЕМ AI персонажа обратно в состояние PlayerControlled
+        // РџР•Р Р•РљР›Р®Р§РђР•Рњ AI РїРµСЂСЃРѕРЅР°Р¶Р° РѕР±СЂР°С‚РЅРѕ РІ СЃРѕСЃС‚РѕСЏРЅРёРµ PlayerControlled
         CharacterAI characterAI = character.GetComponent<CharacterAI>();
         if (characterAI != null)
         {
@@ -582,25 +582,24 @@ public class ConstructionManager : BaseManager
         block.isAssigned = false;
         busyCharacters.Remove(character);
 
-        // Удаляем корутину из словаря (строительство провалено)
+        // РЈРґР°Р»СЏРµРј РєРѕСЂСѓС‚РёРЅСѓ РёР· СЃР»РѕРІР°СЂСЏ (СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РїСЂРѕРІР°Р»РµРЅРѕ)
         if (constructionCoroutines.ContainsKey(character))
         {
             constructionCoroutines.Remove(character);
         }
 
-        // Если персонаж еще жив, назначаем ему другой блок
-        if (!character.IsDead() && constructionQueue.Count > 0)
-        {
-            AssignConstructionTask(character);
-        }
+        // Р•СЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ РµС‰Рµ Р¶РёРІ, РЅР°Р·РЅР°С‡Р°РµРј РµРјСѓ РґСЂСѓРіРѕР№ Р±Р»РѕРє
+        // FIX: Do NOT auto-assign new task when construction is interrupted
+        // Player will manually assign characters to construction tasks
+        // This prevents characters from being stuck in endless construction loops
     }
 
     /// <summary>
-    /// Очистить очередь строительства
+    /// РћС‡РёСЃС‚РёС‚СЊ РѕС‡РµСЂРµРґСЊ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     public void ClearConstructionQueue()
     {
-        // Удаляем все полосы прогресса
+        // РЈРґР°Р»СЏРµРј РІСЃРµ РїРѕР»РѕСЃС‹ РїСЂРѕРіСЂРµСЃСЃР°
         foreach (var progressBar in progressBars.Values)
         {
             if (progressBar != null)
@@ -610,7 +609,7 @@ public class ConstructionManager : BaseManager
         }
         progressBars.Clear();
 
-        // ОСВОБОЖДАЕМ КЛЕТКИ СТЕН, КОТОРЫЕ БЫЛИ ПОМЕЧЕНЫ КАК ЗАНЯТЫЕ ВО ВРЕМЯ СТРОИТЕЛЬСТВА
+        // РћРЎР’РћР‘РћР–Р”РђР•Рњ РљР›Р•РўРљР РЎРўР•Рќ, РљРћРўРћР Р«Р• Р‘Р«Р›Р РџРћРњР•Р§Р•РќР« РљРђРљ Р—РђРќРЇРўР«Р• Р’Рћ Р’Р Р•РњРЇ РЎРўР РћРРўР•Р›Р¬РЎРўР’Рђ
         if (gridManager != null)
         {
             foreach (var block in constructionQueue)
@@ -626,18 +625,18 @@ public class ConstructionManager : BaseManager
             }
         }
 
-        // ОСТАНАВЛИВАЕМ ВСЕ КОРУТИНЫ СТРОИТЕЛЬСТВА
+        // РћРЎРўРђРќРђР’Р›РР’РђР•Рњ Р’РЎР• РљРћР РЈРўРРќР« РЎРўР РћРРўР•Р›Р¬РЎРўР’Рђ
         foreach (var character in busyCharacters.Keys)
         {
             if (character != null)
             {
-                // Останавливаем корутину
+                // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј РєРѕСЂСѓС‚РёРЅСѓ
                 if (constructionCoroutines.ContainsKey(character))
                 {
                     StopCoroutine(constructionCoroutines[character]);
                 }
 
-                // Переключаем AI обратно в состояние PlayerControlled
+                // РџРµСЂРµРєР»СЋС‡Р°РµРј AI РѕР±СЂР°С‚РЅРѕ РІ СЃРѕСЃС‚РѕСЏРЅРёРµ PlayerControlled
                 CharacterAI characterAI = character.GetComponent<CharacterAI>();
                 if (characterAI != null)
                 {
@@ -648,12 +647,12 @@ public class ConstructionManager : BaseManager
 
         constructionQueue.Clear();
         busyCharacters.Clear();
-        constructionCoroutines.Clear(); // Очищаем словарь корутин
+        constructionCoroutines.Clear(); // РћС‡РёС‰Р°РµРј СЃР»РѕРІР°СЂСЊ РєРѕСЂСѓС‚РёРЅ
 
     }
 
     /// <summary>
-    /// Получить количество блоков в очереди
+    /// РџРѕР»СѓС‡РёС‚СЊ РєРѕР»РёС‡РµСЃС‚РІРѕ Р±Р»РѕРєРѕРІ РІ РѕС‡РµСЂРµРґРё
     /// </summary>
     public int GetQueueSize()
     {
@@ -661,37 +660,32 @@ public class ConstructionManager : BaseManager
     }
 
     /// <summary>
-    /// ПУБЛИЧНЫЙ МЕТОД: Принудительно остановить строительство для конкретного персонажа
-    /// Вызывается когда игрок отдает персонажу другую команду во время строительства
+    /// РџРЈР‘Р›РР§РќР«Р™ РњР•РўРћР”: РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РѕСЃС‚Р°РЅРѕРІРёС‚СЊ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РґР»СЏ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р°
+    /// Р’С‹Р·С‹РІР°РµС‚СЃСЏ РєРѕРіРґР° РёРіСЂРѕРє РѕС‚РґР°РµС‚ РїРµСЂСЃРѕРЅР°Р¶Сѓ РґСЂСѓРіСѓСЋ РєРѕРјР°РЅРґСѓ РІРѕ РІСЂРµРјСЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     public void StopConstructionForCharacter(Character character)
     {
         if (character == null)
             return;
 
-        // Проверяем что персонаж занят строительством
+        // РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ Р·Р°РЅСЏС‚ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕРј
         if (!busyCharacters.ContainsKey(character))
             return;
 
         ConstructionBlock block = busyCharacters[character];
 
 
-        // ✓ КРИТИЧЕСКИ ВАЖНО: ОСТАНАВЛИВАЕМ КОРУТИНУ СТРОИТЕЛЬСТВА!
+        // вњ“ РљР РРўРР§Р•РЎРљР Р’РђР–РќРћ: РћРЎРўРђРќРђР’Р›РР’РђР•Рњ РљРћР РЈРўРРќРЈ РЎРўР РћРРўР•Р›Р¬РЎРўР’Рђ!
         if (constructionCoroutines.ContainsKey(character))
         {
             StopCoroutine(constructionCoroutines[character]);
             constructionCoroutines.Remove(character);
-
-        }
-        else
-        {
-            Debug.LogWarning($"[ConstructionManager] ⚠ Корутина не найдена для {character.GetFullName()}!");
         }
 
-        // НЕ удаляем полосу прогресса - она должна остаться видимой!
-        // Полоса будет удалена только когда строительство завершится
+        // РќР• СѓРґР°Р»СЏРµРј РїРѕР»РѕСЃСѓ РїСЂРѕРіСЂРµСЃСЃР° - РѕРЅР° РґРѕР»Р¶РЅР° РѕСЃС‚Р°С‚СЊСЃСЏ РІРёРґРёРјРѕР№!
+        // РџРѕР»РѕСЃР° Р±СѓРґРµС‚ СѓРґР°Р»РµРЅР° С‚РѕР»СЊРєРѕ РєРѕРіРґР° СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ Р·Р°РІРµСЂС€РёС‚СЃСЏ
 
-        // ОСВОБОЖДАЕМ КЛЕТКУ СТЕНЫ, ЕСЛИ ОНА БЫЛА ПОМЕЧЕНА КАК ЗАНЯТАЯ
+        // РћРЎР’РћР‘РћР–Р”РђР•Рњ РљР›Р•РўРљРЈ РЎРўР•РќР«, Р•РЎР›Р РћРќРђ Р‘Р«Р›Рђ РџРћРњР•Р§Р•РќРђ РљРђРљ Р—РђРќРЇРўРђРЇ
         if (block.blockType == ConstructionBlock.BlockType.Wall && gridManager != null)
         {
             GridCell wallCell = gridManager.GetCell(block.gridPosition);
@@ -701,43 +695,43 @@ public class ConstructionManager : BaseManager
             }
         }
 
-        // Освобождаем блок для других персонажей
+        // РћСЃРІРѕР±РѕР¶РґР°РµРј Р±Р»РѕРє РґР»СЏ РґСЂСѓРіРёС… РїРµСЂСЃРѕРЅР°Р¶РµР№
         block.isAssigned = false;
 
-        // Удаляем персонажа из занятых
+        // РЈРґР°Р»СЏРµРј РїРµСЂСЃРѕРЅР°Р¶Р° РёР· Р·Р°РЅСЏС‚С‹С…
         busyCharacters.Remove(character);
 
 
     }
 
     /// <summary>
-    /// Создать полосу прогресса для блока (или вернуть существующую)
+    /// РЎРѕР·РґР°С‚СЊ РїРѕР»РѕСЃСѓ РїСЂРѕРіСЂРµСЃСЃР° РґР»СЏ Р±Р»РѕРєР° (РёР»Рё РІРµСЂРЅСѓС‚СЊ СЃСѓС‰РµСЃС‚РІСѓСЋС‰СѓСЋ)
     /// </summary>
     GameObject CreateProgressBar(ConstructionBlock block)
     {
-        // Проверяем, существует ли уже полоса прогресса для этого блока
+        // РџСЂРѕРІРµСЂСЏРµРј, СЃСѓС‰РµСЃС‚РІСѓРµС‚ Р»Рё СѓР¶Рµ РїРѕР»РѕСЃР° РїСЂРѕРіСЂРµСЃСЃР° РґР»СЏ СЌС‚РѕРіРѕ Р±Р»РѕРєР°
         if (progressBars.ContainsKey(block) && progressBars[block] != null)
         {
             return progressBars[block];
         }
 
-        // Создаем контейнер для полосы прогресса
+        // РЎРѕР·РґР°РµРј РєРѕРЅС‚РµР№РЅРµСЂ РґР»СЏ РїРѕР»РѕСЃС‹ РїСЂРѕРіСЂРµСЃСЃР°
         GameObject progressBarContainer = new GameObject($"ProgressBar_{block.gridPosition}");
         progressBarContainer.transform.position = block.worldPosition + Vector3.up * progressBarHeight;
 
-        // Добавляем Billboard компонент для поворота к камере
+        // Р”РѕР±Р°РІР»СЏРµРј Billboard РєРѕРјРїРѕРЅРµРЅС‚ РґР»СЏ РїРѕРІРѕСЂРѕС‚Р° Рє РєР°РјРµСЂРµ
         progressBarContainer.AddComponent<Billboard>();
 
-        // Создаем Canvas для мирового пространства
+        // РЎРѕР·РґР°РµРј Canvas РґР»СЏ РјРёСЂРѕРІРѕРіРѕ РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІР°
         Canvas canvas = progressBarContainer.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
 
-        // Настраиваем размер Canvas
+        // РќР°СЃС‚СЂР°РёРІР°РµРј СЂР°Р·РјРµСЂ Canvas
         RectTransform canvasRect = progressBarContainer.GetComponent<RectTransform>();
         canvasRect.sizeDelta = new Vector2(progressBarWidth, progressBarThickness);
-        canvasRect.localScale = Vector3.one * progressBarScale; // Масштаб для мирового пространства
+        canvasRect.localScale = Vector3.one * progressBarScale; // РњР°СЃС€С‚Р°Р± РґР»СЏ РјРёСЂРѕРІРѕРіРѕ РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІР°
 
-        // Создаем фон полосы
+        // РЎРѕР·РґР°РµРј С„РѕРЅ РїРѕР»РѕСЃС‹
         GameObject background = new GameObject("Background");
         background.transform.SetParent(progressBarContainer.transform, false);
 
@@ -749,7 +743,7 @@ public class ConstructionManager : BaseManager
         bgRect.anchorMax = Vector2.one;
         bgRect.sizeDelta = Vector2.zero;
 
-        // Создаем заполнение полосы (растёт слева направо)
+        // РЎРѕР·РґР°РµРј Р·Р°РїРѕР»РЅРµРЅРёРµ РїРѕР»РѕСЃС‹ (СЂР°СЃС‚С‘С‚ СЃР»РµРІР° РЅР°РїСЂР°РІРѕ)
         GameObject fill = new GameObject("Fill");
         fill.transform.SetParent(background.transform, false);
 
@@ -757,33 +751,33 @@ public class ConstructionManager : BaseManager
         fillImage.color = progressBarFillColor;
 
         RectTransform fillRect = fill.GetComponent<RectTransform>();
-        fillRect.anchorMin = new Vector2(0, 0);     // Левый нижний угол
-        fillRect.anchorMax = new Vector2(0, 1);     // Левый верхний угол (ширина = 0)
-        fillRect.pivot = new Vector2(0, 0.5f);      // Pivot слева
+        fillRect.anchorMin = new Vector2(0, 0);     // Р›РµРІС‹Р№ РЅРёР¶РЅРёР№ СѓРіРѕР»
+        fillRect.anchorMax = new Vector2(0, 1);     // Р›РµРІС‹Р№ РІРµСЂС…РЅРёР№ СѓРіРѕР» (С€РёСЂРёРЅР° = 0)
+        fillRect.pivot = new Vector2(0, 0.5f);      // Pivot СЃР»РµРІР°
         fillRect.offsetMin = Vector2.zero;
         fillRect.offsetMax = Vector2.zero;
 
-        // Сохраняем ссылку на полосу
+        // РЎРѕС…СЂР°РЅСЏРµРј СЃСЃС‹Р»РєСѓ РЅР° РїРѕР»РѕСЃСѓ
         progressBars[block] = progressBarContainer;
 
         return progressBarContainer;
     }
 
     /// <summary>
-    /// Обновить прогресс строительства блока
+    /// РћР±РЅРѕРІРёС‚СЊ РїСЂРѕРіСЂРµСЃСЃ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° Р±Р»РѕРєР°
     /// </summary>
     void UpdateProgressBar(ConstructionBlock block, float progress)
     {
         if (progressBars.ContainsKey(block) && progressBars[block] != null)
         {
-            // Находим Fill RectTransform
+            // РќР°С…РѕРґРёРј Fill RectTransform
             Transform fillTransform = progressBars[block].transform.Find("Background/Fill");
             if (fillTransform != null)
             {
                 RectTransform fillRect = fillTransform.GetComponent<RectTransform>();
                 if (fillRect != null)
                 {
-                    // Изменяем ширину полосы от 0 до 1 (0% до 100%)
+                    // РР·РјРµРЅСЏРµРј С€РёСЂРёРЅСѓ РїРѕР»РѕСЃС‹ РѕС‚ 0 РґРѕ 1 (0% РґРѕ 100%)
                     fillRect.anchorMax = new Vector2(progress, 1);
                 }
             }
@@ -791,7 +785,7 @@ public class ConstructionManager : BaseManager
     }
 
     /// <summary>
-    /// Удалить полосу прогресса блока
+    /// РЈРґР°Р»РёС‚СЊ РїРѕР»РѕСЃСѓ РїСЂРѕРіСЂРµСЃСЃР° Р±Р»РѕРєР°
     /// </summary>
     void RemoveProgressBar(ConstructionBlock block)
     {
@@ -807,7 +801,7 @@ public class ConstructionManager : BaseManager
 }
 
 /// <summary>
-/// Данные о блоке для строительства
+/// Р”Р°РЅРЅС‹Рµ Рѕ Р±Р»РѕРєРµ РґР»СЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
 /// </summary>
 [System.Serializable]
 public class ConstructionBlock
@@ -819,7 +813,7 @@ public class ConstructionBlock
     public bool isAssigned = false;
     public bool isCompleted = false;
 
-    // Callback когда строительство завершено
+    // Callback РєРѕРіРґР° СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ Р·Р°РІРµСЂС€РµРЅРѕ
     public System.Action OnConstructionComplete;
 
     public enum BlockType

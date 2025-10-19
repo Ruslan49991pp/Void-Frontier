@@ -1,20 +1,20 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// Менеджер ресурсов - база данных всех ресурсов в игре
-/// Создать через Assets -> Create -> Resources/Resource Manager
+/// РњРµРЅРµРґР¶РµСЂ СЂРµСЃСѓСЂСЃРѕРІ - Р±Р°Р·Р° РґР°РЅРЅС‹С… РІСЃРµС… СЂРµСЃСѓСЂСЃРѕРІ РІ РёРіСЂРµ
+/// РЎРѕР·РґР°С‚СЊ С‡РµСЂРµР· Assets -> Create -> Resources/Resource Manager
 /// </summary>
 [CreateAssetMenu(fileName = "ResourceManager", menuName = "Resources/Resource Manager")]
 public class ResourceManager : ScriptableObject
 {
-    [Header("База данных ресурсов")]
-    [Tooltip("Список всех ресурсов в игре")]
+    [Header("Р‘Р°Р·Р° РґР°РЅРЅС‹С… СЂРµСЃСѓСЂСЃРѕРІ")]
+    [Tooltip("РЎРїРёСЃРѕРє РІСЃРµС… СЂРµСЃСѓСЂСЃРѕРІ РІ РёРіСЂРµ")]
     public List<ResourceData> allResources = new List<ResourceData>();
 
     /// <summary>
-    /// Получить ресурс по названию
+    /// РџРѕР»СѓС‡РёС‚СЊ СЂРµСЃСѓСЂСЃ РїРѕ РЅР°Р·РІР°РЅРёСЋ
     /// </summary>
     public ResourceData GetResourceByName(string resourceName)
     {
@@ -26,7 +26,7 @@ public class ResourceManager : ScriptableObject
     }
 
     /// <summary>
-    /// Получить все ресурсы определенной категории
+    /// РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ СЂРµСЃСѓСЂСЃС‹ РѕРїСЂРµРґРµР»РµРЅРЅРѕР№ РєР°С‚РµРіРѕСЂРёРё
     /// </summary>
     public List<ResourceData> GetResourcesByCategory(ResourceCategory category)
     {
@@ -34,7 +34,7 @@ public class ResourceManager : ScriptableObject
     }
 
     /// <summary>
-    /// Получить иконку ресурса по названию
+    /// РџРѕР»СѓС‡РёС‚СЊ РёРєРѕРЅРєСѓ СЂРµСЃСѓСЂСЃР° РїРѕ РЅР°Р·РІР°РЅРёСЋ
     /// </summary>
     public Sprite GetResourceIcon(string resourceName)
     {
@@ -43,7 +43,7 @@ public class ResourceManager : ScriptableObject
     }
 
     /// <summary>
-    /// Получить префаб ресурса по названию
+    /// РџРѕР»СѓС‡РёС‚СЊ РїСЂРµС„Р°Р± СЂРµСЃСѓСЂСЃР° РїРѕ РЅР°Р·РІР°РЅРёСЋ
     /// </summary>
     public GameObject GetResourcePrefab(string resourceName)
     {
@@ -52,7 +52,7 @@ public class ResourceManager : ScriptableObject
     }
 
     /// <summary>
-    /// Проверить, существует ли ресурс
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, СЃСѓС‰РµСЃС‚РІСѓРµС‚ Р»Рё СЂРµСЃСѓСЂСЃ
     /// </summary>
     public bool ResourceExists(string resourceName)
     {
@@ -60,7 +60,7 @@ public class ResourceManager : ScriptableObject
     }
 
     /// <summary>
-    /// Получить общее количество ресурсов
+    /// РџРѕР»СѓС‡РёС‚СЊ РѕР±С‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµСЃСѓСЂСЃРѕРІ
     /// </summary>
     public int GetTotalResourceCount()
     {
@@ -68,7 +68,7 @@ public class ResourceManager : ScriptableObject
     }
 
     /// <summary>
-    /// Получить все названия ресурсов
+    /// РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ РЅР°Р·РІР°РЅРёСЏ СЂРµСЃСѓСЂСЃРѕРІ
     /// </summary>
     public List<string> GetAllResourceNames()
     {
@@ -76,26 +76,25 @@ public class ResourceManager : ScriptableObject
     }
 
     /// <summary>
-    /// Добавить ресурс в базу данных (для использования в Editor)
+    /// Р”РѕР±Р°РІРёС‚СЊ СЂРµСЃСѓСЂСЃ РІ Р±Р°Р·Сѓ РґР°РЅРЅС‹С… (РґР»СЏ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ РІ Editor)
     /// </summary>
     public void AddResource(ResourceData resource)
     {
         if (resource == null)
             return;
 
-        // Проверяем, нет ли уже такого ресурса
+        // РџСЂРѕРІРµСЂСЏРµРј, РЅРµС‚ Р»Рё СѓР¶Рµ С‚Р°РєРѕРіРѕ СЂРµСЃСѓСЂСЃР°
         if (!allResources.Contains(resource) && !ResourceExists(resource.resourceName))
         {
             allResources.Add(resource);
         }
         else
         {
-            Debug.LogWarning($"Ресурс '{resource.resourceName}' уже существует в базе данных!");
         }
     }
 
     /// <summary>
-    /// Удалить ресурс из базы данных (для использования в Editor)
+    /// РЈРґР°Р»РёС‚СЊ СЂРµСЃСѓСЂСЃ РёР· Р±Р°Р·С‹ РґР°РЅРЅС‹С… (РґР»СЏ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ РІ Editor)
     /// </summary>
     public void RemoveResource(ResourceData resource)
     {
@@ -106,25 +105,25 @@ public class ResourceManager : ScriptableObject
     }
 
     /// <summary>
-    /// Получить статистику по категориям
+    /// РџРѕР»СѓС‡РёС‚СЊ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕ РєР°С‚РµРіРѕСЂРёСЏРј
     /// </summary>
     public string GetCategoryStats()
     {
-        var stats = "Статистика ресурсов:\n";
+        var stats = "РЎС‚Р°С‚РёСЃС‚РёРєР° СЂРµСЃСѓСЂСЃРѕРІ:\n";
         foreach (ResourceCategory category in System.Enum.GetValues(typeof(ResourceCategory)))
         {
             int count = GetResourcesByCategory(category).Count;
             stats += $"  {category}: {count}\n";
         }
-        stats += $"Всего ресурсов: {GetTotalResourceCount()}";
+        stats += $"Р’СЃРµРіРѕ СЂРµСЃСѓСЂСЃРѕРІ: {GetTotalResourceCount()}";
         return stats;
     }
 
 #if UNITY_EDITOR
     /// <summary>
-    /// Очистить null элементы из списка
+    /// РћС‡РёСЃС‚РёС‚СЊ null СЌР»РµРјРµРЅС‚С‹ РёР· СЃРїРёСЃРєР°
     /// </summary>
-    [ContextMenu("Очистить NULL элементы")]
+    [ContextMenu("РћС‡РёСЃС‚РёС‚СЊ NULL СЌР»РµРјРµРЅС‚С‹")]
     public void RemoveNullEntries()
     {
         int beforeCount = allResources.Count;
@@ -144,9 +143,9 @@ public class ResourceManager : ScriptableObject
     }
 
     /// <summary>
-    /// Проверить целостность базы данных
+    /// РџСЂРѕРІРµСЂРёС‚СЊ С†РµР»РѕСЃС‚РЅРѕСЃС‚СЊ Р±Р°Р·С‹ РґР°РЅРЅС‹С…
     /// </summary>
-    [ContextMenu("Проверить целостность")]
+    [ContextMenu("РџСЂРѕРІРµСЂРёС‚СЊ С†РµР»РѕСЃС‚РЅРѕСЃС‚СЊ")]
     public void ValidateDatabase()
     {
         int errors = 0;
@@ -156,7 +155,6 @@ public class ResourceManager : ScriptableObject
         {
             if (resource == null)
             {
-                Debug.LogError("Найден null ресурс в базе данных!");
                 nullCount++;
                 errors++;
                 continue;
@@ -164,24 +162,20 @@ public class ResourceManager : ScriptableObject
 
             if (string.IsNullOrEmpty(resource.resourceName))
             {
-                Debug.LogError($"Ресурс без имени: {resource.name}");
                 errors++;
             }
 
             if (resource.icon == null)
             {
-                Debug.LogWarning($"У ресурса '{resource.resourceName}' отсутствует иконка!");
             }
 
             if (resource.prefab == null)
             {
-                Debug.LogWarning($"У ресурса '{resource.resourceName}' отсутствует префаб!");
             }
         }
 
         if (nullCount > 0)
         {
-            Debug.LogError($"Найдено {nullCount} null элементов! Используйте 'Очистить NULL элементы' для их удаления.");
         }
 
         if (errors == 0)
@@ -190,14 +184,13 @@ public class ResourceManager : ScriptableObject
         }
         else
         {
-            Debug.LogError($"Найдено ошибок: {errors}");
         }
     }
 
     /// <summary>
-    /// Вывести статистику
+    /// Р’С‹РІРµСЃС‚Рё СЃС‚Р°С‚РёСЃС‚РёРєСѓ
     /// </summary>
-    [ContextMenu("Показать статистику")]
+    [ContextMenu("РџРѕРєР°Р·Р°С‚СЊ СЃС‚Р°С‚РёСЃС‚РёРєСѓ")]
     public void ShowStats()
     {
 

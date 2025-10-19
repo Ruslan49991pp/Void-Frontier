@@ -1,72 +1,68 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// UI панель для отображения ресурсов корабля
-/// Показывает ресурсы из инвентарей персонажей и лежащие на территории корабля
+/// UI РїР°РЅРµР»СЊ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ СЂРµСЃСѓСЂСЃРѕРІ РєРѕСЂР°Р±Р»СЏ
+/// РџРѕРєР°Р·С‹РІР°РµС‚ СЂРµСЃСѓСЂСЃС‹ РёР· РёРЅРІРµРЅС‚Р°СЂРµР№ РїРµСЂСЃРѕРЅР°Р¶РµР№ Рё Р»РµР¶Р°С‰РёРµ РЅР° С‚РµСЂСЂРёС‚РѕСЂРёРё РєРѕСЂР°Р±Р»СЏ
 /// </summary>
 public class ResourcePanelUI : MonoBehaviour
 {
     [Header("References")]
-    [Tooltip("ResourceManager со списком всех ресурсов")]
+    [Tooltip("ResourceManager СЃРѕ СЃРїРёСЃРєРѕРј РІСЃРµС… СЂРµСЃСѓСЂСЃРѕРІ")]
     public ResourceManager resourceManager;
 
-    [Tooltip("Префаб для отображения одного ресурса")]
+    [Tooltip("РџСЂРµС„Р°Р± РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РѕРґРЅРѕРіРѕ СЂРµСЃСѓСЂСЃР°")]
     public GameObject resourceSlotPrefab;
 
-    [Tooltip("Родительский объект для иконок ресурсов")]
+    [Tooltip("Р РѕРґРёС‚РµР»СЊСЃРєРёР№ РѕР±СЉРµРєС‚ РґР»СЏ РёРєРѕРЅРѕРє СЂРµСЃСѓСЂСЃРѕРІ")]
     public Transform resourceSlotsParent;
 
     [Header("Settings")]
-    [Tooltip("Как часто обновлять панель (в секундах)")]
-    public float updateInterval = 2f; // Увеличили интервал до 2 секунд
+    [Tooltip("РљР°Рє С‡Р°СЃС‚Рѕ РѕР±РЅРѕРІР»СЏС‚СЊ РїР°РЅРµР»СЊ (РІ СЃРµРєСѓРЅРґР°С…)")]
+    public float updateInterval = 2f; // РЈРІРµР»РёС‡РёР»Рё РёРЅС‚РµСЂРІР°Р» РґРѕ 2 СЃРµРєСѓРЅРґ
 
-    // Внутренние переменные
+    // Р’РЅСѓС‚СЂРµРЅРЅРёРµ РїРµСЂРµРјРµРЅРЅС‹Рµ
     private Dictionary<string, ResourceSlotUI> resourceSlots = new Dictionary<string, ResourceSlotUI>();
     private float updateTimer;
     private GridManager gridManager;
 
-    // PERFORMANCE FIX: Кэшируем массивы и обновляем реже + используем события
+    // PERFORMANCE FIX: РљСЌС€РёСЂСѓРµРј РјР°СЃСЃРёРІС‹ Рё РѕР±РЅРѕРІР»СЏРµРј СЂРµР¶Рµ + РёСЃРїРѕР»СЊР·СѓРµРј СЃРѕР±С‹С‚РёСЏ
     private Character[] cachedCharacters;
     private Item[] cachedItems;
     private float cacheRefreshTimer;
-    private float cacheRefreshInterval = 30f; // Увеличили с 5 до 30 секунд для производительности
-    private bool needsRefresh = false; // Флаг для принудительного обновления
+    private float cacheRefreshInterval = 30f; // РЈРІРµР»РёС‡РёР»Рё СЃ 5 РґРѕ 30 СЃРµРєСѓРЅРґ РґР»СЏ РїСЂРѕРёР·РІРѕРґРёС‚РµР»СЊРЅРѕСЃС‚Рё
+    private bool needsRefresh = false; // Р¤Р»Р°Рі РґР»СЏ РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕРіРѕ РѕР±РЅРѕРІР»РµРЅРёСЏ
 
-    // Защита от повторной инициализации
+    // Р—Р°С‰РёС‚Р° РѕС‚ РїРѕРІС‚РѕСЂРЅРѕР№ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
     private bool isInitialized = false;
 
     void Awake()
     {
-        // ЗАЩИТА: Проверяем, не является ли этот объект клоном слота (рекурсия!)
+        // Р—РђР©РРўРђ: РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚РѕС‚ РѕР±СЉРµРєС‚ РєР»РѕРЅРѕРј СЃР»РѕС‚Р° (СЂРµРєСѓСЂСЃРёСЏ!)
         if (gameObject.name.Contains("ResourceSlot") || (gameObject.name.Contains("(Clone)") && transform.parent != null && transform.parent.name.Contains("ResourceSlot")))
         {
-            Debug.LogError($"[ResourcePanelUI] RECURSION DETECTED in Awake! ResourcePanelUI on slot object: {GetGameObjectPath(gameObject)}");
-            Debug.LogError("[ResourcePanelUI] Destroying this component immediately!");
             DestroyImmediate(this);
             return;
         }
 
-        // Находим ResourceManager если не назначен
+        // РќР°С…РѕРґРёРј ResourceManager РµСЃР»Рё РЅРµ РЅР°Р·РЅР°С‡РµРЅ
         if (resourceManager == null)
         {
             resourceManager = Resources.Load<ResourceManager>("ResourceManager");
             if (resourceManager == null)
             {
-                Debug.LogError("[ResourcePanelUI] ResourceManager not found! Create it via Tools/Resources/Create Resource Manager");
             }
         }
 
-        // Находим GridManager
+        // РќР°С…РѕРґРёРј GridManager
         gridManager = FindObjectOfType<GridManager>();
         if (gridManager == null)
         {
-            Debug.LogWarning("[ResourcePanelUI] GridManager not found in Awake(), will try again in Start()");
         }
 
-        // Если resourceSlotsParent не назначен, ищем его
+        // Р•СЃР»Рё resourceSlotsParent РЅРµ РЅР°Р·РЅР°С‡РµРЅ, РёС‰РµРј РµРіРѕ
         if (resourceSlotsParent == null)
         {
             resourceSlotsParent = transform;
@@ -75,54 +71,53 @@ public class ResourcePanelUI : MonoBehaviour
 
     void Start()
     {
-        // Защита от повторной инициализации
+        // Р—Р°С‰РёС‚Р° РѕС‚ РїРѕРІС‚РѕСЂРЅРѕР№ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
         if (isInitialized)
         {
             return;
         }
 
-        // Пробуем найти GridManager еще раз если не нашли в Awake
+        // РџСЂРѕР±СѓРµРј РЅР°Р№С‚Рё GridManager РµС‰Рµ СЂР°Р· РµСЃР»Рё РЅРµ РЅР°С€Р»Рё РІ Awake
         if (gridManager == null)
         {
             gridManager = FindObjectOfType<GridManager>();
             if (gridManager == null)
             {
-                Debug.LogWarning("[ResourcePanelUI] GridManager still not found in Start(). Resources on ship territory won't be counted.");
             }
         }
 
-        // PERFORMANCE FIX: Подписываемся на события для event-driven обновления
-        Character.OnPlayerCharacterSpawned += OnCharacterSpawned;
+        // PERFORMANCE FIX: РџРѕРґРїРёСЃС‹РІР°РµРјСЃСЏ РЅР° СЃРѕР±С‹С‚РёСЏ РґР»СЏ event-driven РѕР±РЅРѕРІР»РµРЅРёСЏ
+        EventBus.Subscribe<CharacterSpawnedEvent>(OnCharacterSpawned);
 
-        // НЕ создаем слоты заранее - они создаются динамически при наличии ресурсов
+        // РќР• СЃРѕР·РґР°РµРј СЃР»РѕС‚С‹ Р·Р°СЂР°РЅРµРµ - РѕРЅРё СЃРѕР·РґР°СЋС‚СЃСЏ РґРёРЅР°РјРёС‡РµСЃРєРё РїСЂРё РЅР°Р»РёС‡РёРё СЂРµСЃСѓСЂСЃРѕРІ
         RefreshCache();
         UpdateResourceDisplay();
         isInitialized = true;
     }
 
     /// <summary>
-    /// Обработчик спавна персонажа - обновляем кэш
-    /// PERFORMANCE: Вызывается только когда спавнится персонаж, а не каждые 5 секунд
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє СЃРїР°РІРЅР° РїРµСЂСЃРѕРЅР°Р¶Р° - РѕР±РЅРѕРІР»СЏРµРј РєСЌС€
+    /// PERFORMANCE: Р’С‹Р·С‹РІР°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ РєРѕРіРґР° СЃРїР°РІРЅРёС‚СЃСЏ РїРµСЂСЃРѕРЅР°Р¶, Р° РЅРµ РєР°Р¶РґС‹Рµ 5 СЃРµРєСѓРЅРґ
     /// </summary>
-    void OnCharacterSpawned(Character character)
+    void OnCharacterSpawned(CharacterSpawnedEvent evt)
     {
         needsRefresh = true;
     }
 
     void Update()
     {
-        // PERFORMANCE FIX: Обновляем кэш сразу если есть флаг, иначе по таймеру
+        // PERFORMANCE FIX: РћР±РЅРѕРІР»СЏРµРј РєСЌС€ СЃСЂР°Р·Сѓ РµСЃР»Рё РµСЃС‚СЊ С„Р»Р°Рі, РёРЅР°С‡Рµ РїРѕ С‚Р°Р№РјРµСЂСѓ
         if (needsRefresh)
         {
             needsRefresh = false;
             RefreshCache();
             UpdateResourceDisplay();
-            updateTimer = 0f; // Сбрасываем таймер обновления
-            cacheRefreshTimer = 0f; // Сбрасываем таймер кэша
+            updateTimer = 0f; // РЎР±СЂР°СЃС‹РІР°РµРј С‚Р°Р№РјРµСЂ РѕР±РЅРѕРІР»РµРЅРёСЏ
+            cacheRefreshTimer = 0f; // РЎР±СЂР°СЃС‹РІР°РµРј С‚Р°Р№РјРµСЂ РєСЌС€Р°
             return;
         }
 
-        // Обновляем панель с заданным интервалом
+        // РћР±РЅРѕРІР»СЏРµРј РїР°РЅРµР»СЊ СЃ Р·Р°РґР°РЅРЅС‹Рј РёРЅС‚РµСЂРІР°Р»РѕРј
         updateTimer += Time.deltaTime;
         if (updateTimer >= updateInterval)
         {
@@ -130,7 +125,7 @@ public class ResourcePanelUI : MonoBehaviour
             UpdateResourceDisplay();
         }
 
-        // Обновляем кэш периодически (теперь раз в 30 секунд вместо 5)
+        // РћР±РЅРѕРІР»СЏРµРј РєСЌС€ РїРµСЂРёРѕРґРёС‡РµСЃРєРё (С‚РµРїРµСЂСЊ СЂР°Р· РІ 30 СЃРµРєСѓРЅРґ РІРјРµСЃС‚Рѕ 5)
         cacheRefreshTimer += Time.deltaTime;
         if (cacheRefreshTimer >= cacheRefreshInterval)
         {
@@ -140,7 +135,7 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновить кэш персонажей и предметов
+    /// РћР±РЅРѕРІРёС‚СЊ РєСЌС€ РїРµСЂСЃРѕРЅР°Р¶РµР№ Рё РїСЂРµРґРјРµС‚РѕРІ
     /// </summary>
     void RefreshCache()
     {
@@ -149,7 +144,7 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Инициализировать слоты для всех ресурсов
+    /// РРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°С‚СЊ СЃР»РѕС‚С‹ РґР»СЏ РІСЃРµС… СЂРµСЃСѓСЂСЃРѕРІ
     /// </summary>
     void InitializeResourceSlots()
     {
@@ -158,27 +153,22 @@ public class ResourcePanelUI : MonoBehaviour
             return;
         }
 
-        // ЗАЩИТА: Проверяем, что префаб не содержит ResourcePanelUI компонент
+        // Р—РђР©РРўРђ: РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РїСЂРµС„Р°Р± РЅРµ СЃРѕРґРµСЂР¶РёС‚ ResourcePanelUI РєРѕРјРїРѕРЅРµРЅС‚
         if (resourceSlotPrefab.GetComponent<ResourcePanelUI>() != null)
         {
-            Debug.LogError("[ResourcePanelUI] CRITICAL ERROR! resourceSlotPrefab contains ResourcePanelUI component!");
-            Debug.LogError("[ResourcePanelUI] This will cause infinite recursion! Please assign correct ResourceSlot prefab in Unity Editor.");
-            Debug.LogError($"[ResourcePanelUI] Current prefab: {resourceSlotPrefab.name}");
             return;
         }
 
-        // ЗАЩИТА: Проверяем, не является ли этот объект клоном слота (рекурсия!)
+        // Р—РђР©РРўРђ: РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚РѕС‚ РѕР±СЉРµРєС‚ РєР»РѕРЅРѕРј СЃР»РѕС‚Р° (СЂРµРєСѓСЂСЃРёСЏ!)
         if (gameObject.name.Contains("ResourceSlot") || gameObject.name.Contains("(Clone)"))
         {
-            Debug.LogError($"[ResourcePanelUI] RECURSION DETECTED! ResourcePanelUI on slot object: {GetGameObjectPath(gameObject)}");
-            Debug.LogError("[ResourcePanelUI] This should NEVER happen! Check your prefab references in Unity Editor!");
             return;
         }
 
-        // Очищаем существующие слоты
+        // РћС‡РёС‰Р°РµРј СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ СЃР»РѕС‚С‹
         ClearResourceSlots();
 
-        // Создаем слот для каждого ресурса
+        // РЎРѕР·РґР°РµРј СЃР»РѕС‚ РґР»СЏ РєР°Р¶РґРѕРіРѕ СЂРµСЃСѓСЂСЃР°
         foreach (ResourceData resource in resourceManager.allResources)
         {
             CreateResourceSlot(resource);
@@ -186,34 +176,34 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Создать слот для одного ресурса
+    /// РЎРѕР·РґР°С‚СЊ СЃР»РѕС‚ РґР»СЏ РѕРґРЅРѕРіРѕ СЂРµСЃСѓСЂСЃР°
     /// </summary>
     void CreateResourceSlot(ResourceData resource)
     {
         if (resource == null || resourceSlotPrefab == null || resourceSlotsParent == null)
             return;
 
-        // Создаем экземпляр префаба
+        // РЎРѕР·РґР°РµРј СЌРєР·РµРјРїР»СЏСЂ РїСЂРµС„Р°Р±Р°
         GameObject slotObj = Instantiate(resourceSlotPrefab, resourceSlotsParent);
         slotObj.name = $"ResourceSlot_{resource.resourceName}";
-        slotObj.SetActive(true); // Всегда активный
+        slotObj.SetActive(true); // Р’СЃРµРіРґР° Р°РєС‚РёРІРЅС‹Р№
 
-        // Получаем компонент ResourceSlotUI
+        // РџРѕР»СѓС‡Р°РµРј РєРѕРјРїРѕРЅРµРЅС‚ ResourceSlotUI
         ResourceSlotUI slotUI = slotObj.GetComponent<ResourceSlotUI>();
         if (slotUI == null)
         {
             slotUI = slotObj.AddComponent<ResourceSlotUI>();
         }
 
-        // Инициализируем слот с данными ресурса
+        // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј СЃР»РѕС‚ СЃ РґР°РЅРЅС‹РјРё СЂРµСЃСѓСЂСЃР°
         slotUI.Initialize(resource);
 
-        // Сохраняем в словарь
+        // РЎРѕС…СЂР°РЅСЏРµРј РІ СЃР»РѕРІР°СЂСЊ
         resourceSlots[resource.resourceName] = slotUI;
     }
 
     /// <summary>
-    /// Удалить слот ресурса
+    /// РЈРґР°Р»РёС‚СЊ СЃР»РѕС‚ СЂРµСЃСѓСЂСЃР°
     /// </summary>
     void RemoveResourceSlot(string resourceName)
     {
@@ -230,20 +220,20 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновить отображение всех ресурсов (динамическое создание/удаление слотов)
+    /// РћР±РЅРѕРІРёС‚СЊ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ РІСЃРµС… СЂРµСЃСѓСЂСЃРѕРІ (РґРёРЅР°РјРёС‡РµСЃРєРѕРµ СЃРѕР·РґР°РЅРёРµ/СѓРґР°Р»РµРЅРёРµ СЃР»РѕС‚РѕРІ)
     /// </summary>
     public void UpdateResourceDisplay()
     {
         if (resourceManager == null)
             return;
 
-        // Собираем информацию о доступных ресурсах
+        // РЎРѕР±РёСЂР°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РґРѕСЃС‚СѓРїРЅС‹С… СЂРµСЃСѓСЂСЃР°С…
         Dictionary<string, int> availableResources = CollectAvailableResources();
 
-        // Список ресурсов для удаления (закончились)
+        // РЎРїРёСЃРѕРє СЂРµСЃСѓСЂСЃРѕРІ РґР»СЏ СѓРґР°Р»РµРЅРёСЏ (Р·Р°РєРѕРЅС‡РёР»РёСЃСЊ)
         List<string> resourcesToRemove = new List<string>();
 
-        // 1. Обновляем существующие слоты
+        // 1. РћР±РЅРѕРІР»СЏРµРј СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ СЃР»РѕС‚С‹
         foreach (var kvp in resourceSlots)
         {
             string resourceName = kvp.Key;
@@ -251,7 +241,7 @@ public class ResourcePanelUI : MonoBehaviour
 
             if (availableResources.ContainsKey(resourceName))
             {
-                // Ресурс есть - обновляем количество
+                // Р РµСЃСѓСЂСЃ РµСЃС‚СЊ - РѕР±РЅРѕРІР»СЏРµРј РєРѕР»РёС‡РµСЃС‚РІРѕ
                 int quantity = availableResources[resourceName];
                 if (slotUI != null)
                 {
@@ -260,24 +250,24 @@ public class ResourcePanelUI : MonoBehaviour
             }
             else
             {
-                // Ресурса больше нет - помечаем на удаление
+                // Р РµСЃСѓСЂСЃР° Р±РѕР»СЊС€Рµ РЅРµС‚ - РїРѕРјРµС‡Р°РµРј РЅР° СѓРґР°Р»РµРЅРёРµ
                 resourcesToRemove.Add(resourceName);
             }
         }
 
-        // 2. Удаляем слоты ресурсов, которых больше нет
+        // 2. РЈРґР°Р»СЏРµРј СЃР»РѕС‚С‹ СЂРµСЃСѓСЂСЃРѕРІ, РєРѕС‚РѕСЂС‹С… Р±РѕР»СЊС€Рµ РЅРµС‚
         foreach (string resourceName in resourcesToRemove)
         {
             RemoveResourceSlot(resourceName);
         }
 
-        // 3. Создаем слоты для новых ресурсов
+        // 3. РЎРѕР·РґР°РµРј СЃР»РѕС‚С‹ РґР»СЏ РЅРѕРІС‹С… СЂРµСЃСѓСЂСЃРѕРІ
         foreach (var kvp in availableResources)
         {
             string resourceName = kvp.Key;
             int quantity = kvp.Value;
 
-            // Если количество > 0 и слота еще нет - создаем
+            // Р•СЃР»Рё РєРѕР»РёС‡РµСЃС‚РІРѕ > 0 Рё СЃР»РѕС‚Р° РµС‰Рµ РЅРµС‚ - СЃРѕР·РґР°РµРј
             if (quantity > 0 && !resourceSlots.ContainsKey(resourceName))
             {
                 ResourceData resourceData = resourceManager.GetResourceByName(resourceName);
@@ -285,7 +275,7 @@ public class ResourcePanelUI : MonoBehaviour
                 {
                     CreateResourceSlot(resourceData);
 
-                    // Сразу обновляем количество
+                    // РЎСЂР°Р·Сѓ РѕР±РЅРѕРІР»СЏРµРј РєРѕР»РёС‡РµСЃС‚РІРѕ
                     if (resourceSlots.ContainsKey(resourceName))
                     {
                         resourceSlots[resourceName].UpdateQuantity(quantity);
@@ -296,14 +286,14 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Собрать информацию о всех доступных ресурсах
+    /// РЎРѕР±СЂР°С‚СЊ РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РІСЃРµС… РґРѕСЃС‚СѓРїРЅС‹С… СЂРµСЃСѓСЂСЃР°С…
     /// </summary>
     Dictionary<string, int> CollectAvailableResources()
     {
         Dictionary<string, int> resources = new Dictionary<string, int>();
 
-        // 1. Собираем ресурсы из инвентарей персонажей игрока
-        // Используем кэшированный массив вместо FindObjectsOfType
+        // 1. РЎРѕР±РёСЂР°РµРј СЂРµСЃСѓСЂСЃС‹ РёР· РёРЅРІРµРЅС‚Р°СЂРµР№ РїРµСЂСЃРѕРЅР°Р¶РµР№ РёРіСЂРѕРєР°
+        // РСЃРїРѕР»СЊР·СѓРµРј РєСЌС€РёСЂРѕРІР°РЅРЅС‹Р№ РјР°СЃСЃРёРІ РІРјРµСЃС‚Рѕ FindObjectsOfType
         if (cachedCharacters == null || cachedCharacters.Length == 0)
         {
             RefreshCache();
@@ -321,7 +311,7 @@ public class ResourcePanelUI : MonoBehaviour
             }
         }
 
-        // 2. Собираем ресурсы, лежащие на территории корабля
+        // 2. РЎРѕР±РёСЂР°РµРј СЂРµСЃСѓСЂСЃС‹, Р»РµР¶Р°С‰РёРµ РЅР° С‚РµСЂСЂРёС‚РѕСЂРёРё РєРѕСЂР°Р±Р»СЏ
         if (gridManager != null)
         {
             CollectResourcesFromShipTerritory(resources);
@@ -331,7 +321,7 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Собрать ресурсы из инвентаря
+    /// РЎРѕР±СЂР°С‚СЊ СЂРµСЃСѓСЂСЃС‹ РёР· РёРЅРІРµРЅС‚Р°СЂСЏ
     /// </summary>
     void CollectResourcesFromInventory(Inventory inventory, Dictionary<string, int> resources)
     {
@@ -357,36 +347,36 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Собрать ресурсы, лежащие на территории корабля
+    /// РЎРѕР±СЂР°С‚СЊ СЂРµСЃСѓСЂСЃС‹, Р»РµР¶Р°С‰РёРµ РЅР° С‚РµСЂСЂРёС‚РѕСЂРёРё РєРѕСЂР°Р±Р»СЏ
     /// </summary>
     void CollectResourcesFromShipTerritory(Dictionary<string, int> resources)
     {
-        // Получаем все клетки, занятые комнатами корабля
+        // РџРѕР»СѓС‡Р°РµРј РІСЃРµ РєР»РµС‚РєРё, Р·Р°РЅСЏС‚С‹Рµ РєРѕРјРЅР°С‚Р°РјРё РєРѕСЂР°Р±Р»СЏ
         List<GridCell> roomCells = gridManager.GetCellsByObjectType("Room");
         if (roomCells.Count == 0)
         {
-            // Если нет комнат, используем территорию вокруг кокпита
+            // Р•СЃР»Рё РЅРµС‚ РєРѕРјРЅР°С‚, РёСЃРїРѕР»СЊР·СѓРµРј С‚РµСЂСЂРёС‚РѕСЂРёСЋ РІРѕРєСЂСѓРі РєРѕРєРїРёС‚Р°
             roomCells = gridManager.GetCellsByObjectType("Cockpit");
         }
 
-        // Если нет ни комнат, ни кокпита, проверяем территорию вокруг персонажей игрока
+        // Р•СЃР»Рё РЅРµС‚ РЅРё РєРѕРјРЅР°С‚, РЅРё РєРѕРєРїРёС‚Р°, РїСЂРѕРІРµСЂСЏРµРј С‚РµСЂСЂРёС‚РѕСЂРёСЋ РІРѕРєСЂСѓРі РїРµСЂСЃРѕРЅР°Р¶РµР№ РёРіСЂРѕРєР°
         if (roomCells.Count == 0)
         {
             roomCells = GetPlayerCharacterCells();
         }
 
-        // Создаем HashSet для быстрой проверки принадлежности к территории корабля
+        // РЎРѕР·РґР°РµРј HashSet РґР»СЏ Р±С‹СЃС‚СЂРѕР№ РїСЂРѕРІРµСЂРєРё РїСЂРёРЅР°РґР»РµР¶РЅРѕСЃС‚Рё Рє С‚РµСЂСЂРёС‚РѕСЂРёРё РєРѕСЂР°Р±Р»СЏ
         HashSet<Vector2Int> shipTerritory = new HashSet<Vector2Int>();
         foreach (GridCell cell in roomCells)
         {
             shipTerritory.Add(cell.gridPosition);
 
-            // Добавляем также соседние клетки (внутри комнат)
+            // Р”РѕР±Р°РІР»СЏРµРј С‚Р°РєР¶Рµ СЃРѕСЃРµРґРЅРёРµ РєР»РµС‚РєРё (РІРЅСѓС‚СЂРё РєРѕРјРЅР°С‚)
             AddAdjacentCells(cell.gridPosition, shipTerritory, 3);
         }
 
-        // Ищем предметы-ресурсы на территории корабля
-        // Используем кэшированный массив вместо FindObjectsOfType
+        // РС‰РµРј РїСЂРµРґРјРµС‚С‹-СЂРµСЃСѓСЂСЃС‹ РЅР° С‚РµСЂСЂРёС‚РѕСЂРёРё РєРѕСЂР°Р±Р»СЏ
+        // РСЃРїРѕР»СЊР·СѓРµРј РєСЌС€РёСЂРѕРІР°РЅРЅС‹Р№ РјР°СЃСЃРёРІ РІРјРµСЃС‚Рѕ FindObjectsOfType
         if (cachedItems == null || cachedItems.Length == 0)
         {
             RefreshCache();
@@ -394,13 +384,13 @@ public class ResourcePanelUI : MonoBehaviour
 
         foreach (Item item in cachedItems)
         {
-            // ЗАЩИТА: Проверяем что item не был уничтожен
+            // Р—РђР©РРўРђ: РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ item РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
             if (item == null || ReferenceEquals(item, null))
             {
                 continue;
             }
 
-            // ЗАЩИТА: Безопасно получаем itemData
+            // Р—РђР©РРўРђ: Р‘РµР·РѕРїР°СЃРЅРѕ РїРѕР»СѓС‡Р°РµРј itemData
             ItemData itemData = null;
             try
             {
@@ -408,13 +398,13 @@ public class ResourcePanelUI : MonoBehaviour
             }
             catch (System.Exception)
             {
-                // Item был уничтожен во время обращения
+                // Item Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ РІРѕ РІСЂРµРјСЏ РѕР±СЂР°С‰РµРЅРёСЏ
                 continue;
             }
 
             if (itemData != null && itemData.itemType == ItemType.Resource)
             {
-                // ЗАЩИТА: Безопасно получаем позицию
+                // Р—РђР©РРўРђ: Р‘РµР·РѕРїР°СЃРЅРѕ РїРѕР»СѓС‡Р°РµРј РїРѕР·РёС†РёСЋ
                 Vector3 itemPosition;
                 try
                 {
@@ -422,13 +412,13 @@ public class ResourcePanelUI : MonoBehaviour
                 }
                 catch (System.Exception)
                 {
-                    // Item был уничтожен во время обращения
+                    // Item Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ РІРѕ РІСЂРµРјСЏ РѕР±СЂР°С‰РµРЅРёСЏ
                     continue;
                 }
 
                 Vector2Int itemGridPos = gridManager.WorldToGrid(itemPosition);
 
-                // Проверяем, находится ли предмет на территории корабля
+                // РџСЂРѕРІРµСЂСЏРµРј, РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё РїСЂРµРґРјРµС‚ РЅР° С‚РµСЂСЂРёС‚РѕСЂРёРё РєРѕСЂР°Р±Р»СЏ
                 if (shipTerritory.Contains(itemGridPos))
                 {
                     string resourceName = itemData.itemName;
@@ -447,7 +437,7 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить клетки, где находятся персонажи игрока
+    /// РџРѕР»СѓС‡РёС‚СЊ РєР»РµС‚РєРё, РіРґРµ РЅР°С…РѕРґСЏС‚СЃСЏ РїРµСЂСЃРѕРЅР°Р¶Рё РёРіСЂРѕРєР°
     /// </summary>
     List<GridCell> GetPlayerCharacterCells()
     {
@@ -471,7 +461,7 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Добавить соседние клетки в радиусе
+    /// Р”РѕР±Р°РІРёС‚СЊ СЃРѕСЃРµРґРЅРёРµ РєР»РµС‚РєРё РІ СЂР°РґРёСѓСЃРµ
     /// </summary>
     void AddAdjacentCells(Vector2Int center, HashSet<Vector2Int> cellSet, int radius)
     {
@@ -489,7 +479,7 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Очистить все слоты ресурсов
+    /// РћС‡РёСЃС‚РёС‚СЊ РІСЃРµ СЃР»РѕС‚С‹ СЂРµСЃСѓСЂСЃРѕРІ
     /// </summary>
     void ClearResourceSlots()
     {
@@ -504,7 +494,7 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить количество определенного ресурса
+    /// РџРѕР»СѓС‡РёС‚СЊ РєРѕР»РёС‡РµСЃС‚РІРѕ РѕРїСЂРµРґРµР»РµРЅРЅРѕРіРѕ СЂРµСЃСѓСЂСЃР°
     /// </summary>
     public int GetResourceQuantity(string resourceName)
     {
@@ -516,7 +506,7 @@ public class ResourcePanelUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Принудительно обновить панель
+    /// РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РѕР±РЅРѕРІРёС‚СЊ РїР°РЅРµР»СЊ
     /// </summary>
     public void ForceUpdate()
     {
@@ -525,15 +515,15 @@ public class ResourcePanelUI : MonoBehaviour
 
     void OnDestroy()
     {
-        // PERFORMANCE FIX: Отписываемся от событий
-        Character.OnPlayerCharacterSpawned -= OnCharacterSpawned;
+        // PERFORMANCE FIX: РћС‚РїРёСЃС‹РІР°РµРјСЃСЏ РѕС‚ СЃРѕР±С‹С‚РёР№
+        EventBus.Unsubscribe<CharacterSpawnedEvent>(OnCharacterSpawned);
 
         ClearResourceSlots();
         isInitialized = false;
     }
 
     /// <summary>
-    /// Получить полный путь GameObject в иерархии
+    /// РџРѕР»СѓС‡РёС‚СЊ РїРѕР»РЅС‹Р№ РїСѓС‚СЊ GameObject РІ РёРµСЂР°СЂС…РёРё
     /// </summary>
     string GetGameObjectPath(GameObject obj)
     {

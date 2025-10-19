@@ -1,14 +1,14 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// Фабрика для создания предметов с автоматическим применением иконок
+/// Р¤Р°Р±СЂРёРєР° РґР»СЏ СЃРѕР·РґР°РЅРёСЏ РїСЂРµРґРјРµС‚РѕРІ СЃ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёРј РїСЂРёРјРµРЅРµРЅРёРµРј РёРєРѕРЅРѕРє
 /// </summary>
 public static class ItemFactory
 {
     private static ItemDatabase itemDatabase;
 
     /// <summary>
-    /// Инициализировать фабрику с базой данных
+    /// РРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°С‚СЊ С„Р°Р±СЂРёРєСѓ СЃ Р±Р°Р·РѕР№ РґР°РЅРЅС‹С…
     /// </summary>
     public static void Initialize(ItemDatabase database)
     {
@@ -16,7 +16,7 @@ public static class ItemFactory
     }
 
     /// <summary>
-    /// Создать предмет с автоматическим применением иконки
+    /// РЎРѕР·РґР°С‚СЊ РїСЂРµРґРјРµС‚ СЃ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёРј РїСЂРёРјРµРЅРµРЅРёРµРј РёРєРѕРЅРєРё
     /// </summary>
     public static ItemData CreateItem(string itemName, ItemType itemType, EquipmentSlot equipSlot = EquipmentSlot.None)
     {
@@ -25,26 +25,24 @@ public static class ItemFactory
         item.itemType = itemType;
         item.equipmentSlot = equipSlot;
 
-        // Автоматически применяем иконку
+        // РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РїСЂРёРјРµРЅСЏРµРј РёРєРѕРЅРєСѓ
         ApplyIcon(item);
 
         return item;
     }
 
     /// <summary>
-    /// Применить иконку к существующему предмету
+    /// РџСЂРёРјРµРЅРёС‚СЊ РёРєРѕРЅРєСѓ Рє СЃСѓС‰РµСЃС‚РІСѓСЋС‰РµРјСѓ РїСЂРµРґРјРµС‚Сѓ
     /// </summary>
     public static void ApplyIcon(ItemData item)
     {
         if (item == null)
         {
-            Debug.LogWarning("ItemFactory.ApplyIcon: item == null");
             return;
         }
 
         if (itemDatabase == null)
         {
-            Debug.LogWarning($"ItemFactory.ApplyIcon: База данных не инициализирована! Предмет: {item.itemName}");
             return;
         }
 
@@ -57,7 +55,7 @@ public static class ItemFactory
     }
 
     /// <summary>
-    /// Получить базу данных
+    /// РџРѕР»СѓС‡РёС‚СЊ Р±Р°Р·Сѓ РґР°РЅРЅС‹С…
     /// </summary>
     public static ItemDatabase GetDatabase()
     {

@@ -1,8 +1,8 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// Компонент для поворота объекта лицом к камере (billboard эффект)
-/// Используется для полос прогресса строительства
+/// РљРѕРјРїРѕРЅРµРЅС‚ РґР»СЏ РїРѕРІРѕСЂРѕС‚Р° РѕР±СЉРµРєС‚Р° Р»РёС†РѕРј Рє РєР°РјРµСЂРµ (billboard СЌС„С„РµРєС‚)
+/// РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РґР»СЏ РїРѕР»РѕСЃ РїСЂРѕРіСЂРµСЃСЃР° СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
 /// </summary>
 public class Billboard : MonoBehaviour
 {
@@ -10,12 +10,11 @@ public class Billboard : MonoBehaviour
 
     void Start()
     {
-        // Находим основную камеру
+        // РќР°С…РѕРґРёРј РѕСЃРЅРѕРІРЅСѓСЋ РєР°РјРµСЂСѓ
         mainCamera = Camera.main;
 
         if (mainCamera == null)
         {
-            Debug.LogWarning("[Billboard] Main camera not found!");
         }
     }
 
@@ -23,13 +22,13 @@ public class Billboard : MonoBehaviour
     {
         if (mainCamera == null)
         {
-            // Пытаемся найти камеру снова если она была null
+            // РџС‹С‚Р°РµРјСЃСЏ РЅР°Р№С‚Рё РєР°РјРµСЂСѓ СЃРЅРѕРІР° РµСЃР»Рё РѕРЅР° Р±С‹Р»Р° null
             mainCamera = Camera.main;
             if (mainCamera == null)
                 return;
         }
 
-        // Поворачиваем объект лицом к камере
+        // РџРѕРІРѕСЂР°С‡РёРІР°РµРј РѕР±СЉРµРєС‚ Р»РёС†РѕРј Рє РєР°РјРµСЂРµ
         transform.LookAt(transform.position + mainCamera.transform.rotation * Vector3.forward,
                         mainCamera.transform.rotation * Vector3.up);
     }

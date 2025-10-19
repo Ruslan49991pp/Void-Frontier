@@ -1,9 +1,9 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Система пулинга для призрачных блоков строительства
-/// Переиспользует блоки вместо создания/удаления для оптимизации производительности
+/// РЎРёСЃС‚РµРјР° РїСѓР»РёРЅРіР° РґР»СЏ РїСЂРёР·СЂР°С‡РЅС‹С… Р±Р»РѕРєРѕРІ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
+/// РџРµСЂРµРёСЃРїРѕР»СЊР·СѓРµС‚ Р±Р»РѕРєРё РІРјРµСЃС‚Рѕ СЃРѕР·РґР°РЅРёСЏ/СѓРґР°Р»РµРЅРёСЏ РґР»СЏ РѕРїС‚РёРјРёР·Р°С†РёРё РїСЂРѕРёР·РІРѕРґРёС‚РµР»СЊРЅРѕСЃС‚Рё
 /// </summary>
 public class GhostBlockPool : MonoBehaviour
 {
@@ -23,13 +23,13 @@ public class GhostBlockPool : MonoBehaviour
         }
     }
 
-    // Словарь пулов для разных типов префабов
+    // РЎР»РѕРІР°СЂСЊ РїСѓР»РѕРІ РґР»СЏ СЂР°Р·РЅС‹С… С‚РёРїРѕРІ РїСЂРµС„Р°Р±РѕРІ
     private Dictionary<GameObject, Queue<GameObject>> pools = new Dictionary<GameObject, Queue<GameObject>>();
 
-    // Контейнеры для организации иерархии
+    // РљРѕРЅС‚РµР№РЅРµСЂС‹ РґР»СЏ РѕСЂРіР°РЅРёР·Р°С†РёРё РёРµСЂР°СЂС…РёРё
     private Dictionary<GameObject, Transform> poolContainers = new Dictionary<GameObject, Transform>();
 
-    // Отслеживание активных блоков для быстрого возврата
+    // РћС‚СЃР»РµР¶РёРІР°РЅРёРµ Р°РєС‚РёРІРЅС‹С… Р±Р»РѕРєРѕРІ РґР»СЏ Р±С‹СЃС‚СЂРѕРіРѕ РІРѕР·РІСЂР°С‚Р°
     private Dictionary<GameObject, GameObject> activeBlocks = new Dictionary<GameObject, GameObject>(); // instance -> prefab
 
     void Awake()
@@ -46,22 +46,21 @@ public class GhostBlockPool : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить блок из пула (или создать новый)
+    /// РџРѕР»СѓС‡РёС‚СЊ Р±Р»РѕРє РёР· РїСѓР»Р° (РёР»Рё СЃРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№)
     /// </summary>
     public GameObject Get(GameObject prefab, Vector3 position, Quaternion rotation)
     {
         if (prefab == null)
         {
-            Debug.LogError("[GhostBlockPool] Prefab is null!");
             return null;
         }
 
-        // Инициализируем пул для этого префаба если его нет
+        // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РїСѓР» РґР»СЏ СЌС‚РѕРіРѕ РїСЂРµС„Р°Р±Р° РµСЃР»Рё РµРіРѕ РЅРµС‚
         if (!pools.ContainsKey(prefab))
         {
             pools[prefab] = new Queue<GameObject>();
 
-            // Создаем контейнер для неактивных блоков этого типа
+            // РЎРѕР·РґР°РµРј РєРѕРЅС‚РµР№РЅРµСЂ РґР»СЏ РЅРµР°РєС‚РёРІРЅС‹С… Р±Р»РѕРєРѕРІ СЌС‚РѕРіРѕ С‚РёРїР°
             GameObject container = new GameObject($"Pool_{prefab.name}");
             container.transform.SetParent(transform);
             poolContainers[prefab] = container.transform;
@@ -69,7 +68,7 @@ public class GhostBlockPool : MonoBehaviour
 
         GameObject block;
 
-        // Берем из пула или создаем новый
+        // Р‘РµСЂРµРј РёР· РїСѓР»Р° РёР»Рё СЃРѕР·РґР°РµРј РЅРѕРІС‹Р№
         if (pools[prefab].Count > 0)
         {
             block = pools[prefab].Dequeue();
@@ -83,23 +82,23 @@ public class GhostBlockPool : MonoBehaviour
             block.name = $"{prefab.name}_Pooled";
         }
 
-        // Регистрируем активный блок
+        // Р РµРіРёСЃС‚СЂРёСЂСѓРµРј Р°РєС‚РёРІРЅС‹Р№ Р±Р»РѕРє
         activeBlocks[block] = prefab;
 
         return block;
     }
 
     /// <summary>
-    /// Вернуть блок в пул
+    /// Р’РµСЂРЅСѓС‚СЊ Р±Р»РѕРє РІ РїСѓР»
     /// </summary>
     public void Return(GameObject block)
     {
         if (block == null) return;
 
-        // Проверяем что блок был взят из пула
+        // РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ Р±Р»РѕРє Р±С‹Р» РІР·СЏС‚ РёР· РїСѓР»Р°
         if (!activeBlocks.ContainsKey(block))
         {
-            // Это блок созданный вне пула - просто уничтожаем
+            // Р­С‚Рѕ Р±Р»РѕРє СЃРѕР·РґР°РЅРЅС‹Р№ РІРЅРµ РїСѓР»Р° - РїСЂРѕСЃС‚Рѕ СѓРЅРёС‡С‚РѕР¶Р°РµРј
             Destroy(block);
             return;
         }
@@ -107,7 +106,7 @@ public class GhostBlockPool : MonoBehaviour
         GameObject prefab = activeBlocks[block];
         activeBlocks.Remove(block);
 
-        // Деактивируем и помещаем в контейнер
+        // Р”РµР°РєС‚РёРІРёСЂСѓРµРј Рё РїРѕРјРµС‰Р°РµРј РІ РєРѕРЅС‚РµР№РЅРµСЂ
         block.SetActive(false);
         block.transform.SetParent(poolContainers[prefab]);
 
@@ -115,7 +114,7 @@ public class GhostBlockPool : MonoBehaviour
     }
 
     /// <summary>
-    /// Вернуть несколько блоков в пул
+    /// Р’РµСЂРЅСѓС‚СЊ РЅРµСЃРєРѕР»СЊРєРѕ Р±Р»РѕРєРѕРІ РІ РїСѓР»
     /// </summary>
     public void ReturnAll(List<GameObject> blocks)
     {
@@ -129,7 +128,7 @@ public class GhostBlockPool : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить количество блоков в пуле для конкретного префаба
+    /// РџРѕР»СѓС‡РёС‚СЊ РєРѕР»РёС‡РµСЃС‚РІРѕ Р±Р»РѕРєРѕРІ РІ РїСѓР»Рµ РґР»СЏ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ РїСЂРµС„Р°Р±Р°
     /// </summary>
     public int GetPoolSize(GameObject prefab)
     {
@@ -139,7 +138,7 @@ public class GhostBlockPool : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить количество активных блоков
+    /// РџРѕР»СѓС‡РёС‚СЊ РєРѕР»РёС‡РµСЃС‚РІРѕ Р°РєС‚РёРІРЅС‹С… Р±Р»РѕРєРѕРІ
     /// </summary>
     public int GetActiveCount()
     {
@@ -147,7 +146,7 @@ public class GhostBlockPool : MonoBehaviour
     }
 
     /// <summary>
-    /// Очистить все пулы (для освобождения памяти)
+    /// РћС‡РёСЃС‚РёС‚СЊ РІСЃРµ РїСѓР»С‹ (РґР»СЏ РѕСЃРІРѕР±РѕР¶РґРµРЅРёСЏ РїР°РјСЏС‚Рё)
     /// </summary>
     public void ClearAllPools()
     {
@@ -166,7 +165,7 @@ public class GhostBlockPool : MonoBehaviour
     }
 
     /// <summary>
-    /// Предварительно создать блоки в пуле
+    /// РџСЂРµРґРІР°СЂРёС‚РµР»СЊРЅРѕ СЃРѕР·РґР°С‚СЊ Р±Р»РѕРєРё РІ РїСѓР»Рµ
     /// </summary>
     public void Prewarm(GameObject prefab, int count)
     {

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
@@ -34,7 +34,7 @@ public class LocationManager : MonoBehaviour
 {
     [Header("Location Settings")]
     public LocationData currentLocation;
-    public Vector2Int defaultGridSize = new Vector2Int(150, 150); // Оптимизированный размер
+    public Vector2Int defaultGridSize = new Vector2Int(150, 150); // РћРїС‚РёРјРёР·РёСЂРѕРІР°РЅРЅС‹Р№ СЂР°Р·РјРµСЂ
     public float gridCellSize = 1f;
     
     [Header("Generation")]
@@ -51,11 +51,11 @@ public class LocationManager : MonoBehaviour
     [Header("Grid System")]
     public GridManager gridManager;
     
-    // Внутренние переменные
+    // Р’РЅСѓС‚СЂРµРЅРЅРёРµ РїРµСЂРµРјРµРЅРЅС‹Рµ
     private List<GameObject> spawnedObjects = new List<GameObject>();
     private Dictionary<Vector2Int, GameObject> gridObjects = new Dictionary<Vector2Int, GameObject>();
     
-    // События
+    // РЎРѕР±С‹С‚РёСЏ
     public System.Action<LocationData> OnLocationGenerated;
     public System.Action OnLocationCleared;
     
@@ -65,17 +65,17 @@ public class LocationManager : MonoBehaviour
 
         if (autoGenerateOnStart)
         {
-            // Задержка чтобы GridManager успел создать персонажей и кокпит первыми
+            // Р—Р°РґРµСЂР¶РєР° С‡С‚РѕР±С‹ GridManager СѓСЃРїРµР» СЃРѕР·РґР°С‚СЊ РїРµСЂСЃРѕРЅР°Р¶РµР№ Рё РєРѕРєРїРёС‚ РїРµСЂРІС‹РјРё
             StartCoroutine(DelayedGenerateLocation());
         }
     }
 
     /// <summary>
-    /// Генерация локации с задержкой для приоритета кокпита
+    /// Р“РµРЅРµСЂР°С†РёСЏ Р»РѕРєР°С†РёРё СЃ Р·Р°РґРµСЂР¶РєРѕР№ РґР»СЏ РїСЂРёРѕСЂРёС‚РµС‚Р° РєРѕРєРїРёС‚Р°
     /// </summary>
     System.Collections.IEnumerator DelayedGenerateLocation()
     {
-        // Ждем 2 кадра чтобы GridManager успел создать персонажей и кокпит
+        // Р–РґРµРј 2 РєР°РґСЂР° С‡С‚РѕР±С‹ GridManager СѓСЃРїРµР» СЃРѕР·РґР°С‚СЊ РїРµСЂСЃРѕРЅР°Р¶РµР№ Рё РєРѕРєРїРёС‚
         yield return new WaitForEndOfFrame();
         yield return new WaitForEndOfFrame();
 
@@ -83,7 +83,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Инициализация локации с базовыми настройками
+    /// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ Р»РѕРєР°С†РёРё СЃ Р±Р°Р·РѕРІС‹РјРё РЅР°СЃС‚СЂРѕР№РєР°РјРё
     /// </summary>
     public void InitializeLocation()
     {
@@ -95,14 +95,20 @@ public class LocationManager : MonoBehaviour
             currentLocation.isGenerated = false;
             currentLocation.pointsOfInterest = new List<Vector3>();
         }
-        
-        // Убеждаемся что размер сетки не нулевой
+
+        // РЈР±РµР¶РґР°РµРјСЃСЏ С‡С‚Рѕ СЂР°Р·РјРµСЂ СЃРµС‚РєРё РЅРµ РЅСѓР»РµРІРѕР№
         if (currentLocation.gridSize.x == 0 || currentLocation.gridSize.y == 0)
         {
             currentLocation.gridSize = defaultGridSize;
         }
+
+        // Р’РђР–РќРћ: РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј spawnSettings РµСЃР»Рё РµРіРѕ РЅРµС‚
+        if (spawnSettings == null)
+        {
+            spawnSettings = new ObjectSpawnSettings();
+        }
         
-        // Создаем родительский объект для содержимого если его нет
+        // РЎРѕР·РґР°РµРј СЂРѕРґРёС‚РµР»СЊСЃРєРёР№ РѕР±СЉРµРєС‚ РґР»СЏ СЃРѕРґРµСЂР¶РёРјРѕРіРѕ РµСЃР»Рё РµРіРѕ РЅРµС‚
         if (contentParent == null)
         {
             GameObject contentGO = new GameObject("LocationContent");
@@ -110,7 +116,7 @@ public class LocationManager : MonoBehaviour
             contentParent = contentGO.transform;
         }
         
-        // Инициализируем GridManager если его нет
+        // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј GridManager РµСЃР»Рё РµРіРѕ РЅРµС‚
         if (gridManager == null)
         {
             gridManager = FindObjectOfType<GridManager>();
@@ -122,7 +128,7 @@ public class LocationManager : MonoBehaviour
             }
         }
         
-        // Синхронизируем размеры между GridManager и LocationManager
+        // РЎРёРЅС…СЂРѕРЅРёР·РёСЂСѓРµРј СЂР°Р·РјРµСЂС‹ РјРµР¶РґСѓ GridManager Рё LocationManager
         if (gridManager != null)
         {
             gridManager.UpdateGridSettings(currentLocation.gridSize.x, currentLocation.gridSize.y, gridCellSize);
@@ -130,11 +136,11 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Создание тестовых префабов если они не установлены
+    /// РЎРѕР·РґР°РЅРёРµ С‚РµСЃС‚РѕРІС‹С… РїСЂРµС„Р°Р±РѕРІ РµСЃР»Рё РѕРЅРё РЅРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅС‹
     /// </summary>
     void EnsureTestPrefabs()
     {
-        // Создаем тестовые префабы если массивы пустые
+        // РЎРѕР·РґР°РµРј С‚РµСЃС‚РѕРІС‹Рµ РїСЂРµС„Р°Р±С‹ РµСЃР»Рё РјР°СЃСЃРёРІС‹ РїСѓСЃС‚С‹Рµ
         if (spawnSettings.stationPrefabs == null || spawnSettings.stationPrefabs.Length == 0)
         {
             GameObject stationPrefab = CreateTestPrefab("TestStation", Color.blue, new Vector3(8, 4, 8));
@@ -155,7 +161,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Создание тестового префаба в виде куба
+    /// РЎРѕР·РґР°РЅРёРµ С‚РµСЃС‚РѕРІРѕРіРѕ РїСЂРµС„Р°Р±Р° РІ РІРёРґРµ РєСѓР±Р°
     /// </summary>
     GameObject CreateTestPrefab(string name, Color color, Vector3 size)
     {
@@ -163,30 +169,59 @@ public class LocationManager : MonoBehaviour
         prefab.name = name;
         prefab.transform.localScale = size;
         
-        // Убеждаемся что коллайдер есть и настроен правильно
+        // РЈР±РµР¶РґР°РµРјСЃСЏ С‡С‚Рѕ РєРѕР»Р»Р°Р№РґРµСЂ РµСЃС‚СЊ Рё РЅР°СЃС‚СЂРѕРµРЅ РїСЂР°РІРёР»СЊРЅРѕ
         BoxCollider collider = prefab.GetComponent<BoxCollider>();
         if (collider == null)
         {
             collider = prefab.AddComponent<BoxCollider>();
         }
         
-        // Устанавливаем цвет
+        // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј С†РІРµС‚
         Renderer renderer = prefab.GetComponent<Renderer>();
         if (renderer != null)
         {
-            Material material = new Material(Shader.Find("Standard"));
-            material.color = color;
-            renderer.material = material;
+            // РЈР±РµР¶РґР°РµРјСЃСЏ С‡С‚Рѕ СЂРµРЅРґРµСЂРµСЂ РІРєР»СЋС‡РµРЅ
+            renderer.enabled = true;
+
+            // РџС‹С‚Р°РµРјСЃСЏ РЅР°Р№С‚Рё РїРѕРґС…РѕРґСЏС‰РёР№ С€РµР№РґРµСЂ (UNLIT РґР»СЏ РІРёРґРёРјРѕСЃС‚Рё Р±РµР· РѕСЃРІРµС‰РµРЅРёСЏ)
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null)
+            {
+                shader = Shader.Find("Unlit/Color");
+            }
+            if (shader == null)
+            {
+                shader = Shader.Find("Standard");
+            }
+            if (shader == null)
+            {
+                shader = Shader.Find("Diffuse");
+            }
+
+            if (shader != null)
+            {
+                Material material = new Material(shader);
+                material.color = color;
+                renderer.material = material;
+            }
+            else
+            {
+                // РСЃРїРѕР»СЊР·СѓРµРј СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ РјР°С‚РµСЂРёР°Р» Рё РїСЂРѕСЃС‚Рѕ РјРµРЅСЏРµРј С†РІРµС‚
+                renderer.material.color = color;
+            }
+        }
+        else
+        {
         }
         
-        // Добавляем компонент LocationObjectInfo
+        // Р”РѕР±Р°РІР»СЏРµРј РєРѕРјРїРѕРЅРµРЅС‚ LocationObjectInfo
         LocationObjectInfo objectInfo = prefab.GetComponent<LocationObjectInfo>();
         if (objectInfo == null)
         {
             objectInfo = prefab.AddComponent<LocationObjectInfo>();
         }
         
-        // Настраиваем информацию об объекте
+        // РќР°СЃС‚СЂР°РёРІР°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± РѕР±СЉРµРєС‚Рµ
         if (name.Contains("Station"))
         {
             objectInfo.objectType = "Station";
@@ -209,7 +244,7 @@ public class LocationManager : MonoBehaviour
             objectInfo.canBeScavenged = true;
         }
 
-        // ВАЖНО: Устанавливаем слой "Selectable" для raycast
+        // Р’РђР–РќРћ: РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј СЃР»РѕР№ "Selectable" РґР»СЏ raycast
         int selectableLayer = LayerMask.NameToLayer("Selectable");
         if (selectableLayer != -1)
         {
@@ -217,10 +252,9 @@ public class LocationManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"[LocationManager] 'Selectable' layer not found! Prefab '{name}' may not be clickable.");
         }
 
-        // Скрываем префаб
+        // РЎРєСЂС‹РІР°РµРј РїСЂРµС„Р°Р±
         prefab.SetActive(false);
 
 
@@ -229,7 +263,7 @@ public class LocationManager : MonoBehaviour
     
     
     /// <summary>
-    /// Генерация всего содержимого локации
+    /// Р“РµРЅРµСЂР°С†РёСЏ РІСЃРµРіРѕ СЃРѕРґРµСЂР¶РёРјРѕРіРѕ Р»РѕРєР°С†РёРё
     /// </summary>
     public void GenerateLocation()
     {
@@ -238,42 +272,42 @@ public class LocationManager : MonoBehaviour
         currentLocation.isGenerated = true;
         
         
-        // Диагностика префабов
+        // Р”РёР°РіРЅРѕСЃС‚РёРєР° РїСЂРµС„Р°Р±РѕРІ
         if (spawnSettings == null)
         {
             return;
         }
         
         
-        // Проверяем и создаем тестовые префабы если они не установлены
+        // РџСЂРѕРІРµСЂСЏРµРј Рё СЃРѕР·РґР°РµРј С‚РµСЃС‚РѕРІС‹Рµ РїСЂРµС„Р°Р±С‹ РµСЃР»Рё РѕРЅРё РЅРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅС‹
         EnsureTestPrefabs();
         
-        // Генерируем объекты
+        // Р“РµРЅРµСЂРёСЂСѓРµРј РѕР±СЉРµРєС‚С‹
         GenerateStations();
         GenerateAsteroids();
         GenerateDebris();
         
-        // Определяем точку спавна игрока
+        // РћРїСЂРµРґРµР»СЏРµРј С‚РѕС‡РєСѓ СЃРїР°РІРЅР° РёРіСЂРѕРєР°
         SetPlayerSpawnPoint();
         
-        // Создаем точки интереса
+        // РЎРѕР·РґР°РµРј С‚РѕС‡РєРё РёРЅС‚РµСЂРµСЃР°
         GeneratePointsOfInterest();
         
         
-        // Выводим статистику сетки
+        // Р’С‹РІРѕРґРёРј СЃС‚Р°С‚РёСЃС‚РёРєСѓ СЃРµС‚РєРё
         if (gridManager != null)
         {
             gridManager.LogGridStats();
         }
         
-        // Диагностика созданных объектов
+        // Р”РёР°РіРЅРѕСЃС‚РёРєР° СЃРѕР·РґР°РЅРЅС‹С… РѕР±СЉРµРєС‚РѕРІ
         DiagnoseCreatedObjects();
         
         OnLocationGenerated?.Invoke(currentLocation);
     }
     
     /// <summary>
-    /// Генерация станций
+    /// Р“РµРЅРµСЂР°С†РёСЏ СЃС‚Р°РЅС†РёР№
     /// </summary>
     void GenerateStations()
     {
@@ -289,7 +323,7 @@ public class LocationManager : MonoBehaviour
         for (int i = 0; i < stationCount; i++)
         {
             
-            // Станции занимают 20x20 клеток (20x20 метров)
+            // РЎС‚Р°РЅС†РёРё Р·Р°РЅРёРјР°СЋС‚ 20x20 РєР»РµС‚РѕРє (20x20 РјРµС‚СЂРѕРІ)
             GridCell cell = gridManager.GetRandomFreeCellArea(20, 20);
             if (cell == null)
             {
@@ -300,19 +334,19 @@ public class LocationManager : MonoBehaviour
             
             if (stationPrefab != null)
             {
-                // Вычисляем точный центр области 20x20
+                // Р’С‹С‡РёСЃР»СЏРµРј С‚РѕС‡РЅС‹Р№ С†РµРЅС‚СЂ РѕР±Р»Р°СЃС‚Рё 20x20
                 Vector3 areaCenterOffset = new Vector3(
-                    (20 - 1) * 0.5f * gridCellSize,  // (количество клеток - 1) / 2 * размер клетки
+                    (20 - 1) * 0.5f * gridCellSize,  // (РєРѕР»РёС‡РµСЃС‚РІРѕ РєР»РµС‚РѕРє - 1) / 2 * СЂР°Р·РјРµСЂ РєР»РµС‚РєРё
                     0,
                     (20 - 1) * 0.5f * gridCellSize
                 );
                 Vector3 stationPosition = cell.worldPosition + areaCenterOffset;
                 
-                // Без поворота - используем поворот префаба
+                // Р‘РµР· РїРѕРІРѕСЂРѕС‚Р° - РёСЃРїРѕР»СЊР·СѓРµРј РїРѕРІРѕСЂРѕС‚ РїСЂРµС„Р°Р±Р°
                 GameObject station = Instantiate(stationPrefab, stationPosition, Quaternion.identity, contentParent);
                 station.SetActive(true);
                 
-                // Занимаем область 20x20 в сетке
+                // Р—Р°РЅРёРјР°РµРј РѕР±Р»Р°СЃС‚СЊ 20x20 РІ СЃРµС‚РєРµ
                 gridManager.OccupyCellArea(cell.gridPosition, 20, 20, station, "Station");
                 
                 RegisterObject(station, "Station");
@@ -325,7 +359,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Генерация астероидов
+    /// Р“РµРЅРµСЂР°С†РёСЏ Р°СЃС‚РµСЂРѕРёРґРѕРІ
     /// </summary>
     void GenerateAsteroids()
     {
@@ -341,7 +375,7 @@ public class LocationManager : MonoBehaviour
         for (int i = 0; i < asteroidCount; i++)
         {
             
-            // Астероиды занимают 8x8 клеток (8x8 метров)
+            // РђСЃС‚РµСЂРѕРёРґС‹ Р·Р°РЅРёРјР°СЋС‚ 8x8 РєР»РµС‚РѕРє (8x8 РјРµС‚СЂРѕРІ)
             GridCell cell = gridManager.GetRandomFreeCellArea(8, 8);
             if (cell == null)
             {
@@ -352,56 +386,65 @@ public class LocationManager : MonoBehaviour
             
             if (asteroidPrefab != null)
             {
-                // Вычисляем точный центр области 8x8
+                // Р’С‹С‡РёСЃР»СЏРµРј С‚РѕС‡РЅС‹Р№ С†РµРЅС‚СЂ РѕР±Р»Р°СЃС‚Рё 8x8
                 Vector3 areaCenterOffset = new Vector3(
-                    (8 - 1) * 0.5f * gridCellSize,   // (количество клеток - 1) / 2 * размер клетки
+                    (8 - 1) * 0.5f * gridCellSize,   // (РєРѕР»РёС‡РµСЃС‚РІРѕ РєР»РµС‚РѕРє - 1) / 2 * СЂР°Р·РјРµСЂ РєР»РµС‚РєРё
                     0,
                     (8 - 1) * 0.5f * gridCellSize
                 );
                 Vector3 asteroidPosition = cell.worldPosition + areaCenterOffset;
                 
-                // Рандомизируем размер астероида (0.7 - 1.3 от базового размера)
+                // Р Р°РЅРґРѕРјРёР·РёСЂСѓРµРј СЂР°Р·РјРµСЂ Р°СЃС‚РµСЂРѕРёРґР° (0.7 - 1.3 РѕС‚ Р±Р°Р·РѕРІРѕРіРѕ СЂР°Р·РјРµСЂР°)
                 float sizeMultiplier = Random.Range(0.7f, 1.3f);
 
-                // Без поворота - используем поворот префаба
+                // Р‘РµР· РїРѕРІРѕСЂРѕС‚Р° - РёСЃРїРѕР»СЊР·СѓРµРј РїРѕРІРѕСЂРѕС‚ РїСЂРµС„Р°Р±Р°
                 GameObject asteroid = Instantiate(asteroidPrefab, asteroidPosition, Quaternion.identity, contentParent);
-                asteroid.transform.localScale *= sizeMultiplier; // Увеличиваем/уменьшаем размер
+                asteroid.transform.localScale *= sizeMultiplier; // РЈРІРµР»РёС‡РёРІР°РµРј/СѓРјРµРЅСЊС€Р°РµРј СЂР°Р·РјРµСЂ
                 asteroid.SetActive(true);
 
-                // Занимаем область 8x8 в сетке
+                // Р”РёР°РіРЅРѕСЃС‚РёРєР° РІРёРґРёРјРѕСЃС‚Рё
+                Renderer asteroidRenderer = asteroid.GetComponent<Renderer>();
+                if (asteroidRenderer != null)
+                {
+                }
+                else
+                {
+                }
+
+                // Р—Р°РЅРёРјР°РµРј РѕР±Р»Р°СЃС‚СЊ 8x8 РІ СЃРµС‚РєРµ
                 gridManager.OccupyCellArea(cell.gridPosition, 8, 8, asteroid, "Asteroid");
 
-                // Назначаем количество металла в зависимости от размера
+                // РќР°Р·РЅР°С‡Р°РµРј РєРѕР»РёС‡РµСЃС‚РІРѕ РјРµС‚Р°Р»Р»Р° РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ СЂР°Р·РјРµСЂР°
                 LocationObjectInfo asteroidInfo = asteroid.GetComponent<LocationObjectInfo>();
 
-                // Если компонента нет - добавляем его
+                // Р•СЃР»Рё РєРѕРјРїРѕРЅРµРЅС‚Р° РЅРµС‚ - РґРѕР±Р°РІР»СЏРµРј РµРіРѕ
                 if (asteroidInfo == null)
                 {
                     asteroidInfo = asteroid.AddComponent<LocationObjectInfo>();
                 }
 
-                // Настраиваем информацию об астероиде
+                // РќР°СЃС‚СЂР°РёРІР°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± Р°СЃС‚РµСЂРѕРёРґРµ
                 asteroidInfo.objectType = "Asteroid";
                 asteroidInfo.objectName = "Asteroid";
                 asteroidInfo.health = 200f;
                 asteroidInfo.isDestructible = false;
                 asteroidInfo.canBeScavenged = true;
 
-                // Металл зависит от размера: базовое 100-300, умноженное на размер
+                // РњРµС‚Р°Р»Р» Р·Р°РІРёСЃРёС‚ РѕС‚ СЂР°Р·РјРµСЂР°: Р±Р°Р·РѕРІРѕРµ 100-300, СѓРјРЅРѕР¶РµРЅРЅРѕРµ РЅР° СЂР°Р·РјРµСЂ
                 int baseMetal = Random.Range(100, 301);
                 asteroidInfo.maxMetalAmount = Mathf.RoundToInt(baseMetal * sizeMultiplier);
                 asteroidInfo.metalAmount = asteroidInfo.maxMetalAmount;
 
-                // ВАЖНО: Сохраняем позицию в сетке для корректной визуализации
+                // Р’РђР–РќРћ: РЎРѕС…СЂР°РЅСЏРµРј РїРѕР·РёС†РёСЋ РІ СЃРµС‚РєРµ РґР»СЏ РєРѕСЂСЂРµРєС‚РЅРѕР№ РІРёР·СѓР°Р»РёР·Р°С†РёРё
                 asteroidInfo.gridStartPosition = cell.gridPosition;
                 asteroidInfo.gridSize = new Vector2Int(8, 8);
 
-                // Добавляем визуализатор занятых клеток для отладки
+                // Р”РѕР±Р°РІР»СЏРµРј РІРёР·СѓР°Р»РёР·Р°С‚РѕСЂ Р·Р°РЅСЏС‚С‹С… РєР»РµС‚РѕРє РґР»СЏ РѕС‚Р»Р°РґРєРё
                 OccupiedCellsVisualizer visualizer = asteroid.AddComponent<OccupiedCellsVisualizer>();
                 visualizer.cellsX = 8;
                 visualizer.cellsY = 8;
                 visualizer.showOnStart = true;
-                visualizer.visualizationColor = new Color(1f, 0f, 0f, 0.3f); // Красный полупрозрачный
+                visualizer.visualizationColor = new Color(1f, 0f, 0f, 0.3f); // РљСЂР°СЃРЅС‹Р№ РїРѕР»СѓРїСЂРѕР·СЂР°С‡РЅС‹Р№
                 visualizer.cubeHeight = 0.2f;
 
                 RegisterObject(asteroid, "Asteroid");
@@ -413,7 +456,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Генерация обломков
+    /// Р“РµРЅРµСЂР°С†РёСЏ РѕР±Р»РѕРјРєРѕРІ
     /// </summary>
     void GenerateDebris()
     {
@@ -428,7 +471,7 @@ public class LocationManager : MonoBehaviour
         for (int i = 0; i < debrisCount; i++)
         {
             
-            // Обломки занимают 1 клетку и размещаются в центре
+            // РћР±Р»РѕРјРєРё Р·Р°РЅРёРјР°СЋС‚ 1 РєР»РµС‚РєСѓ Рё СЂР°Р·РјРµС‰Р°СЋС‚СЃСЏ РІ С†РµРЅС‚СЂРµ
             GridCell cell = GetRandomGridCell("Debris");
             if (cell == null)
             {
@@ -439,16 +482,16 @@ public class LocationManager : MonoBehaviour
             
             if (debrisPrefab != null)
             {
-                // Размещаем точно в центре единственной ячейки с ограниченным поворотом
+                // Р Р°Р·РјРµС‰Р°РµРј С‚РѕС‡РЅРѕ РІ С†РµРЅС‚СЂРµ РµРґРёРЅСЃС‚РІРµРЅРЅРѕР№ СЏС‡РµР№РєРё СЃ РѕРіСЂР°РЅРёС‡РµРЅРЅС‹Рј РїРѕРІРѕСЂРѕС‚РѕРј
                 Quaternion limitedRotation = Quaternion.Euler(
-                    Random.Range(-15f, 15f),    // Небольшой наклон по X
-                    Random.Range(0f, 360f),     // Полный поворот по Y
-                    Random.Range(-15f, 15f)     // Небольшой наклон по Z
+                    Random.Range(-15f, 15f),    // РќРµР±РѕР»СЊС€РѕР№ РЅР°РєР»РѕРЅ РїРѕ X
+                    Random.Range(0f, 360f),     // РџРѕР»РЅС‹Р№ РїРѕРІРѕСЂРѕС‚ РїРѕ Y
+                    Random.Range(-15f, 15f)     // РќРµР±РѕР»СЊС€РѕР№ РЅР°РєР»РѕРЅ РїРѕ Z
                 );
                 GameObject debris = Instantiate(debrisPrefab, cell.worldPosition, limitedRotation, contentParent);
                 debris.SetActive(true);
                 
-                // Занимаем ячейку в сетке
+                // Р—Р°РЅРёРјР°РµРј СЏС‡РµР№РєСѓ РІ СЃРµС‚РєРµ
                 gridManager.OccupyCell(cell.gridPosition, debris, "Debris");
                 
                 RegisterObject(debris, "Debris");
@@ -460,11 +503,11 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Установка точки спавна игрока
+    /// РЈСЃС‚Р°РЅРѕРІРєР° С‚РѕС‡РєРё СЃРїР°РІРЅР° РёРіСЂРѕРєР°
     /// </summary>
     void SetPlayerSpawnPoint()
     {
-        Vector3 spawnPoint = Vector3.zero; // Инициализируем значением по умолчанию
+        Vector3 spawnPoint = Vector3.zero; // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј Р·РЅР°С‡РµРЅРёРµРј РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
         int attempts = 0;
         int maxAttempts = 50;
         
@@ -475,7 +518,7 @@ public class LocationManager : MonoBehaviour
             if (playerCell != null)
             {
                 spawnPoint = playerCell.worldPosition;
-                // Занимаем ячейку для игрока (только если playerShip не null)
+                // Р—Р°РЅРёРјР°РµРј СЏС‡РµР№РєСѓ РґР»СЏ РёРіСЂРѕРєР° (С‚РѕР»СЊРєРѕ РµСЃР»Рё playerShip РЅРµ null)
                 if (playerShip != null)
                 {
                     gridManager.OccupyCell(playerCell.gridPosition, playerShip.gameObject, "Player");
@@ -489,7 +532,7 @@ public class LocationManager : MonoBehaviour
         currentLocation.playerSpawnPoint = spawnPoint;
         
         
-        // Размещаем игрока если он есть
+        // Р Р°Р·РјРµС‰Р°РµРј РёРіСЂРѕРєР° РµСЃР»Рё РѕРЅ РµСЃС‚СЊ
         if (playerShip != null)
         {
             playerShip.position = spawnPoint;
@@ -500,20 +543,20 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Генерация точек интереса
+    /// Р“РµРЅРµСЂР°С†РёСЏ С‚РѕС‡РµРє РёРЅС‚РµСЂРµСЃР°
     /// </summary>
     void GeneratePointsOfInterest()
     {
-        // Точки интереса уже добавляются при создании станций
-        // Здесь можно добавить дополнительные точки интереса
+        // РўРѕС‡РєРё РёРЅС‚РµСЂРµСЃР° СѓР¶Рµ РґРѕР±Р°РІР»СЏСЋС‚СЃСЏ РїСЂРё СЃРѕР·РґР°РЅРёРё СЃС‚Р°РЅС†РёР№
+        // Р—РґРµСЃСЊ РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ С‚РѕС‡РєРё РёРЅС‚РµСЂРµСЃР°
     }
     
     /// <summary>
-    /// Получение случайной позиции в пределах локации (старый метод, оставлен для совместимости)
+    /// РџРѕР»СѓС‡РµРЅРёРµ СЃР»СѓС‡Р°Р№РЅРѕР№ РїРѕР·РёС†РёРё РІ РїСЂРµРґРµР»Р°С… Р»РѕРєР°С†РёРё (СЃС‚Р°СЂС‹Р№ РјРµС‚РѕРґ, РѕСЃС‚Р°РІР»РµРЅ РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё)
     /// </summary>
     Vector3 GetRandomLocationPosition()
     {
-        // Теперь используем сетку для получения позиции
+        // РўРµРїРµСЂСЊ РёСЃРїРѕР»СЊР·СѓРµРј СЃРµС‚РєСѓ РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РїРѕР·РёС†РёРё
         if (gridManager != null)
         {
             GridCell cell = gridManager.GetRandomFreeCell();
@@ -523,7 +566,7 @@ public class LocationManager : MonoBehaviour
             }
         }
         
-        // Fallback на старый метод если сетка недоступна
+        // Fallback РЅР° СЃС‚Р°СЂС‹Р№ РјРµС‚РѕРґ РµСЃР»Рё СЃРµС‚РєР° РЅРµРґРѕСЃС‚СѓРїРЅР°
         float halfWidth = (currentLocation.gridSize.x * gridCellSize) * 0.5f;
         float halfHeight = (currentLocation.gridSize.y * gridCellSize) * 0.5f;
         
@@ -536,7 +579,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Получение случайной свободной ячейки сетки для размещения объекта
+    /// РџРѕР»СѓС‡РµРЅРёРµ СЃР»СѓС‡Р°Р№РЅРѕР№ СЃРІРѕР±РѕРґРЅРѕР№ СЏС‡РµР№РєРё СЃРµС‚РєРё РґР»СЏ СЂР°Р·РјРµС‰РµРЅРёСЏ РѕР±СЉРµРєС‚Р°
     /// </summary>
     GridCell GetRandomGridCell(string objectType = "")
     {
@@ -554,7 +597,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Получение безопасной позиции с учетом минимального расстояния до других объектов
+    /// РџРѕР»СѓС‡РµРЅРёРµ Р±РµР·РѕРїР°СЃРЅРѕР№ РїРѕР·РёС†РёРё СЃ СѓС‡РµС‚РѕРј РјРёРЅРёРјР°Р»СЊРЅРѕРіРѕ СЂР°СЃСЃС‚РѕСЏРЅРёСЏ РґРѕ РґСЂСѓРіРёС… РѕР±СЉРµРєС‚РѕРІ
     /// </summary>
     Vector3 GetSafeSpawnPosition(float minDistance = 0f)
     {
@@ -579,7 +622,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Проверка безопасности позиции (нет объектов в заданном радиусе)
+    /// РџСЂРѕРІРµСЂРєР° Р±РµР·РѕРїР°СЃРЅРѕСЃС‚Рё РїРѕР·РёС†РёРё (РЅРµС‚ РѕР±СЉРµРєС‚РѕРІ РІ Р·Р°РґР°РЅРЅРѕРј СЂР°РґРёСѓСЃРµ)
     /// </summary>
     bool IsPositionSafe(Vector3 position, float minDistance)
     {
@@ -594,7 +637,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Проверка безопасности позиции для игрока
+    /// РџСЂРѕРІРµСЂРєР° Р±РµР·РѕРїР°СЃРЅРѕСЃС‚Рё РїРѕР·РёС†РёРё РґР»СЏ РёРіСЂРѕРєР°
     /// </summary>
     bool IsPositionSafeForPlayer(Vector3 position)
     {
@@ -609,67 +652,67 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Регистрация объекта в системе
+    /// Р РµРіРёСЃС‚СЂР°С†РёСЏ РѕР±СЉРµРєС‚Р° РІ СЃРёСЃС‚РµРјРµ
     /// </summary>
     void RegisterObject(GameObject obj, string objectType)
     {
         spawnedObjects.Add(obj);
         
-        // Добавляем компонент для идентификации типа объекта вместо тега
+        // Р”РѕР±Р°РІР»СЏРµРј РєРѕРјРїРѕРЅРµРЅС‚ РґР»СЏ РёРґРµРЅС‚РёС„РёРєР°С†РёРё С‚РёРїР° РѕР±СЉРµРєС‚Р° РІРјРµСЃС‚Рѕ С‚РµРіР°
         var objectInfo = obj.GetComponent<LocationObjectInfo>();
         if (objectInfo == null)
         {
             objectInfo = obj.AddComponent<LocationObjectInfo>();
             objectInfo.objectType = objectType;
             
-            // Устанавливаем имя если оно не задано
+            // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РёРјСЏ РµСЃР»Рё РѕРЅРѕ РЅРµ Р·Р°РґР°РЅРѕ
             if (string.IsNullOrEmpty(objectInfo.objectName))
             {
                 objectInfo.objectName = obj.name;
             }
         }
         
-        // Проверяем наличие коллайдера для raycast
+        // РџСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ РєРѕР»Р»Р°Р№РґРµСЂР° РґР»СЏ raycast
         Collider collider = obj.GetComponent<Collider>();
     }
     
     /// <summary>
-    /// Очистка локации
+    /// РћС‡РёСЃС‚РєР° Р»РѕРєР°С†РёРё
     /// </summary>
     public void ClearLocation()
     {
-        // Удаляем все созданные объекты, кроме персонажей
+        // РЈРґР°Р»СЏРµРј РІСЃРµ СЃРѕР·РґР°РЅРЅС‹Рµ РѕР±СЉРµРєС‚С‹, РєСЂРѕРјРµ РїРµСЂСЃРѕРЅР°Р¶РµР№
         List<GameObject> charactersToPreserve = new List<GameObject>();
         
         foreach (GameObject obj in spawnedObjects)
         {
             if (obj != null)
             {
-                // Проверяем, является ли объект персонажем
+                // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РѕР±СЉРµРєС‚ РїРµСЂСЃРѕРЅР°Р¶РµРј
                 Character character = obj.GetComponent<Character>();
                 if (character != null)
                 {
-                    // Сохраняем персонажа
+                    // РЎРѕС…СЂР°РЅСЏРµРј РїРµСЂСЃРѕРЅР°Р¶Р°
                     charactersToPreserve.Add(obj);
                 }
                 else
                 {
-                    // Удаляем все остальные объекты
+                    // РЈРґР°Р»СЏРµРј РІСЃРµ РѕСЃС‚Р°Р»СЊРЅС‹Рµ РѕР±СЉРµРєС‚С‹
                     DestroyImmediate(obj);
                 }
             }
         }
         
-        // Очищаем списки и восстанавливаем персонажей
+        // РћС‡РёС‰Р°РµРј СЃРїРёСЃРєРё Рё РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РїРµСЂСЃРѕРЅР°Р¶РµР№
         spawnedObjects.Clear();
         gridObjects.Clear();
         
-        // Добавляем персонажей обратно в список
+        // Р”РѕР±Р°РІР»СЏРµРј РїРµСЂСЃРѕРЅР°Р¶РµР№ РѕР±СЂР°С‚РЅРѕ РІ СЃРїРёСЃРѕРє
         foreach (GameObject character in charactersToPreserve)
         {
             spawnedObjects.Add(character);
             
-            // Регистрируем персонажа в сетке заново
+            // Р РµРіРёСЃС‚СЂРёСЂСѓРµРј РїРµСЂСЃРѕРЅР°Р¶Р° РІ СЃРµС‚РєРµ Р·Р°РЅРѕРІРѕ
             Character charComponent = character.GetComponent<Character>();
             if (charComponent != null && gridManager != null)
             {
@@ -678,7 +721,7 @@ public class LocationManager : MonoBehaviour
             }
         }
         
-        // Очищаем сетку
+        // РћС‡РёС‰Р°РµРј СЃРµС‚РєСѓ
         if (gridManager != null)
         {
             gridManager.ClearGrid();
@@ -694,7 +737,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Преобразование мировых координат в координаты сетки
+    /// РџСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ РјРёСЂРѕРІС‹С… РєРѕРѕСЂРґРёРЅР°С‚ РІ РєРѕРѕСЂРґРёРЅР°С‚С‹ СЃРµС‚РєРё
     /// </summary>
     public Vector2Int WorldToGrid(Vector3 worldPosition)
     {
@@ -704,7 +747,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Преобразование координат сетки в мировые координаты (центр ячейки)
+    /// РџСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ РєРѕРѕСЂРґРёРЅР°С‚ СЃРµС‚РєРё РІ РјРёСЂРѕРІС‹Рµ РєРѕРѕСЂРґРёРЅР°С‚С‹ (С†РµРЅС‚СЂ СЏС‡РµР№РєРё)
     /// </summary>
     public Vector3 GridToWorld(Vector2Int gridPosition)
     {
@@ -712,7 +755,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Проверка валидности позиции сетки
+    /// РџСЂРѕРІРµСЂРєР° РІР°Р»РёРґРЅРѕСЃС‚Рё РїРѕР·РёС†РёРё СЃРµС‚РєРё
     /// </summary>
     public bool IsValidGridPosition(Vector2Int gridPosition)
     {
@@ -724,7 +767,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Получение всех объектов определенного типа
+    /// РџРѕР»СѓС‡РµРЅРёРµ РІСЃРµС… РѕР±СЉРµРєС‚РѕРІ РѕРїСЂРµРґРµР»РµРЅРЅРѕРіРѕ С‚РёРїР°
     /// </summary>
     public List<GameObject> GetObjectsByType(string objectType)
     {
@@ -746,7 +789,7 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Сохранение состояния локации
+    /// РЎРѕС…СЂР°РЅРµРЅРёРµ СЃРѕСЃС‚РѕСЏРЅРёСЏ Р»РѕРєР°С†РёРё
     /// </summary>
     public string SaveLocationState()
     {
@@ -754,19 +797,19 @@ public class LocationManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Загрузка состояния локации
+    /// Р—Р°РіСЂСѓР·РєР° СЃРѕСЃС‚РѕСЏРЅРёСЏ Р»РѕРєР°С†РёРё
     /// </summary>
     public void LoadLocationState(string json)
     {
         if (!string.IsNullOrEmpty(json))
         {
             currentLocation = JsonUtility.FromJson<LocationData>(json);
-            // После загрузки можно регенерировать локацию если нужно
+            // РџРѕСЃР»Рµ Р·Р°РіСЂСѓР·РєРё РјРѕР¶РЅРѕ СЂРµРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ Р»РѕРєР°С†РёСЋ РµСЃР»Рё РЅСѓР¶РЅРѕ
         }
     }
     
     /// <summary>
-    /// Диагностика созданных объектов для отладки выделения
+    /// Р”РёР°РіРЅРѕСЃС‚РёРєР° СЃРѕР·РґР°РЅРЅС‹С… РѕР±СЉРµРєС‚РѕРІ РґР»СЏ РѕС‚Р»Р°РґРєРё РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     void DiagnoseCreatedObjects()
     {
@@ -776,7 +819,7 @@ public class LocationManager : MonoBehaviour
             if (obj == null) continue;
             
             
-            // Проверяем коллайдеры
+            // РџСЂРѕРІРµСЂСЏРµРј РєРѕР»Р»Р°Р№РґРµСЂС‹
             Collider[] colliders = obj.GetComponents<Collider>();
             foreach (var collider in colliders)
             {
@@ -785,13 +828,13 @@ public class LocationManager : MonoBehaviour
                 }
             }
             
-            // Проверяем LocationObjectInfo
+            // РџСЂРѕРІРµСЂСЏРµРј LocationObjectInfo
             LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
             if (objectInfo != null)
             {
             }
             
-            // Проверяем слой
+            // РџСЂРѕРІРµСЂСЏРµРј СЃР»РѕР№
         }
         
     }
@@ -800,7 +843,7 @@ public class LocationManager : MonoBehaviour
     {
         if (currentLocation != null)
         {
-            // Рисуем границы локации
+            // Р РёСЃСѓРµРј РіСЂР°РЅРёС†С‹ Р»РѕРєР°С†РёРё
             Gizmos.color = Color.cyan;
             float halfWidth = (currentLocation.gridSize.x * gridCellSize) * 0.5f;
             float halfHeight = (currentLocation.gridSize.y * gridCellSize) * 0.5f;
@@ -809,13 +852,13 @@ public class LocationManager : MonoBehaviour
             Vector3 size = new Vector3(halfWidth * 2, 1f, halfHeight * 2);
             Gizmos.DrawWireCube(center, size);
             
-            // Рисуем точку спавна игрока
+            // Р РёСЃСѓРµРј С‚РѕС‡РєСѓ СЃРїР°РІРЅР° РёРіСЂРѕРєР°
             if (currentLocation.isGenerated)
             {
                 Gizmos.color = Color.green;
                 Gizmos.DrawWireSphere(currentLocation.playerSpawnPoint, 5f);
                 
-                // Рисуем точки интереса
+                // Р РёСЃСѓРµРј С‚РѕС‡РєРё РёРЅС‚РµСЂРµСЃР°
                 Gizmos.color = Color.yellow;
                 foreach (Vector3 poi in currentLocation.pointsOfInterest)
                 {

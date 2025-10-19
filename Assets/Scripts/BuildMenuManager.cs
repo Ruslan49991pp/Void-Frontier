@@ -1,30 +1,30 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Управление кнопками Build и панелями BuildMenu (Ship и Room)
-/// Одновременно может быть открыта только одна панель
+/// РЈРїСЂР°РІР»РµРЅРёРµ РєРЅРѕРїРєР°РјРё Build Рё РїР°РЅРµР»СЏРјРё BuildMenu (Ship Рё Room)
+/// РћРґРЅРѕРІСЂРµРјРµРЅРЅРѕ РјРѕР¶РµС‚ Р±С‹С‚СЊ РѕС‚РєСЂС‹С‚Р° С‚РѕР»СЊРєРѕ РѕРґРЅР° РїР°РЅРµР»СЊ
 /// </summary>
 public class BuildMenuManager : MonoBehaviour
 {
     [Header("Ship Build UI")]
-    [Tooltip("Кнопка ShipBuildButton в Canvas_MainUI")]
+    [Tooltip("РљРЅРѕРїРєР° ShipBuildButton РІ Canvas_MainUI")]
     public Button shipBuildButton;
 
-    [Tooltip("Панель ShipBuildMenuPanel в Windows")]
+    [Tooltip("РџР°РЅРµР»СЊ ShipBuildMenuPanel РІ Windows")]
     public GameObject shipBuildMenuPanel;
 
-    [Tooltip("Кнопка Close внутри ShipBuildMenuPanel")]
+    [Tooltip("РљРЅРѕРїРєР° Close РІРЅСѓС‚СЂРё ShipBuildMenuPanel")]
     public Button shipCloseButton;
 
     [Header("Room Build UI")]
-    [Tooltip("Кнопка RoomBuildButton в Canvas_MainUI")]
+    [Tooltip("РљРЅРѕРїРєР° RoomBuildButton РІ Canvas_MainUI")]
     public Button roomBuildButton;
 
-    [Tooltip("Панель RoomBuildMenuPanel в Windows")]
+    [Tooltip("РџР°РЅРµР»СЊ RoomBuildMenuPanel РІ Windows")]
     public GameObject roomBuildMenuPanel;
 
-    [Tooltip("Кнопка Close внутри RoomBuildMenuPanel")]
+    [Tooltip("РљРЅРѕРїРєР° Close РІРЅСѓС‚СЂРё RoomBuildMenuPanel")]
     public Button roomCloseButton;
 
     void Start()
@@ -38,7 +38,6 @@ public class BuildMenuManager : MonoBehaviour
             }
             else
             {
-                Debug.LogError("[BuildMenuManager] ShipBuildButton not found in scene!");
             }
         }
 
@@ -47,7 +46,6 @@ public class BuildMenuManager : MonoBehaviour
             shipBuildMenuPanel = FindInactiveObject("ShipBuildMenuPanel");
             if (shipBuildMenuPanel == null)
             {
-                Debug.LogError("[BuildMenuManager] ShipBuildMenuPanel not found in scene!");
             }
         }
 
@@ -60,7 +58,6 @@ public class BuildMenuManager : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("[BuildMenuManager] CloseButton not found in ShipBuildMenuPanel!");
             }
         }
 
@@ -73,7 +70,6 @@ public class BuildMenuManager : MonoBehaviour
             }
             else
             {
-                Debug.LogError("[BuildMenuManager] RoomBuildButton not found in scene!");
             }
         }
 
@@ -82,7 +78,6 @@ public class BuildMenuManager : MonoBehaviour
             roomBuildMenuPanel = FindInactiveObject("RoomBuildMenuPanel");
             if (roomBuildMenuPanel == null)
             {
-                Debug.LogError("[BuildMenuManager] RoomBuildMenuPanel not found in scene!");
             }
         }
 
@@ -95,28 +90,23 @@ public class BuildMenuManager : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("[BuildMenuManager] CloseButton not found in RoomBuildMenuPanel!");
             }
         }
 
         if (shipBuildButton == null)
         {
-            Debug.LogError("[BuildMenuManager] ShipBuildButton is null - cannot continue!");
         }
 
         if (shipBuildMenuPanel == null)
         {
-            Debug.LogError("[BuildMenuManager] ShipBuildMenuPanel is null - cannot continue!");
         }
 
         if (roomBuildButton == null)
         {
-            Debug.LogError("[BuildMenuManager] RoomBuildButton is null - cannot continue!");
         }
 
         if (roomBuildMenuPanel == null)
         {
-            Debug.LogError("[BuildMenuManager] RoomBuildMenuPanel is null - cannot continue!");
         }
 
         if (shipBuildButton != null)
@@ -199,7 +189,6 @@ public class BuildMenuManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[BuildMenuManager] GamePauseManager not found!");
         }
     }
 
@@ -224,7 +213,6 @@ public class BuildMenuManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[BuildMenuManager] GamePauseManager not found!");
         }
     }
 
@@ -244,7 +232,6 @@ public class BuildMenuManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[BuildMenuManager] GamePauseManager not found!");
         }
     }
 
@@ -264,7 +251,6 @@ public class BuildMenuManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[BuildMenuManager] GamePauseManager not found!");
         }
     }
 

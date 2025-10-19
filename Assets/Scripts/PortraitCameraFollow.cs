@@ -1,9 +1,9 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using System.Collections;
 
 /// <summary>
-/// Компонент для портрета персонажа - следование камеры при удержании ЛКМ
+/// РљРѕРјРїРѕРЅРµРЅС‚ РґР»СЏ РїРѕСЂС‚СЂРµС‚Р° РїРµСЂСЃРѕРЅР°Р¶Р° - СЃР»РµРґРѕРІР°РЅРёРµ РєР°РјРµСЂС‹ РїСЂРё СѓРґРµСЂР¶Р°РЅРёРё Р›РљРњ
 /// </summary>
 public class PortraitCameraFollow : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
 {
@@ -11,7 +11,7 @@ public class PortraitCameraFollow : MonoBehaviour, IPointerDownHandler, IPointer
     private CameraController cameraController;
     private Coroutine followCoroutine;
 
-    [Tooltip("Время удержания кнопки (в секундах) перед началом следования")]
+    [Tooltip("Р’СЂРµРјСЏ СѓРґРµСЂР¶Р°РЅРёСЏ РєРЅРѕРїРєРё (РІ СЃРµРєСѓРЅРґР°С…) РїРµСЂРµРґ РЅР°С‡Р°Р»РѕРј СЃР»РµРґРѕРІР°РЅРёСЏ")]
     public float holdThreshold = 0.1f;
 
     public void Initialize(Character character)
@@ -21,17 +21,16 @@ public class PortraitCameraFollow : MonoBehaviour, IPointerDownHandler, IPointer
 
     void Start()
     {
-        // Находим CameraController
+        // РќР°С…РѕРґРёРј CameraController
         cameraController = FindObjectOfType<CameraController>();
         if (cameraController == null)
         {
-            Debug.LogWarning("[PortraitCameraFollow] CameraController not found in scene!");
         }
     }
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        // При нажатии ЛКМ запускаем корутину с задержкой
+        // РџСЂРё РЅР°Р¶Р°С‚РёРё Р›РљРњ Р·Р°РїСѓСЃРєР°РµРј РєРѕСЂСѓС‚РёРЅСѓ СЃ Р·Р°РґРµСЂР¶РєРѕР№
         if (eventData.button == PointerEventData.InputButton.Left)
         {
             if (followCoroutine != null)
@@ -44,17 +43,17 @@ public class PortraitCameraFollow : MonoBehaviour, IPointerDownHandler, IPointer
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        // При отпускании ЛКМ останавливаем корутину и следование
+        // РџСЂРё РѕС‚РїСѓСЃРєР°РЅРёРё Р›РљРњ РѕСЃС‚Р°РЅР°РІР»РёРІР°РµРј РєРѕСЂСѓС‚РёРЅСѓ Рё СЃР»РµРґРѕРІР°РЅРёРµ
         if (eventData.button == PointerEventData.InputButton.Left)
         {
-            // Отменяем запуск следования если кнопка отпущена до истечения задержки
+            // РћС‚РјРµРЅСЏРµРј Р·Р°РїСѓСЃРє СЃР»РµРґРѕРІР°РЅРёСЏ РµСЃР»Рё РєРЅРѕРїРєР° РѕС‚РїСѓС‰РµРЅР° РґРѕ РёСЃС‚РµС‡РµРЅРёСЏ Р·Р°РґРµСЂР¶РєРё
             if (followCoroutine != null)
             {
                 StopCoroutine(followCoroutine);
                 followCoroutine = null;
             }
 
-            // Останавливаем следование если оно было активно
+            // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј СЃР»РµРґРѕРІР°РЅРёРµ РµСЃР»Рё РѕРЅРѕ Р±С‹Р»Рѕ Р°РєС‚РёРІРЅРѕ
             if (cameraController != null)
             {
                 cameraController.StopFollowingTarget();
@@ -63,14 +62,14 @@ public class PortraitCameraFollow : MonoBehaviour, IPointerDownHandler, IPointer
     }
 
     /// <summary>
-    /// Корутина для запуска следования с задержкой
+    /// РљРѕСЂСѓС‚РёРЅР° РґР»СЏ Р·Р°РїСѓСЃРєР° СЃР»РµРґРѕРІР°РЅРёСЏ СЃ Р·Р°РґРµСЂР¶РєРѕР№
     /// </summary>
     IEnumerator StartFollowingAfterDelay()
     {
-        // Ждем указанное время
+        // Р–РґРµРј СѓРєР°Р·Р°РЅРЅРѕРµ РІСЂРµРјСЏ
         yield return new WaitForSeconds(holdThreshold);
 
-        // Если дошли сюда, значит кнопка удерживается достаточно долго
+        // Р•СЃР»Рё РґРѕС€Р»Рё СЃСЋРґР°, Р·РЅР°С‡РёС‚ РєРЅРѕРїРєР° СѓРґРµСЂР¶РёРІР°РµС‚СЃСЏ РґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РґРѕР»РіРѕ
         if (character != null && cameraController != null)
         {
             cameraController.StartFollowingTarget(character.transform);
@@ -81,7 +80,7 @@ public class PortraitCameraFollow : MonoBehaviour, IPointerDownHandler, IPointer
 
     void OnDisable()
     {
-        // Останавливаем следование при отключении компонента
+        // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј СЃР»РµРґРѕРІР°РЅРёРµ РїСЂРё РѕС‚РєР»СЋС‡РµРЅРёРё РєРѕРјРїРѕРЅРµРЅС‚Р°
         if (cameraController != null)
         {
             cameraController.StopFollowingTarget();

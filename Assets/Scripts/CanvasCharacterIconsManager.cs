@@ -1,10 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Управление иконками персонажей на Canvas - простая версия БЕЗ добавления компонентов
+/// РЈРїСЂР°РІР»РµРЅРёРµ РёРєРѕРЅРєР°РјРё РїРµСЂСЃРѕРЅР°Р¶РµР№ РЅР° Canvas - РїСЂРѕСЃС‚Р°СЏ РІРµСЂСЃРёСЏ Р‘Р•Р— РґРѕР±Р°РІР»РµРЅРёСЏ РєРѕРјРїРѕРЅРµРЅС‚РѕРІ
 /// </summary>
 public class CanvasCharacterIconsManager : MonoBehaviour
 {
@@ -17,7 +17,7 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         public GameObject iconObject;
         public Image background;
         public Image avatarImage;
-        public Image healthBarFill;  // ДОБАВЛЕНО: Health bar
+        public Image healthBarFill;  // Р”РћР‘РђР’Р›Р•РќРћ: Health bar
         public TextMeshProUGUI nameLabel;
         public Button button;
         public Button inventoryButton;
@@ -27,7 +27,7 @@ public class CanvasCharacterIconsManager : MonoBehaviour
     private Dictionary<Character, IconData> characterIcons = new Dictionary<Character, IconData>();
     private SelectionManager selectionManager;
 
-    // Список портретов людей для циклического использования
+    // РЎРїРёСЃРѕРє РїРѕСЂС‚СЂРµС‚РѕРІ Р»СЋРґРµР№ РґР»СЏ С†РёРєР»РёС‡РµСЃРєРѕРіРѕ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ
     private string[] humanPortraits = new string[]
     {
         "Icons/Characters/Humans/Character_Ico",
@@ -39,7 +39,6 @@ public class CanvasCharacterIconsManager : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("[CanvasCharacterIconsManager] Start() - initializing...");
 
         selectionManager = FindObjectOfType<SelectionManager>();
         if (selectionManager != null)
@@ -47,11 +46,10 @@ public class CanvasCharacterIconsManager : MonoBehaviour
             selectionManager.OnSelectionChanged += OnSelectionChanged;
         }
 
-        // ДОБАВЛЕНО: Подписка на события урона
+        // Р”РћР‘РђР’Р›Р•РќРћ: РџРѕРґРїРёСЃРєР° РЅР° СЃРѕР±С‹С‚РёСЏ СѓСЂРѕРЅР°
         EventBus.Subscribe<CharacterDamagedEvent>(OnCharacterDamaged);
-        Debug.Log("[CanvasCharacterIconsManager] Subscribed to EventBus<CharacterDamagedEvent>");
 
-        // Создаем иконки через 0.5 секунд
+        // РЎРѕР·РґР°РµРј РёРєРѕРЅРєРё С‡РµСЂРµР· 0.5 СЃРµРєСѓРЅРґ
         Invoke(nameof(CreateIcons), 0.5f);
     }
 
@@ -76,16 +74,16 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         if (characterPortraitPrefab == null || iconsContainer == null)
             return;
 
-        // Создаем иконку из префаба
+        // РЎРѕР·РґР°РµРј РёРєРѕРЅРєСѓ РёР· РїСЂРµС„Р°Р±Р°
         GameObject iconGO = Instantiate(characterPortraitPrefab, iconsContainer);
         iconGO.name = $"Portrait_{character.GetFullName()}";
 
-        // Создаем структуру данных
+        // РЎРѕР·РґР°РµРј СЃС‚СЂСѓРєС‚СѓСЂСѓ РґР°РЅРЅС‹С…
         IconData iconData = new IconData();
         iconData.iconObject = iconGO;
         iconData.lastClickTime = 0f;
 
-        // Находим элементы БЕЗ добавления компонентов
+        // РќР°С…РѕРґРёРј СЌР»РµРјРµРЅС‚С‹ Р‘Р•Р— РґРѕР±Р°РІР»РµРЅРёСЏ РєРѕРјРїРѕРЅРµРЅС‚РѕРІ
         Transform bgTransform = iconGO.transform.Find("Background");
         if (bgTransform != null)
         {
@@ -102,7 +100,7 @@ public class CanvasCharacterIconsManager : MonoBehaviour
             }
         }
 
-        // ДОБАВЛЕНО: Находим Health Bar
+        // Р”РћР‘РђР’Р›Р•РќРћ: РќР°С…РѕРґРёРј Health Bar
         Transform healthBarTransform = iconGO.transform.Find("HealthBar");
         if (healthBarTransform != null)
         {
@@ -112,37 +110,35 @@ public class CanvasCharacterIconsManager : MonoBehaviour
                 iconData.healthBarFill = healthBarPlaneTransform.GetComponent<Image>();
                 if (iconData.healthBarFill != null)
                 {
-                    // Устанавливаем начальное здоровье через scale.x
+                    // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РЅР°С‡Р°Р»СЊРЅРѕРµ Р·РґРѕСЂРѕРІСЊРµ С‡РµСЂРµР· scale.x
                     RectTransform healthBarRect = iconData.healthBarFill.GetComponent<RectTransform>();
                     if (healthBarRect != null)
                     {
                         float healthPercent = character.GetHealthPercent();
                         Vector3 currentScale = healthBarRect.localScale;
                         healthBarRect.localScale = new Vector3(healthPercent, currentScale.y, currentScale.z);
-                        Debug.Log($"[CanvasCharacterIconsManager] Set initial health bar for {character.GetFullName()}: {healthPercent:F2}");
                     }
                 }
             }
             else
             {
-                Debug.LogWarning($"[CanvasCharacterIconsManager] HealthBar_Plane not found in prefab for {character.GetFullName()}");
             }
         }
 
-        // Находим Avatar для загрузки портрета
+        // РќР°С…РѕРґРёРј Avatar РґР»СЏ Р·Р°РіСЂСѓР·РєРё РїРѕСЂС‚СЂРµС‚Р°
         Transform avatarTransform = iconGO.transform.Find("Avatar");
         if (avatarTransform != null)
         {
             iconData.avatarImage = avatarTransform.GetComponent<Image>();
 
-            // Загружаем портрет персонажа
+            // Р—Р°РіСЂСѓР¶Р°РµРј РїРѕСЂС‚СЂРµС‚ РїРµСЂСЃРѕРЅР°Р¶Р°
             if (iconData.avatarImage != null)
             {
                 LoadCharacterPortrait(iconData.avatarImage, character);
             }
         }
 
-        // Настраиваем кнопку для клика
+        // РќР°СЃС‚СЂР°РёРІР°РµРј РєРЅРѕРїРєСѓ РґР»СЏ РєР»РёРєР°
         Image iconImage = iconGO.GetComponent<Image>();
         if (iconImage == null)
         {
@@ -164,11 +160,11 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         nav.mode = Navigation.Mode.None;
         iconData.button.navigation = nav;
 
-        // Обработчик клика с замыканием
+        // РћР±СЂР°Р±РѕС‚С‡РёРє РєР»РёРєР° СЃ Р·Р°РјС‹РєР°РЅРёРµРј
         Character capturedCharacter = character;
         iconData.button.onClick.AddListener(() => OnIconClicked(capturedCharacter));
 
-        // Добавляем компонент для следования камеры при зажатии ЛКМ
+        // Р”РѕР±Р°РІР»СЏРµРј РєРѕРјРїРѕРЅРµРЅС‚ РґР»СЏ СЃР»РµРґРѕРІР°РЅРёСЏ РєР°РјРµСЂС‹ РїСЂРё Р·Р°Р¶Р°С‚РёРё Р›РљРњ
         PortraitCameraFollow cameraFollow = iconGO.GetComponent<PortraitCameraFollow>();
         if (cameraFollow == null)
         {
@@ -176,24 +172,22 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         }
         cameraFollow.Initialize(capturedCharacter);
 
-        // Находим и привязываем кнопку инвентаря
+        // РќР°С…РѕРґРёРј Рё РїСЂРёРІСЏР·С‹РІР°РµРј РєРЅРѕРїРєСѓ РёРЅРІРµРЅС‚Р°СЂСЏ
         Transform inventoryButtonTransform = iconGO.transform.Find("InventoryButton");
         if (inventoryButtonTransform != null)
         {
             iconData.inventoryButton = inventoryButtonTransform.GetComponent<Button>();
             if (iconData.inventoryButton != null)
             {
-                // Добавляем обработчик для открытия инвентаря конкретного персонажа
+                // Р”РѕР±Р°РІР»СЏРµРј РѕР±СЂР°Р±РѕС‚С‡РёРє РґР»СЏ РѕС‚РєСЂС‹С‚РёСЏ РёРЅРІРµРЅС‚Р°СЂСЏ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р°
                 iconData.inventoryButton.onClick.AddListener(() => OnInventoryButtonClicked(capturedCharacter));
             }
             else
             {
-                Debug.LogWarning($"[CanvasCharacterIconsManager] InventoryButton found but has no Button component for {character.GetFullName()}");
             }
         }
         else
         {
-            Debug.LogWarning($"[CanvasCharacterIconsManager] InventoryButton not found in portrait for {character.GetFullName()}");
         }
 
         characterIcons[character] = iconData;
@@ -212,10 +206,10 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         iconData.lastClickTime = currentTime;
         characterIcons[character] = iconData;
 
-        // Одинарный клик - только выделение
+        // РћРґРёРЅР°СЂРЅС‹Р№ РєР»РёРє - С‚РѕР»СЊРєРѕ РІС‹РґРµР»РµРЅРёРµ
         if (!isDoubleClick)
         {
-            // Ctrl + клик
+            // Ctrl + РєР»РёРє
             if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
             {
                 selectionManager.ToggleSelection(character.gameObject);
@@ -226,14 +220,14 @@ public class CanvasCharacterIconsManager : MonoBehaviour
                 selectionManager.AddToSelection(character.gameObject);
             }
         }
-        // Двойной клик - выделение + фокус камеры
+        // Р”РІРѕР№РЅРѕР№ РєР»РёРє - РІС‹РґРµР»РµРЅРёРµ + С„РѕРєСѓСЃ РєР°РјРµСЂС‹
         else
         {
-            // Выделяем персонажа
+            // Р’С‹РґРµР»СЏРµРј РїРµСЂСЃРѕРЅР°Р¶Р°
             selectionManager.ClearSelection();
             selectionManager.AddToSelection(character.gameObject);
 
-            // Фокусируем камеру
+            // Р¤РѕРєСѓСЃРёСЂСѓРµРј РєР°РјРµСЂСѓ
             CameraController cameraController = FindObjectOfType<CameraController>();
             if (cameraController != null)
             {
@@ -244,33 +238,30 @@ public class CanvasCharacterIconsManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработчик клика по кнопке инвентаря конкретного персонажа
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє РєР»РёРєР° РїРѕ РєРЅРѕРїРєРµ РёРЅРІРµРЅС‚Р°СЂСЏ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     void OnInventoryButtonClicked(Character character)
     {
         if (character == null)
         {
-            Debug.LogWarning("[CanvasCharacterIconsManager] OnInventoryButtonClicked: character is null");
             return;
         }
 
-        // Находим InventoryUI в сцене
+        // РќР°С…РѕРґРёРј InventoryUI РІ СЃС†РµРЅРµ
         InventoryUI inventoryUI = FindObjectOfType<InventoryUI>();
         if (inventoryUI == null)
         {
-            Debug.LogError("[CanvasCharacterIconsManager] InventoryUI not found in scene");
             return;
         }
 
-        // Получаем инвентарь персонажа
+        // РџРѕР»СѓС‡Р°РµРј РёРЅРІРµРЅС‚Р°СЂСЊ РїРµСЂСЃРѕРЅР°Р¶Р°
         Inventory inventory = character.GetInventory();
         if (inventory == null)
         {
-            Debug.LogWarning($"[CanvasCharacterIconsManager] Character {character.GetFullName()} has no inventory");
             return;
         }
 
-        // Открываем инвентарь персонажа
+        // РћС‚РєСЂС‹РІР°РµРј РёРЅРІРµРЅС‚Р°СЂСЊ РїРµСЂСЃРѕРЅР°Р¶Р°
         inventoryUI.SetCurrentInventory(inventory, character);
         inventoryUI.ShowInventory();
     }
@@ -302,15 +293,15 @@ public class CanvasCharacterIconsManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Загрузить портрет персонажа из Resources
+    /// Р—Р°РіСЂСѓР·РёС‚СЊ РїРѕСЂС‚СЂРµС‚ РїРµСЂСЃРѕРЅР°Р¶Р° РёР· Resources
     /// </summary>
     void LoadCharacterPortrait(Image avatarImage, Character character)
     {
-        // Получаем следующий портрет по кругу
+        // РџРѕР»СѓС‡Р°РµРј СЃР»РµРґСѓСЋС‰РёР№ РїРѕСЂС‚СЂРµС‚ РїРѕ РєСЂСѓРіСѓ
         string portraitPath = humanPortraits[currentHumanPortraitIndex];
         currentHumanPortraitIndex = (currentHumanPortraitIndex + 1) % humanPortraits.Length;
 
-        // Загружаем Sprite из Resources
+        // Р—Р°РіСЂСѓР¶Р°РµРј Sprite РёР· Resources
         Sprite portraitSprite = Resources.Load<Sprite>(portraitPath);
 
         if (portraitSprite != null)
@@ -319,11 +310,10 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"[CanvasCharacterIconsManager] Failed to load portrait from '{portraitPath}' for {character.GetFullName()}");
         }
     }
 
-    // ДОБАВЛЕНО: Update для обновления health bar каждый кадр
+    // Р”РћР‘РђР’Р›Р•РќРћ: Update РґР»СЏ РѕР±РЅРѕРІР»РµРЅРёСЏ health bar РєР°Р¶РґС‹Р№ РєР°РґСЂ
     void Update()
     {
         if (characterIcons.Count > 0)
@@ -332,7 +322,7 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         }
     }
 
-    // ДОБАВЛЕНО: Обновление health bar для всех персонажей
+    // Р”РћР‘РђР’Р›Р•РќРћ: РћР±РЅРѕРІР»РµРЅРёРµ health bar РґР»СЏ РІСЃРµС… РїРµСЂСЃРѕРЅР°Р¶РµР№
     void UpdateHealthBars()
     {
         foreach (var kvp in characterIcons)
@@ -344,7 +334,7 @@ public class CanvasCharacterIconsManager : MonoBehaviour
             {
                 float healthPercent = character.GetHealthPercent();
 
-                // Обновляем scale.x
+                // РћР±РЅРѕРІР»СЏРµРј scale.x
                 RectTransform healthBarRect = iconData.healthBarFill.GetComponent<RectTransform>();
                 if (healthBarRect != null)
                 {
@@ -352,10 +342,10 @@ public class CanvasCharacterIconsManager : MonoBehaviour
                     healthBarRect.localScale = new Vector3(Mathf.Clamp01(healthPercent), currentScale.y, currentScale.z);
                 }
 
-                // Обновляем цвет health bar
+                // РћР±РЅРѕРІР»СЏРµРј С†РІРµС‚ health bar
                 if (healthPercent > 0.6f)
                 {
-                    iconData.healthBarFill.color = new Color(0.24913555f, 0.5849056f, 0, 1); // Зеленый
+                    iconData.healthBarFill.color = new Color(0.24913555f, 0.5849056f, 0, 1); // Р—РµР»РµРЅС‹Р№
                 }
                 else if (healthPercent > 0.3f)
                 {
@@ -369,16 +359,14 @@ public class CanvasCharacterIconsManager : MonoBehaviour
         }
     }
 
-    // ДОБАВЛЕНО: Обработчик события получения урона
+    // Р”РћР‘РђР’Р›Р•РќРћ: РћР±СЂР°Р±РѕС‚С‡РёРє СЃРѕР±С‹С‚РёСЏ РїРѕР»СѓС‡РµРЅРёСЏ СѓСЂРѕРЅР°
     void OnCharacterDamaged(CharacterDamagedEvent evt)
     {
-        Debug.Log($"[CanvasCharacterIconsManager] OnCharacterDamaged! Character: {(evt.character != null ? evt.character.GetFullName() : "NULL")}, IsPlayer: {(evt.character != null ? evt.character.IsPlayerCharacter() : false)}");
 
         if (evt.character != null && evt.character.IsPlayerCharacter())
         {
-            Debug.Log($"[CanvasCharacterIconsManager] Ally {evt.character.GetFullName()} took {evt.damage:F1} damage, HP: {evt.character.GetHealthPercent() * 100f:F0}%");
 
-            // Принудительно обновляем иконку этого персонажа
+            // РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РѕР±РЅРѕРІР»СЏРµРј РёРєРѕРЅРєСѓ СЌС‚РѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р°
             if (characterIcons.ContainsKey(evt.character))
             {
                 IconData iconData = characterIcons[evt.character];
@@ -393,7 +381,7 @@ public class CanvasCharacterIconsManager : MonoBehaviour
                         healthBarRect.localScale = new Vector3(healthPercent, currentScale.y, currentScale.z);
                     }
 
-                    // Обновляем цвет
+                    // РћР±РЅРѕРІР»СЏРµРј С†РІРµС‚
                     if (healthPercent > 0.6f)
                     {
                         iconData.healthBarFill.color = new Color(0.24913555f, 0.5849056f, 0, 1);
@@ -407,7 +395,6 @@ public class CanvasCharacterIconsManager : MonoBehaviour
                         iconData.healthBarFill.color = Color.red;
                     }
 
-                    Debug.Log($"[CanvasCharacterIconsManager] Health bar updated: scale.x={healthPercent:F2}");
                 }
             }
         }
@@ -420,7 +407,7 @@ public class CanvasCharacterIconsManager : MonoBehaviour
             selectionManager.OnSelectionChanged -= OnSelectionChanged;
         }
 
-        // ДОБАВЛЕНО: Отписка от EventBus
+        // Р”РћР‘РђР’Р›Р•РќРћ: РћС‚РїРёСЃРєР° РѕС‚ EventBus
         EventBus.Unsubscribe<CharacterDamagedEvent>(OnCharacterDamaged);
     }
 }

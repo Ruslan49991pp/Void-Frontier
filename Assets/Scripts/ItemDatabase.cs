@@ -1,27 +1,27 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// База данных всех предметов в игре
-/// Создать через Assets -> Create -> Item Database
+/// Р‘Р°Р·Р° РґР°РЅРЅС‹С… РІСЃРµС… РїСЂРµРґРјРµС‚РѕРІ РІ РёРіСЂРµ
+/// РЎРѕР·РґР°С‚СЊ С‡РµСЂРµР· Assets -> Create -> Item Database
 /// </summary>
 [CreateAssetMenu(fileName = "ItemDatabase", menuName = "Inventory/Item Database")]
 public class ItemDatabase : ScriptableObject
 {
-    [Header("Предметы найденные в коде")]
-    [Tooltip("Предметы которые используются в коде игры")]
+    [Header("РџСЂРµРґРјРµС‚С‹ РЅР°Р№РґРµРЅРЅС‹Рµ РІ РєРѕРґРµ")]
+    [Tooltip("РџСЂРµРґРјРµС‚С‹ РєРѕС‚РѕСЂС‹Рµ РёСЃРїРѕР»СЊР·СѓСЋС‚СЃСЏ РІ РєРѕРґРµ РёРіСЂС‹")]
     public List<ItemIconEntry> itemsInCode = new List<ItemIconEntry>();
 
-    [Header("Дополнительные предметы")]
-    [Tooltip("Предметы созданные вручную, которые пока не используются в коде")]
+    [Header("Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ РїСЂРµРґРјРµС‚С‹")]
+    [Tooltip("РџСЂРµРґРјРµС‚С‹ СЃРѕР·РґР°РЅРЅС‹Рµ РІСЂСѓС‡РЅСѓСЋ, РєРѕС‚РѕСЂС‹Рµ РїРѕРєР° РЅРµ РёСЃРїРѕР»СЊР·СѓСЋС‚СЃСЏ РІ РєРѕРґРµ")]
     public List<ItemIconEntry> customItems = new List<ItemIconEntry>();
 
     [System.NonSerialized]
     private List<ItemIconEntry> _allItemsCache = null;
 
     /// <summary>
-    /// Получить все предметы (из кода + кастомные)
+    /// РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ РїСЂРµРґРјРµС‚С‹ (РёР· РєРѕРґР° + РєР°СЃС‚РѕРјРЅС‹Рµ)
     /// </summary>
     public List<ItemIconEntry> GetAllItems()
     {
@@ -35,21 +35,21 @@ public class ItemDatabase : ScriptableObject
     }
 
     /// <summary>
-    /// Сбросить кэш (вызывать после изменений)
+    /// РЎР±СЂРѕСЃРёС‚СЊ РєСЌС€ (РІС‹Р·С‹РІР°С‚СЊ РїРѕСЃР»Рµ РёР·РјРµРЅРµРЅРёР№)
     /// </summary>
     public void RefreshCache()
     {
         _allItemsCache = null;
     }
 
-    // Для обратной совместимости со старым кодом
-    [System.Obsolete("Используйте itemsInCode или customItems")]
+    // Р”Р»СЏ РѕР±СЂР°С‚РЅРѕР№ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё СЃРѕ СЃС‚Р°СЂС‹Рј РєРѕРґРѕРј
+    [System.Obsolete("РСЃРїРѕР»СЊР·СѓР№С‚Рµ itemsInCode РёР»Рё customItems")]
     public List<ItemIconEntry> items
     {
         get { return GetAllItems(); }
         set
         {
-            // Миграция старых данных
+            // РњРёРіСЂР°С†РёСЏ СЃС‚Р°СЂС‹С… РґР°РЅРЅС‹С…
             if (value != null && value.Count > 0)
             {
                 itemsInCode = value;
@@ -59,7 +59,7 @@ public class ItemDatabase : ScriptableObject
     }
 
     /// <summary>
-    /// Получить иконку для конкретного предмета по имени
+    /// РџРѕР»СѓС‡РёС‚СЊ РёРєРѕРЅРєСѓ РґР»СЏ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ РїСЂРµРґРјРµС‚Р° РїРѕ РёРјРµРЅРё
     /// </summary>
     public Sprite GetIconForItem(string itemName)
     {
@@ -79,16 +79,16 @@ public class ItemDatabase : ScriptableObject
     }
 
     /// <summary>
-    /// Получить иконку для предмета
+    /// РџРѕР»СѓС‡РёС‚СЊ РёРєРѕРЅРєСѓ РґР»СЏ РїСЂРµРґРјРµС‚Р°
     /// </summary>
     public Sprite GetIcon(string itemName, ItemType itemType)
     {
-        // Ищем по точному имени, если не найдено - возвращаем null
+        // РС‰РµРј РїРѕ С‚РѕС‡РЅРѕРјСѓ РёРјРµРЅРё, РµСЃР»Рё РЅРµ РЅР°Р№РґРµРЅРѕ - РІРѕР·РІСЂР°С‰Р°РµРј null
         return GetIconForItem(itemName);
     }
 
     /// <summary>
-    /// Получить префаб для конкретного предмета по имени
+    /// РџРѕР»СѓС‡РёС‚СЊ РїСЂРµС„Р°Р± РґР»СЏ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ РїСЂРµРґРјРµС‚Р° РїРѕ РёРјРµРЅРё
     /// </summary>
     public GameObject GetPrefabForItem(string itemName)
     {
@@ -108,16 +108,16 @@ public class ItemDatabase : ScriptableObject
     }
 
     /// <summary>
-    /// Получить префаб для предмета
+    /// РџРѕР»СѓС‡РёС‚СЊ РїСЂРµС„Р°Р± РґР»СЏ РїСЂРµРґРјРµС‚Р°
     /// </summary>
     public GameObject GetPrefab(string itemName, ItemType itemType)
     {
-        // Ищем по точному имени, если не найдено - возвращаем null
+        // РС‰РµРј РїРѕ С‚РѕС‡РЅРѕРјСѓ РёРјРµРЅРё, РµСЃР»Рё РЅРµ РЅР°Р№РґРµРЅРѕ - РІРѕР·РІСЂР°С‰Р°РµРј null
         return GetPrefabForItem(itemName);
     }
 
     /// <summary>
-    /// Получить полную запись о предмете
+    /// РџРѕР»СѓС‡РёС‚СЊ РїРѕР»РЅСѓСЋ Р·Р°РїРёСЃСЊ Рѕ РїСЂРµРґРјРµС‚Рµ
     /// </summary>
     public ItemIconEntry GetItemEntry(string itemName)
     {
@@ -137,7 +137,7 @@ public class ItemDatabase : ScriptableObject
     }
 
     /// <summary>
-    /// Добавить предмет в базу данных (для использования в Editor)
+    /// Р”РѕР±Р°РІРёС‚СЊ РїСЂРµРґРјРµС‚ РІ Р±Р°Р·Сѓ РґР°РЅРЅС‹С… (РґР»СЏ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ РІ Editor)
     /// </summary>
     public void AddItem(string itemName, ItemType itemType, Sprite icon, GameObject prefab = null, bool isCustom = false)
     {
@@ -146,7 +146,7 @@ public class ItemDatabase : ScriptableObject
         var targetList = isCustom ? customItems : itemsInCode;
         var allItems = GetAllItems();
 
-        // Проверяем, нет ли уже такого предмета во всех списках
+        // РџСЂРѕРІРµСЂСЏРµРј, РЅРµС‚ Р»Рё СѓР¶Рµ С‚Р°РєРѕРіРѕ РїСЂРµРґРјРµС‚Р° РІРѕ РІСЃРµС… СЃРїРёСЃРєР°С…
         foreach (var item in allItems)
         {
             if (item.itemName == itemName)
@@ -160,7 +160,7 @@ public class ItemDatabase : ScriptableObject
             }
         }
 
-        // Добавляем новый
+        // Р”РѕР±Р°РІР»СЏРµРј РЅРѕРІС‹Р№
         targetList.Add(new ItemIconEntry
         {
             itemName = itemName,
@@ -173,17 +173,16 @@ public class ItemDatabase : ScriptableObject
     }
 
     /// <summary>
-    /// Добавить кастомный предмет (созданный вручную)
+    /// Р”РѕР±Р°РІРёС‚СЊ РєР°СЃС‚РѕРјРЅС‹Р№ РїСЂРµРґРјРµС‚ (СЃРѕР·РґР°РЅРЅС‹Р№ РІСЂСѓС‡РЅСѓСЋ)
     /// </summary>
     public void AddCustomItem(string itemName, ItemType itemType)
     {
-        // Проверяем что такого предмета еще нет
+        // РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ С‚Р°РєРѕРіРѕ РїСЂРµРґРјРµС‚Р° РµС‰Рµ РЅРµС‚
         var allItems = GetAllItems();
         foreach (var item in allItems)
         {
             if (item.itemName == itemName)
             {
-                Debug.LogWarning($"Предмет '{itemName}' уже существует в базе данных!");
                 return;
             }
         }
@@ -200,7 +199,7 @@ public class ItemDatabase : ScriptableObject
     }
 
     /// <summary>
-    /// Удалить кастомный предмет
+    /// РЈРґР°Р»РёС‚СЊ РєР°СЃС‚РѕРјРЅС‹Р№ РїСЂРµРґРјРµС‚
     /// </summary>
     public bool RemoveCustomItem(string itemName)
     {
@@ -218,25 +217,25 @@ public class ItemDatabase : ScriptableObject
 }
 
 /// <summary>
-/// Запись о предмете с его иконкой и префабом
+/// Р—Р°РїРёСЃСЊ Рѕ РїСЂРµРґРјРµС‚Рµ СЃ РµРіРѕ РёРєРѕРЅРєРѕР№ Рё РїСЂРµС„Р°Р±РѕРј
 /// </summary>
 [System.Serializable]
 public class ItemIconEntry
 {
-    [Header("Основная информация")]
-    [Tooltip("Точное название предмета (должно совпадать с itemName в игре)")]
+    [Header("РћСЃРЅРѕРІРЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ")]
+    [Tooltip("РўРѕС‡РЅРѕРµ РЅР°Р·РІР°РЅРёРµ РїСЂРµРґРјРµС‚Р° (РґРѕР»Р¶РЅРѕ СЃРѕРІРїР°РґР°С‚СЊ СЃ itemName РІ РёРіСЂРµ)")]
     public string itemName;
 
-    [Tooltip("Тип предмета (для справки)")]
+    [Tooltip("РўРёРї РїСЂРµРґРјРµС‚Р° (РґР»СЏ СЃРїСЂР°РІРєРё)")]
     public ItemType itemType;
 
-    [Tooltip("Найден в коде (через сканирование)")]
+    [Tooltip("РќР°Р№РґРµРЅ РІ РєРѕРґРµ (С‡РµСЂРµР· СЃРєР°РЅРёСЂРѕРІР°РЅРёРµ)")]
     public bool foundInCode = false;
 
-    [Header("Визуализация")]
-    [Tooltip("Иконка для инвентаря")]
+    [Header("Р’РёР·СѓР°Р»РёР·Р°С†РёСЏ")]
+    [Tooltip("РРєРѕРЅРєР° РґР»СЏ РёРЅРІРµРЅС‚Р°СЂСЏ")]
     public Sprite icon;
 
-    [Tooltip("Префаб для отображения предмета на карте (на полу)")]
+    [Tooltip("РџСЂРµС„Р°Р± РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РїСЂРµРґРјРµС‚Р° РЅР° РєР°СЂС‚Рµ (РЅР° РїРѕР»Сѓ)")]
     public GameObject worldPrefab;
 }

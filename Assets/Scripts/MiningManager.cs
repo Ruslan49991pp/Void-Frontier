@@ -1,22 +1,22 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Управление добычей ресурсов из астероидов
+/// РЈРїСЂР°РІР»РµРЅРёРµ РґРѕР±С‹С‡РµР№ СЂРµСЃСѓСЂСЃРѕРІ РёР· Р°СЃС‚РµСЂРѕРёРґРѕРІ
 /// </summary>
 public class MiningManager : MonoBehaviour
 {
     [Header("Mining Settings")]
-    public float miningJumpInterval = 0.8f; // Интервал между прыжками (уменьшено для более частых прыжков)
-    public int metalPerJump = 10; // Металла за один прыжок
-    public float jumpHeight = 0.5f; // Высота прыжка
-    public float jumpDuration = 0.3f; // Длительность прыжка
+    public float miningJumpInterval = 0.8f; // РРЅС‚РµСЂРІР°Р» РјРµР¶РґСѓ РїСЂС‹Р¶РєР°РјРё (СѓРјРµРЅСЊС€РµРЅРѕ РґР»СЏ Р±РѕР»РµРµ С‡Р°СЃС‚С‹С… РїСЂС‹Р¶РєРѕРІ)
+    public int metalPerJump = 10; // РњРµС‚Р°Р»Р»Р° Р·Р° РѕРґРёРЅ РїСЂС‹Р¶РѕРє
+    public float jumpHeight = 0.5f; // Р’С‹СЃРѕС‚Р° РїСЂС‹Р¶РєР°
+    public float jumpDuration = 0.3f; // Р”Р»РёС‚РµР»СЊРЅРѕСЃС‚СЊ РїСЂС‹Р¶РєР°
 
     [Header("References")]
     private GridManager gridManager;
 
-    // Данные о добыче
+    // Р”Р°РЅРЅС‹Рµ Рѕ РґРѕР±С‹С‡Рµ
     [System.Serializable]
     public class MiningTask
     {
@@ -24,14 +24,14 @@ public class MiningManager : MonoBehaviour
         public GameObject asteroid;
         public LocationObjectInfo asteroidInfo;
         public Vector2Int asteroidGridPosition;
-        public Vector2Int reservedWorkPosition; // Зарезервированная позиция для работы
+        public Vector2Int reservedWorkPosition; // Р—Р°СЂРµР·РµСЂРІРёСЂРѕРІР°РЅРЅР°СЏ РїРѕР·РёС†РёСЏ РґР»СЏ СЂР°Р±РѕС‚С‹
         public bool isActive;
         public Coroutine miningCoroutine;
     }
 
     private List<MiningTask> miningTasks = new List<MiningTask>();
 
-    // Словарь зарезервированных клеток для добычи (чтобы персонажи не занимали одну клетку)
+    // РЎР»РѕРІР°СЂСЊ Р·Р°СЂРµР·РµСЂРІРёСЂРѕРІР°РЅРЅС‹С… РєР»РµС‚РѕРє РґР»СЏ РґРѕР±С‹С‡Рё (С‡С‚РѕР±С‹ РїРµСЂСЃРѕРЅР°Р¶Рё РЅРµ Р·Р°РЅРёРјР°Р»Рё РѕРґРЅСѓ РєР»РµС‚РєСѓ)
     private Dictionary<Vector2Int, Character> reservedMiningPositions = new Dictionary<Vector2Int, Character>();
 
     void Awake()
@@ -40,7 +40,7 @@ public class MiningManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Начать добычу ресурса
+    /// РќР°С‡Р°С‚СЊ РґРѕР±С‹С‡Сѓ СЂРµСЃСѓСЂСЃР°
     /// </summary>
     public void StartMining(Character character, GameObject asteroid)
     {
@@ -48,24 +48,22 @@ public class MiningManager : MonoBehaviour
 
         if (character == null || asteroid == null)
         {
-            Debug.LogWarning("[MiningManager] Character or asteroid is null");
             return;
         }
 
-        // Проверяем, есть ли уже задача для этого персонажа
+        // РџСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё СѓР¶Рµ Р·Р°РґР°С‡Р° РґР»СЏ СЌС‚РѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р°
         MiningTask existingTask = miningTasks.Find(t => t.character == character);
         if (existingTask != null)
         {
 
-            // Останавливаем предыдущую задачу
+            // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј РїСЂРµРґС‹РґСѓС‰СѓСЋ Р·Р°РґР°С‡Сѓ
             StopMiningForCharacter(character);
         }
 
-        // Проверяем, что астероид имеет ресурсы
+        // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ Р°СЃС‚РµСЂРѕРёРґ РёРјРµРµС‚ СЂРµСЃСѓСЂСЃС‹
         LocationObjectInfo asteroidInfo = asteroid.GetComponent<LocationObjectInfo>();
         if (asteroidInfo == null)
         {
-            Debug.LogWarning($"[MiningManager] Asteroid {asteroid.name} has no LocationObjectInfo component!");
             return;
         }
 
@@ -73,7 +71,6 @@ public class MiningManager : MonoBehaviour
 
         if (!asteroidInfo.IsOfType("Asteroid"))
         {
-            Debug.LogWarning($"[MiningManager] Object {asteroid.name} is not an asteroid (type: {asteroidInfo.objectType})");
             return;
         }
 
@@ -85,22 +82,30 @@ public class MiningManager : MonoBehaviour
             return;
         }
 
-        // Используем сохраненную стартовую позицию в сетке, если она есть
+        // РСЃРїРѕР»СЊР·СѓРµРј СЃРѕС…СЂР°РЅРµРЅРЅСѓСЋ СЃС‚Р°СЂС‚РѕРІСѓСЋ РїРѕР·РёС†РёСЋ РІ СЃРµС‚РєРµ, РµСЃР»Рё РѕРЅР° РµСЃС‚СЊ
         Vector2Int asteroidGridPos;
         if (asteroidInfo.gridSize.x > 1)
         {
-            // Для многоклеточных объектов используем сохраненную позицию
+            // Р”Р»СЏ РјРЅРѕРіРѕРєР»РµС‚РѕС‡РЅС‹С… РѕР±СЉРµРєС‚РѕРІ РёСЃРїРѕР»СЊР·СѓРµРј СЃРѕС…СЂР°РЅРµРЅРЅСѓСЋ РїРѕР·РёС†РёСЋ
             asteroidGridPos = asteroidInfo.gridStartPosition;
 
         }
         else
         {
-            // Для одноклеточных объектов вычисляем позицию
+            // Р”Р»СЏ РѕРґРЅРѕРєР»РµС‚РѕС‡РЅС‹С… РѕР±СЉРµРєС‚РѕРІ РІС‹С‡РёСЃР»СЏРµРј РїРѕР·РёС†РёСЋ
             asteroidGridPos = gridManager.WorldToGrid(asteroid.transform.position);
 
         }
 
-        // Создаем новую задачу добычи
+        // РЎРѕР·РґР°РµРј РЅРѕРІСѓСЋ Р·Р°РґР°С‡Сѓ РґРѕР±С‹С‡Рё
+        // FIX: Immediately switch AI state to interrupt Working/other tasks
+        CharacterAI characterAI = character.GetComponent<CharacterAI>();
+        if (characterAI != null)
+        {
+            // Tell AI this is a player command (interrupts Working/Mining)
+            characterAI.OnPlayerInitiatedMovement();
+        }
+
         MiningTask task = new MiningTask
         {
             character = character,
@@ -114,48 +119,51 @@ public class MiningManager : MonoBehaviour
 
 
 
-        // Запускаем процесс добычи
+        // Р—Р°РїСѓСЃРєР°РµРј РїСЂРѕС†РµСЃСЃ РґРѕР±С‹С‡Рё
         task.miningCoroutine = StartCoroutine(MiningProcess(task));
     }
 
     /// <summary>
-    /// Процесс добычи
+    /// РџСЂРѕС†РµСЃСЃ РґРѕР±С‹С‡Рё
     /// </summary>
     IEnumerator MiningProcess(MiningTask task)
     {
-        // ARCHITECTURE: Публикуем событие начала добычи через EventBus
+        // ARCHITECTURE: РџСѓР±Р»РёРєСѓРµРј СЃРѕР±С‹С‚РёРµ РЅР°С‡Р°Р»Р° РґРѕР±С‹С‡Рё С‡РµСЂРµР· EventBus
         EventBus.Publish(new MiningStartedEvent(task.character, task.asteroid));
 
         Character character = task.character;
         CharacterMovement movement = character.GetComponent<CharacterMovement>();
         CharacterAI characterAI = character.GetComponent<CharacterAI>();
 
+        // FIX: РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј С„Р»Р°Рі РґРІРёР¶РµРЅРёСЏ Рє РґРѕР±С‹С‡Рµ
+        if (characterAI != null)
+        {
+            characterAI.SetMovingToJob(true);
+        }
 
-
-        // Получаем ближайшую соседнюю клетку к астероиду
+        // РџРѕР»СѓС‡Р°РµРј Р±Р»РёР¶Р°Р№С€СѓСЋ СЃРѕСЃРµРґРЅСЋСЋ РєР»РµС‚РєСѓ Рє Р°СЃС‚РµСЂРѕРёРґСѓ
         Vector2Int targetGridPosition = FindNearestAdjacentPosition(character.transform.position, task.asteroidGridPosition, task.asteroidInfo.gridSize, character);
 
 
-        // Проверяем на сигнальное значение "не найдено" (-9999, -9999)
+        // РџСЂРѕРІРµСЂСЏРµРј РЅР° СЃРёРіРЅР°Р»СЊРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ "РЅРµ РЅР°Р№РґРµРЅРѕ" (-9999, -9999)
         if (targetGridPosition.x == -9999 && targetGridPosition.y == -9999)
         {
-            Debug.LogWarning($"MiningManager: No valid adjacent position found for {character.GetFullName()}");
             StopMiningForCharacter(character);
             yield break;
         }
 
-        // РЕЗЕРВИРУЕМ найденную позицию для этого персонажа
+        // Р Р•Р—Р•Р Р’РР РЈР•Рњ РЅР°Р№РґРµРЅРЅСѓСЋ РїРѕР·РёС†РёСЋ РґР»СЏ СЌС‚РѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р°
         task.reservedWorkPosition = targetGridPosition;
         reservedMiningPositions[targetGridPosition] = character;
 
-        // Проверяем расстояние - если персонаж уже рядом с астероидом, не двигаемся
+        // РџСЂРѕРІРµСЂСЏРµРј СЂР°СЃСЃС‚РѕСЏРЅРёРµ - РµСЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ СѓР¶Рµ СЂСЏРґРѕРј СЃ Р°СЃС‚РµСЂРѕРёРґРѕРј, РЅРµ РґРІРёРіР°РµРјСЃСЏ
         Vector2Int characterGridPos = gridManager.WorldToGrid(character.transform.position);
 
-        // Проверяем, находится ли персонаж рядом с любой стороной астероида
+        // РџСЂРѕРІРµСЂСЏРµРј, РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё РїРµСЂСЃРѕРЅР°Р¶ СЂСЏРґРѕРј СЃ Р»СЋР±РѕР№ СЃС‚РѕСЂРѕРЅРѕР№ Р°СЃС‚РµСЂРѕРёРґР°
         bool isAdjacentToAsteroid = false;
         Vector2Int asteroidEnd = task.asteroidGridPosition + task.asteroidInfo.gridSize - Vector2Int.one;
 
-        // Проверяем близость к левой/правой/верхней/нижней сторонам
+        // РџСЂРѕРІРµСЂСЏРµРј Р±Р»РёР·РѕСЃС‚СЊ Рє Р»РµРІРѕР№/РїСЂР°РІРѕР№/РІРµСЂС…РЅРµР№/РЅРёР¶РЅРµР№ СЃС‚РѕСЂРѕРЅР°Рј
         if ((characterGridPos.x == task.asteroidGridPosition.x - 1 && characterGridPos.y >= task.asteroidGridPosition.y - 1 && characterGridPos.y <= asteroidEnd.y + 1) ||
             (characterGridPos.x == asteroidEnd.x + 1 && characterGridPos.y >= task.asteroidGridPosition.y - 1 && characterGridPos.y <= asteroidEnd.y + 1) ||
             (characterGridPos.y == task.asteroidGridPosition.y - 1 && characterGridPos.x >= task.asteroidGridPosition.x - 1 && characterGridPos.x <= asteroidEnd.x + 1) ||
@@ -164,60 +172,59 @@ public class MiningManager : MonoBehaviour
             isAdjacentToAsteroid = true;
         }
 
-        // Цикл движения к астероиду с возможностью перенаправления
-        int maxRedirects = 5; // Максимум 5 перенаправлений чтобы избежать бесконечного цикла
+        // Р¦РёРєР» РґРІРёР¶РµРЅРёСЏ Рє Р°СЃС‚РµСЂРѕРёРґСѓ СЃ РІРѕР·РјРѕР¶РЅРѕСЃС‚СЊСЋ РїРµСЂРµРЅР°РїСЂР°РІР»РµРЅРёСЏ
+        int maxRedirects = 5; // РњР°РєСЃРёРјСѓРј 5 РїРµСЂРµРЅР°РїСЂР°РІР»РµРЅРёР№ С‡С‚РѕР±С‹ РёР·Р±РµР¶Р°С‚СЊ Р±РµСЃРєРѕРЅРµС‡РЅРѕРіРѕ С†РёРєР»Р°
         int redirectCount = 0;
 
         while (!isAdjacentToAsteroid && redirectCount < maxRedirects)
         {
-            // Персонаж далеко - движемся к целевой позиции
+            // РџРµСЂСЃРѕРЅР°Р¶ РґР°Р»РµРєРѕ - РґРІРёР¶РµРјСЃСЏ Рє С†РµР»РµРІРѕР№ РїРѕР·РёС†РёРё
             if (movement != null)
             {
                 Vector3 targetWorldPosition = gridManager.GridToWorld(task.reservedWorkPosition);
                 movement.MoveTo(targetWorldPosition);
 
-                // ВАЖНО: Даем CharacterMovement время начать движение
+                // Р’РђР–РќРћ: Р”Р°РµРј CharacterMovement РІСЂРµРјСЏ РЅР°С‡Р°С‚СЊ РґРІРёР¶РµРЅРёРµ
                 yield return new WaitForSeconds(0.15f);
 
                 bool needsRedirect = false;
 
-                // Ждем окончания движения И проверяем, не занята ли зарезервированная клетка
+                // Р–РґРµРј РѕРєРѕРЅС‡Р°РЅРёСЏ РґРІРёР¶РµРЅРёСЏ Р РїСЂРѕРІРµСЂСЏРµРј, РЅРµ Р·Р°РЅСЏС‚Р° Р»Рё Р·Р°СЂРµР·РµСЂРІРёСЂРѕРІР°РЅРЅР°СЏ РєР»РµС‚РєР°
                 while (movement.IsMoving())
                 {
                     yield return new WaitForSeconds(0.1f);
 
-                    // Проверяем, не прервалась ли задача
+                    // РџСЂРѕРІРµСЂСЏРµРј, РЅРµ РїСЂРµСЂРІР°Р»Р°СЃСЊ Р»Рё Р·Р°РґР°С‡Р°
                     if (!task.isActive)
                     {
                         yield break;
                     }
 
-                    // ПРОВЕРКА ВО ВРЕМЯ ПУТИ: Не занята ли наша зарезервированная клетка?
+                    // РџР РћР’Р•Р РљРђ Р’Рћ Р’Р Р•РњРЇ РџРЈРўР: РќРµ Р·Р°РЅСЏС‚Р° Р»Рё РЅР°С€Р° Р·Р°СЂРµР·РµСЂРІРёСЂРѕРІР°РЅРЅР°СЏ РєР»РµС‚РєР°?
                     GridCell cellDuringMovement = gridManager.GetCell(task.reservedWorkPosition);
                     Vector2Int currentGridPos = gridManager.WorldToGrid(character.transform.position);
 
                     if (cellDuringMovement != null && cellDuringMovement.isOccupied && currentGridPos != task.reservedWorkPosition)
                     {
-                        // Клетка занята во время пути! Останавливаем движение и ищем новую клетку
+                        // РљР»РµС‚РєР° Р·Р°РЅСЏС‚Р° РІРѕ РІСЂРµРјСЏ РїСѓС‚Рё! РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј РґРІРёР¶РµРЅРёРµ Рё РёС‰РµРј РЅРѕРІСѓСЋ РєР»РµС‚РєСѓ
                         movement.StopMovement();
 
                         Vector2Int oldReservation = task.reservedWorkPosition;
 
-                        // Ищем новую свободную клетку
+                        // РС‰РµРј РЅРѕРІСѓСЋ СЃРІРѕР±РѕРґРЅСѓСЋ РєР»РµС‚РєСѓ
                         Vector2Int newPosition = FindNearestAdjacentPosition(character.transform.position, task.asteroidGridPosition, task.asteroidInfo.gridSize, character);
 
                         if (newPosition.x == -9999 && newPosition.y == -9999)
                         {
-                            Debug.LogWarning($"MiningManager: {character.GetFullName()} cannot find free position - no adjacent cells available!");
                             StopMiningForCharacter(character);
                             yield break;
                         }
 
-                        // Резервируем новую позицию ПЕРЕД освобождением старой
+                        // Р РµР·РµСЂРІРёСЂСѓРµРј РЅРѕРІСѓСЋ РїРѕР·РёС†РёСЋ РџР•Р Р•Р” РѕСЃРІРѕР±РѕР¶РґРµРЅРёРµРј СЃС‚Р°СЂРѕР№
                         task.reservedWorkPosition = newPosition;
                         reservedMiningPositions[newPosition] = character;
 
-                        // Освобождаем старую резервацию
+                        // РћСЃРІРѕР±РѕР¶РґР°РµРј СЃС‚Р°СЂСѓСЋ СЂРµР·РµСЂРІР°С†РёСЋ
                         if (reservedMiningPositions.ContainsKey(oldReservation))
                         {
                             if (reservedMiningPositions[oldReservation] == character)
@@ -228,20 +235,20 @@ public class MiningManager : MonoBehaviour
 
                         redirectCount++;
                         needsRedirect = true;
-                        break; // Выходим из while(movement.IsMoving()) чтобы начать новое движение
+                        break; // Р’С‹С…РѕРґРёРј РёР· while(movement.IsMoving()) С‡С‚РѕР±С‹ РЅР°С‡Р°С‚СЊ РЅРѕРІРѕРµ РґРІРёР¶РµРЅРёРµ
                     }
                 }
 
                 if (needsRedirect)
                 {
-                    continue; // Начинаем новую итерацию цикла движения с новой целью
+                    continue; // РќР°С‡РёРЅР°РµРј РЅРѕРІСѓСЋ РёС‚РµСЂР°С†РёСЋ С†РёРєР»Р° РґРІРёР¶РµРЅРёСЏ СЃ РЅРѕРІРѕР№ С†РµР»СЊСЋ
                 }
             }
 
-            // После движения проверяем позицию
+            // РџРѕСЃР»Рµ РґРІРёР¶РµРЅРёСЏ РїСЂРѕРІРµСЂСЏРµРј РїРѕР·РёС†РёСЋ
             characterGridPos = gridManager.WorldToGrid(character.transform.position);
 
-            // Проверяем, достиг ли персонаж позиции рядом с астероидом
+            // РџСЂРѕРІРµСЂСЏРµРј, РґРѕСЃС‚РёРі Р»Рё РїРµСЂСЃРѕРЅР°Р¶ РїРѕР·РёС†РёРё СЂСЏРґРѕРј СЃ Р°СЃС‚РµСЂРѕРёРґРѕРј
             isAdjacentToAsteroid = false;
             if ((characterGridPos.x == task.asteroidGridPosition.x - 1 && characterGridPos.y >= task.asteroidGridPosition.y - 1 && characterGridPos.y <= asteroidEnd.y + 1) ||
                 (characterGridPos.x == asteroidEnd.x + 1 && characterGridPos.y >= task.asteroidGridPosition.y - 1 && characterGridPos.y <= asteroidEnd.y + 1) ||
@@ -252,33 +259,34 @@ public class MiningManager : MonoBehaviour
             }
         }
 
-        // Проверка что достигли цели
+        // РџСЂРѕРІРµСЂРєР° С‡С‚Рѕ РґРѕСЃС‚РёРіР»Рё С†РµР»Рё
         if (redirectCount >= maxRedirects)
         {
-            Debug.LogWarning($"MiningManager: {character.GetFullName()} exceeded maximum redirects ({maxRedirects})!");
             StopMiningForCharacter(character);
             yield break;
         }
 
-        // Если цикл успешно завершился, значит isAdjacentToAsteroid == true
-        // Персонаж гарантированно рядом с астероидом
+        // Р•СЃР»Рё С†РёРєР» СѓСЃРїРµС€РЅРѕ Р·Р°РІРµСЂС€РёР»СЃСЏ, Р·РЅР°С‡РёС‚ isAdjacentToAsteroid == true
+        // РџРµСЂСЃРѕРЅР°Р¶ РіР°СЂР°РЅС‚РёСЂРѕРІР°РЅРЅРѕ СЂСЏРґРѕРј СЃ Р°СЃС‚РµСЂРѕРёРґРѕРј
         characterGridPos = gridManager.WorldToGrid(character.transform.position);
 
-        // Персонаж подтвержденно рядом с астероидом - переключаем в состояние Mining
+        // РџРµСЂСЃРѕРЅР°Р¶ РїРѕРґС‚РІРµСЂР¶РґРµРЅРЅРѕ СЂСЏРґРѕРј СЃ Р°СЃС‚РµСЂРѕРёРґРѕРј - РїРµСЂРµРєР»СЋС‡Р°РµРј РІ СЃРѕСЃС‚РѕСЏРЅРёРµ Mining
 
 
         if (characterAI != null)
         {
+            // FIX: Р"РћРЁР›Р! РЎР±СЂР°СЃС‹РІР°РµРј С„Р»Р°Рі
+            characterAI.SetMovingToJob(false);
             characterAI.SetAIState(CharacterAI.AIState.Mining);
         }
 
-        // Поворачиваем персонажа к астероиду
+        // РџРѕРІРѕСЂР°С‡РёРІР°РµРј РїРµСЂСЃРѕРЅР°Р¶Р° Рє Р°СЃС‚РµСЂРѕРёРґСѓ
         RotateCharacterTowardsAsteroid(character, task.asteroid);
 
 
 
-        // Основной цикл добычи
-        int totalMinedMetal = 0; // Для события MiningCompletedEvent
+        // РћСЃРЅРѕРІРЅРѕР№ С†РёРєР» РґРѕР±С‹С‡Рё
+        int totalMinedMetal = 0; // Р”Р»СЏ СЃРѕР±С‹С‚РёСЏ MiningCompletedEvent
         int loopIteration = 0;
         while (task.isActive && task.asteroidInfo.metalAmount > 0)
         {
@@ -286,7 +294,7 @@ public class MiningManager : MonoBehaviour
 
 
 
-            // Проверяем, что персонаж жив
+            // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ Р¶РёРІ
             if (character.IsDead())
             {
 
@@ -295,19 +303,19 @@ public class MiningManager : MonoBehaviour
             }
 
 
-            // КРИТИЧНО: Проверяем позицию персонажа ПЕРЕД КАЖДЫМ прыжком
+            // РљР РРўРР§РќРћ: РџСЂРѕРІРµСЂСЏРµРј РїРѕР·РёС†РёСЋ РїРµСЂСЃРѕРЅР°Р¶Р° РџР•Р Р•Р” РљРђР–Р”Р«Рњ РїСЂС‹Р¶РєРѕРј
             characterGridPos = gridManager.WorldToGrid(character.transform.position);
 
 
 
-            // Пересчитываем asteroidEnd для проверки adjacency
+            // РџРµСЂРµСЃС‡РёС‚С‹РІР°РµРј asteroidEnd РґР»СЏ РїСЂРѕРІРµСЂРєРё adjacency
             asteroidEnd = task.asteroidGridPosition + task.asteroidInfo.gridSize - Vector2Int.one;
 
 
-            // Проверяем, находится ли персонаж всё ещё рядом с астероидом
+            // РџСЂРѕРІРµСЂСЏРµРј, РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё РїРµСЂСЃРѕРЅР°Р¶ РІСЃС‘ РµС‰С‘ СЂСЏРґРѕРј СЃ Р°СЃС‚РµСЂРѕРёРґРѕРј
             isAdjacentToAsteroid = false;
 
-            // Детальная проверка каждого условия
+            // Р”РµС‚Р°Р»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР° РєР°Р¶РґРѕРіРѕ СѓСЃР»РѕРІРёСЏ
             bool leftSide = (characterGridPos.x == task.asteroidGridPosition.x - 1 && characterGridPos.y >= task.asteroidGridPosition.y - 1 && characterGridPos.y <= asteroidEnd.y + 1);
             bool rightSide = (characterGridPos.x == asteroidEnd.x + 1 && characterGridPos.y >= task.asteroidGridPosition.y - 1 && characterGridPos.y <= asteroidEnd.y + 1);
             bool bottomSide = (characterGridPos.y == task.asteroidGridPosition.y - 1 && characterGridPos.x >= task.asteroidGridPosition.x - 1 && characterGridPos.x <= asteroidEnd.x + 1);
@@ -322,7 +330,7 @@ public class MiningManager : MonoBehaviour
 
 
 
-            // Если персонаж больше не рядом с астероидом - НЕМЕДЛЕННО останавливаем добычу
+            // Р•СЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ Р±РѕР»СЊС€Рµ РЅРµ СЂСЏРґРѕРј СЃ Р°СЃС‚РµСЂРѕРёРґРѕРј - РќР•РњР•Р”Р›Р•РќРќРћ РѕСЃС‚Р°РЅР°РІР»РёРІР°РµРј РґРѕР±С‹С‡Сѓ
             if (!isAdjacentToAsteroid)
             {
 
@@ -330,19 +338,19 @@ public class MiningManager : MonoBehaviour
                 yield break;
             }
 
-            // Выполняем прыжок (только если персонаж рядом!)
+            // Р’С‹РїРѕР»РЅСЏРµРј РїСЂС‹Р¶РѕРє (С‚РѕР»СЊРєРѕ РµСЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ СЂСЏРґРѕРј!)
 
             yield return StartCoroutine(PerformMiningJump(character));
 
 
-            // Добываем металл
+            // Р”РѕР±С‹РІР°РµРј РјРµС‚Р°Р»Р»
             int minedAmount = Mathf.Min(metalPerJump, task.asteroidInfo.metalAmount);
             int oldAmount = task.asteroidInfo.metalAmount;
             task.asteroidInfo.metalAmount -= minedAmount;
-            totalMinedMetal += minedAmount; // Накапливаем для события
+            totalMinedMetal += minedAmount; // РќР°РєР°РїР»РёРІР°РµРј РґР»СЏ СЃРѕР±С‹С‚РёСЏ
 
 
-            // Добавляем металл в инвентарь персонажа
+            // Р”РѕР±Р°РІР»СЏРµРј РјРµС‚Р°Р»Р» РІ РёРЅРІРµРЅС‚Р°СЂСЊ РїРµСЂСЃРѕРЅР°Р¶Р°
             Inventory inventory = character.GetComponent<Inventory>();
             if (inventory != null)
             {
@@ -352,10 +360,9 @@ public class MiningManager : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning($"[MiningManager] Character has no Inventory component!");
             }
 
-            // Проверяем, истощился ли астероид
+            // РџСЂРѕРІРµСЂСЏРµРј, РёСЃС‚РѕС‰РёР»СЃСЏ Р»Рё Р°СЃС‚РµСЂРѕРёРґ
             if (task.asteroidInfo.metalAmount <= 0)
             {
 
@@ -365,21 +372,21 @@ public class MiningManager : MonoBehaviour
 
 
 
-            // Ждем до следующего прыжка
+            // Р–РґРµРј РґРѕ СЃР»РµРґСѓСЋС‰РµРіРѕ РїСЂС‹Р¶РєР°
             yield return new WaitForSeconds(miningJumpInterval);
 
 
         }
 
-        // ARCHITECTURE: Публикуем событие завершения добычи через EventBus
+        // ARCHITECTURE: РџСѓР±Р»РёРєСѓРµРј СЃРѕР±С‹С‚РёРµ Р·Р°РІРµСЂС€РµРЅРёСЏ РґРѕР±С‹С‡Рё С‡РµСЂРµР· EventBus
         EventBus.Publish(new MiningCompletedEvent(character, task.asteroid, totalMinedMetal));
 
-        // Добыча завершена
+        // Р”РѕР±С‹С‡Р° Р·Р°РІРµСЂС€РµРЅР°
         StopMiningForCharacter(character);
     }
 
     /// <summary>
-    /// Найти ближайшую соседнюю позицию к астероиду (старый метод для совместимости)
+    /// РќР°Р№С‚Рё Р±Р»РёР¶Р°Р№С€СѓСЋ СЃРѕСЃРµРґРЅСЋСЋ РїРѕР·РёС†РёСЋ Рє Р°СЃС‚РµСЂРѕРёРґСѓ (СЃС‚Р°СЂС‹Р№ РјРµС‚РѕРґ РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё)
     /// </summary>
     Vector2Int FindNearestAdjacentPosition(Vector3 characterPosition, Vector2Int asteroidStartPos, Vector2Int asteroidSize)
     {
@@ -387,7 +394,7 @@ public class MiningManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Найти ближайшую соседнюю позицию к астероиду (учитывает размер астероида и свои резервации)
+    /// РќР°Р№С‚Рё Р±Р»РёР¶Р°Р№С€СѓСЋ СЃРѕСЃРµРґРЅСЋСЋ РїРѕР·РёС†РёСЋ Рє Р°СЃС‚РµСЂРѕРёРґСѓ (СѓС‡РёС‚С‹РІР°РµС‚ СЂР°Р·РјРµСЂ Р°СЃС‚РµСЂРѕРёРґР° Рё СЃРІРѕРё СЂРµР·РµСЂРІР°С†РёРё)
     /// </summary>
     Vector2Int FindNearestAdjacentPosition(Vector3 characterPosition, Vector2Int asteroidStartPos, Vector2Int asteroidSize, Character requestingCharacter)
     {
@@ -396,28 +403,28 @@ public class MiningManager : MonoBehaviour
 
 
 
-        // Генерируем список всех клеток по периметру астероида
+        // Р“РµРЅРµСЂРёСЂСѓРµРј СЃРїРёСЃРѕРє РІСЃРµС… РєР»РµС‚РѕРє РїРѕ РїРµСЂРёРјРµС‚СЂСѓ Р°СЃС‚РµСЂРѕРёРґР°
         List<Vector2Int> perimeterCells = new List<Vector2Int>();
 
-        // Верхняя сторона (Y = asteroidStartPos.y - 1)
+        // Р’РµСЂС…РЅСЏСЏ СЃС‚РѕСЂРѕРЅР° (Y = asteroidStartPos.y - 1)
         for (int x = asteroidStartPos.x - 1; x <= asteroidStartPos.x + asteroidSize.x; x++)
         {
             perimeterCells.Add(new Vector2Int(x, asteroidStartPos.y - 1));
         }
 
-        // Нижняя сторона (Y = asteroidStartPos.y + asteroidSize.y)
+        // РќРёР¶РЅСЏСЏ СЃС‚РѕСЂРѕРЅР° (Y = asteroidStartPos.y + asteroidSize.y)
         for (int x = asteroidStartPos.x - 1; x <= asteroidStartPos.x + asteroidSize.x; x++)
         {
             perimeterCells.Add(new Vector2Int(x, asteroidStartPos.y + asteroidSize.y));
         }
 
-        // Левая сторона (X = asteroidStartPos.x - 1), исключая углы
+        // Р›РµРІР°СЏ СЃС‚РѕСЂРѕРЅР° (X = asteroidStartPos.x - 1), РёСЃРєР»СЋС‡Р°СЏ СѓРіР»С‹
         for (int y = asteroidStartPos.y; y < asteroidStartPos.y + asteroidSize.y; y++)
         {
             perimeterCells.Add(new Vector2Int(asteroidStartPos.x - 1, y));
         }
 
-        // Правая сторона (X = asteroidStartPos.x + asteroidSize.x), исключая углы
+        // РџСЂР°РІР°СЏ СЃС‚РѕСЂРѕРЅР° (X = asteroidStartPos.x + asteroidSize.x), РёСЃРєР»СЋС‡Р°СЏ СѓРіР»С‹
         for (int y = asteroidStartPos.y; y < asteroidStartPos.y + asteroidSize.y; y++)
         {
             perimeterCells.Add(new Vector2Int(asteroidStartPos.x + asteroidSize.x, y));
@@ -425,7 +432,7 @@ public class MiningManager : MonoBehaviour
 
 
 
-        // Проверяем, находится ли персонаж уже на одной из перимерных клеток
+        // РџСЂРѕРІРµСЂСЏРµРј, РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё РїРµСЂСЃРѕРЅР°Р¶ СѓР¶Рµ РЅР° РѕРґРЅРѕР№ РёР· РїРµСЂРёРјРµСЂРЅС‹С… РєР»РµС‚РѕРє
         foreach (Vector2Int perimeterCell in perimeterCells)
         {
             if (characterGridPos == perimeterCell)
@@ -439,7 +446,7 @@ public class MiningManager : MonoBehaviour
             }
         }
 
-        // Ищем ближайшую свободную периметровую клетку
+        // РС‰РµРј Р±Р»РёР¶Р°Р№С€СѓСЋ СЃРІРѕР±РѕРґРЅСѓСЋ РїРµСЂРёРјРµС‚СЂРѕРІСѓСЋ РєР»РµС‚РєСѓ
         Vector2Int closestPosition = notFoundSentinel;
         float closestDistance = float.MaxValue;
         int validCells = 0;
@@ -448,7 +455,7 @@ public class MiningManager : MonoBehaviour
 
         foreach (Vector2Int perimeterPos in perimeterCells)
         {
-            // Проверяем валидность позиции
+            // РџСЂРѕРІРµСЂСЏРµРј РІР°Р»РёРґРЅРѕСЃС‚СЊ РїРѕР·РёС†РёРё
             if (!gridManager.IsValidGridPosition(perimeterPos))
             {
                 invalidCells++;
@@ -468,23 +475,23 @@ public class MiningManager : MonoBehaviour
                 continue;
             }
 
-            // Проверяем, не зарезервирована ли клетка другим персонажем
+            // РџСЂРѕРІРµСЂСЏРµРј, РЅРµ Р·Р°СЂРµР·РµСЂРІРёСЂРѕРІР°РЅР° Р»Рё РєР»РµС‚РєР° РґСЂСѓРіРёРј РїРµСЂСЃРѕРЅР°Р¶РµРј
             if (reservedMiningPositions.ContainsKey(perimeterPos))
             {
-                // Если это наша собственная резервация - можем использовать
+                // Р•СЃР»Рё СЌС‚Рѕ РЅР°С€Р° СЃРѕР±СЃС‚РІРµРЅРЅР°СЏ СЂРµР·РµСЂРІР°С†РёСЏ - РјРѕР¶РµРј РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ
                 if (requestingCharacter != null && reservedMiningPositions[perimeterPos] == requestingCharacter)
                 {
-                    // Это наша резервация, продолжаем проверку как свободную клетку
+                    // Р­С‚Рѕ РЅР°С€Р° СЂРµР·РµСЂРІР°С†РёСЏ, РїСЂРѕРґРѕР»Р¶Р°РµРј РїСЂРѕРІРµСЂРєСѓ РєР°Рє СЃРІРѕР±РѕРґРЅСѓСЋ РєР»РµС‚РєСѓ
                 }
                 else
                 {
-                    // Зарезервирована кем-то другим
+                    // Р—Р°СЂРµР·РµСЂРІРёСЂРѕРІР°РЅР° РєРµРј-С‚Рѕ РґСЂСѓРіРёРј
                     occupiedCells++;
                     continue;
                 }
             }
 
-            // Клетка свободна и валидна
+            // РљР»РµС‚РєР° СЃРІРѕР±РѕРґРЅР° Рё РІР°Р»РёРґРЅР°
             validCells++;
             Vector3 perimeterWorldPos = gridManager.GridToWorld(perimeterPos);
             float distance = Vector3.Distance(characterPosition, perimeterWorldPos);
@@ -504,14 +511,13 @@ public class MiningManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"[MiningManager] No free perimeter cells found around asteroid!");
         }
 
         return closestPosition;
     }
 
     /// <summary>
-    /// Повернуть персонажа к астероиду
+    /// РџРѕРІРµСЂРЅСѓС‚СЊ РїРµСЂСЃРѕРЅР°Р¶Р° Рє Р°СЃС‚РµСЂРѕРёРґСѓ
     /// </summary>
     void RotateCharacterTowardsAsteroid(Character character, GameObject asteroid)
     {
@@ -521,29 +527,29 @@ public class MiningManager : MonoBehaviour
         if (direction.magnitude < 0.1f)
             return;
 
-        // Вычисляем угол
+        // Р’С‹С‡РёСЃР»СЏРµРј СѓРіРѕР»
         float angle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
         if (angle < 0) angle += 360f;
 
-        // Привязываем к 8 направлениям (0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°)
+        // РџСЂРёРІСЏР·С‹РІР°РµРј Рє 8 РЅР°РїСЂР°РІР»РµРЅРёСЏРј (0В°, 45В°, 90В°, 135В°, 180В°, 225В°, 270В°, 315В°)
         float snappedAngle = Mathf.Round(angle / 45f) * 45f;
 
         character.transform.rotation = Quaternion.Euler(0, snappedAngle, 0);
     }
 
     /// <summary>
-    /// Выполнить анимацию прыжка для добычи
+    /// Р’С‹РїРѕР»РЅРёС‚СЊ Р°РЅРёРјР°С†РёСЋ РїСЂС‹Р¶РєР° РґР»СЏ РґРѕР±С‹С‡Рё
     /// </summary>
     IEnumerator PerformMiningJump(Character character)
     {
         Vector3 originalPosition = character.transform.position;
         float elapsedTime = 0f;
 
-        // Прыжок вверх и вниз
+        // РџСЂС‹Р¶РѕРє РІРІРµСЂС… Рё РІРЅРёР·
         while (elapsedTime < jumpDuration)
         {
             float progress = elapsedTime / jumpDuration;
-            // Синусоидальная кривая для плавного прыжка
+            // РЎРёРЅСѓСЃРѕРёРґР°Р»СЊРЅР°СЏ РєСЂРёРІР°СЏ РґР»СЏ РїР»Р°РІРЅРѕРіРѕ РїСЂС‹Р¶РєР°
             float height = Mathf.Sin(progress * Mathf.PI) * jumpHeight;
             character.transform.position = originalPosition + Vector3.up * height;
 
@@ -551,12 +557,12 @@ public class MiningManager : MonoBehaviour
             yield return null;
         }
 
-        // Возвращаем персонажа на исходную позицию
+        // Р’РѕР·РІСЂР°С‰Р°РµРј РїРµСЂСЃРѕРЅР°Р¶Р° РЅР° РёСЃС…РѕРґРЅСѓСЋ РїРѕР·РёС†РёСЋ
         character.transform.position = originalPosition;
     }
 
     /// <summary>
-    /// Создать ItemData для металла
+    /// РЎРѕР·РґР°С‚СЊ ItemData РґР»СЏ РјРµС‚Р°Р»Р»Р°
     /// </summary>
     ItemData CreateMetalItemData()
     {
@@ -570,18 +576,18 @@ public class MiningManager : MonoBehaviour
         metal.value = 1;
         metal.equipmentSlot = EquipmentSlot.None;
 
-        // Применяем иконку через фабрику (если есть)
+        // РџСЂРёРјРµРЅСЏРµРј РёРєРѕРЅРєСѓ С‡РµСЂРµР· С„Р°Р±СЂРёРєСѓ (РµСЃР»Рё РµСЃС‚СЊ)
         ItemFactory.ApplyIcon(metal);
 
         return metal;
     }
 
     /// <summary>
-    /// Добавить металл в инвентарь персонажа
+    /// Р”РѕР±Р°РІРёС‚СЊ РјРµС‚Р°Р»Р» РІ РёРЅРІРµРЅС‚Р°СЂСЊ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     void AddMetalToInventory(Inventory inventory, int amount)
     {
-        // Ищем металл в инвентаре
+        // РС‰РµРј РјРµС‚Р°Р»Р» РІ РёРЅРІРµРЅС‚Р°СЂРµ
         InventorySlot metalSlot = null;
         List<InventorySlot> allSlots = inventory.GetAllSlots();
 
@@ -596,19 +602,19 @@ public class MiningManager : MonoBehaviour
 
         if (metalSlot != null && metalSlot.itemData != null)
         {
-            // Увеличиваем количество через метод AddItem
+            // РЈРІРµР»РёС‡РёРІР°РµРј РєРѕР»РёС‡РµСЃС‚РІРѕ С‡РµСЂРµР· РјРµС‚РѕРґ AddItem
             inventory.AddItem(metalSlot.itemData, amount);
 
         }
         else
         {
-            // Создаем новый предмет металла
+            // РЎРѕР·РґР°РµРј РЅРѕРІС‹Р№ РїСЂРµРґРјРµС‚ РјРµС‚Р°Р»Р»Р°
             ItemData metalItem = CreateMetalItemData();
             inventory.AddItem(metalItem, amount);
 
         }
 
-        // Обновляем UI инвентаря
+        // РћР±РЅРѕРІР»СЏРµРј UI РёРЅРІРµРЅС‚Р°СЂСЏ
         ResourcePanelUI resourcePanel = FindObjectOfType<ResourcePanelUI>();
         if (resourcePanel != null)
         {
@@ -617,11 +623,11 @@ public class MiningManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Остановить добычу для персонажа
+    /// РћСЃС‚Р°РЅРѕРІРёС‚СЊ РґРѕР±С‹С‡Сѓ РґР»СЏ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     public void StopMiningForCharacter(Character character)
     {
-        // Получаем информацию о том, откуда был вызван этот метод
+        // РџРѕР»СѓС‡Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ С‚РѕРј, РѕС‚РєСѓРґР° Р±С‹Р» РІС‹Р·РІР°РЅ СЌС‚РѕС‚ РјРµС‚РѕРґ
         System.Diagnostics.StackTrace stackTrace = new System.Diagnostics.StackTrace(1, true);
         string callerInfo = stackTrace.GetFrame(0)?.GetMethod()?.Name ?? "Unknown";
 
@@ -629,11 +635,11 @@ public class MiningManager : MonoBehaviour
 
 
 
-        // Проверяем, что персонаж еще существует
+        // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ РµС‰Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
         if (character == null)
         {
 
-            // Удаляем все задачи с null персонажами
+            // РЈРґР°Р»СЏРµРј РІСЃРµ Р·Р°РґР°С‡Рё СЃ null РїРµСЂСЃРѕРЅР°Р¶Р°РјРё
             miningTasks.RemoveAll(t => t.character == null);
             return;
         }
@@ -650,7 +656,7 @@ public class MiningManager : MonoBehaviour
                 StopCoroutine(task.miningCoroutine);
             }
 
-            // ВАЖНО: Освобождаем зарезервированную позицию
+            // Р’РђР–РќРћ: РћСЃРІРѕР±РѕР¶РґР°РµРј Р·Р°СЂРµР·РµСЂРІРёСЂРѕРІР°РЅРЅСѓСЋ РїРѕР·РёС†РёСЋ
             if (reservedMiningPositions.ContainsKey(task.reservedWorkPosition))
             {
                 if (reservedMiningPositions[task.reservedWorkPosition] == character)
@@ -663,7 +669,7 @@ public class MiningManager : MonoBehaviour
 
 
 
-            // Возвращаем персонажа в состояние Idle
+            // Р’РѕР·РІСЂР°С‰Р°РµРј РїРµСЂСЃРѕРЅР°Р¶Р° РІ СЃРѕСЃС‚РѕСЏРЅРёРµ Idle
             CharacterAI characterAI = character.GetComponent<CharacterAI>();
             if (characterAI != null && characterAI.GetCurrentState() == CharacterAI.AIState.Mining)
             {
@@ -680,7 +686,7 @@ public class MiningManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, добывает ли персонаж ресурсы
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РґРѕР±С‹РІР°РµС‚ Р»Рё РїРµСЂСЃРѕРЅР°Р¶ СЂРµСЃСѓСЂСЃС‹
     /// </summary>
     public bool IsCharacterMining(Character character)
     {
@@ -688,24 +694,24 @@ public class MiningManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Остановить всю добычу
+    /// РћСЃС‚Р°РЅРѕРІРёС‚СЊ РІСЃСЋ РґРѕР±С‹С‡Сѓ
     /// </summary>
     public void StopAllMining()
     {
         List<MiningTask> tasksToStop = new List<MiningTask>(miningTasks);
         foreach (MiningTask task in tasksToStop)
         {
-            // Проверяем, что персонаж еще существует
+            // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ РµС‰Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
             if (task.character != null)
             {
                 StopMiningForCharacter(task.character);
             }
         }
 
-        // Очищаем все оставшиеся задачи с null персонажами
+        // РћС‡РёС‰Р°РµРј РІСЃРµ РѕСЃС‚Р°РІС€РёРµСЃСЏ Р·Р°РґР°С‡Рё СЃ null РїРµСЂСЃРѕРЅР°Р¶Р°РјРё
         miningTasks.Clear();
 
-        // Очищаем все резервации
+        // РћС‡РёС‰Р°РµРј РІСЃРµ СЂРµР·РµСЂРІР°С†РёРё
         reservedMiningPositions.Clear();
     }
 

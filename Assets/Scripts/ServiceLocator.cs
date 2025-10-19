@@ -1,34 +1,34 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// ServiceLocator - централизованный паттерн для управления всеми сервисами/менеджерами игры
-/// Заменяет использование FindObjectOfType и обеспечивает единую точку доступа ко всем системам
+/// ServiceLocator - С†РµРЅС‚СЂР°Р»РёР·РѕРІР°РЅРЅС‹Р№ РїР°С‚С‚РµСЂРЅ РґР»СЏ СѓРїСЂР°РІР»РµРЅРёСЏ РІСЃРµРјРё СЃРµСЂРІРёСЃР°РјРё/РјРµРЅРµРґР¶РµСЂР°РјРё РёРіСЂС‹
+/// Р—Р°РјРµРЅСЏРµС‚ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ FindObjectOfType Рё РѕР±РµСЃРїРµС‡РёРІР°РµС‚ РµРґРёРЅСѓСЋ С‚РѕС‡РєСѓ РґРѕСЃС‚СѓРїР° РєРѕ РІСЃРµРј СЃРёСЃС‚РµРјР°Рј
 ///
-/// PERFORMANCE: FindObjectOfType - очень медленная операция (сканирует всю сцену)
-/// ServiceLocator использует Dictionary - O(1) доступ вместо O(n) сканирования
+/// PERFORMANCE: FindObjectOfType - РѕС‡РµРЅСЊ РјРµРґР»РµРЅРЅР°СЏ РѕРїРµСЂР°С†РёСЏ (СЃРєР°РЅРёСЂСѓРµС‚ РІСЃСЋ СЃС†РµРЅСѓ)
+/// ServiceLocator РёСЃРїРѕР»СЊР·СѓРµС‚ Dictionary - O(1) РґРѕСЃС‚СѓРї РІРјРµСЃС‚Рѕ O(n) СЃРєР°РЅРёСЂРѕРІР°РЅРёСЏ
 ///
-/// Использование:
-///   // Регистрация сервиса
+/// РСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ:
+///   // Р РµРіРёСЃС‚СЂР°С†РёСЏ СЃРµСЂРІРёСЃР°
 ///   ServiceLocator.Register<IGridManager>(gridManager);
 ///
-///   // Получение сервиса
+///   // РџРѕР»СѓС‡РµРЅРёРµ СЃРµСЂРІРёСЃР°
 ///   var gridManager = ServiceLocator.Get<IGridManager>();
 ///
-///   // Проверка наличия сервиса
+///   // РџСЂРѕРІРµСЂРєР° РЅР°Р»РёС‡РёСЏ СЃРµСЂРІРёСЃР°
 ///   if (ServiceLocator.TryGet<IGridManager>(out var manager)) { ... }
 /// </summary>
 public static class ServiceLocator
 {
-    // Словарь всех зарегистрированных сервисов
+    // РЎР»РѕРІР°СЂСЊ РІСЃРµС… Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅРЅС‹С… СЃРµСЂРІРёСЃРѕРІ
     private static readonly Dictionary<Type, object> services = new Dictionary<Type, object>();
 
-    // Флаг инициализации
+    // Р¤Р»Р°Рі РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
     private static bool isInitialized = false;
 
     /// <summary>
-    /// Зарегистрировать сервис в ServiceLocator
+    /// Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊ СЃРµСЂРІРёСЃ РІ ServiceLocator
     /// </summary>
     public static void Register<T>(T service) where T : class
     {
@@ -36,19 +36,17 @@ public static class ServiceLocator
 
         if (services.ContainsKey(type))
         {
-            Debug.LogWarning($"[ServiceLocator] Service {type.Name} is already registered. Replacing...");
             services[type] = service;
         }
         else
         {
             services.Add(type, service);
-            Debug.Log($"[ServiceLocator] Registered service: {type.Name}");
         }
     }
 
     /// <summary>
-    /// Получить сервис из ServiceLocator
-    /// Бросает исключение если сервис не найден
+    /// РџРѕР»СѓС‡РёС‚СЊ СЃРµСЂРІРёСЃ РёР· ServiceLocator
+    /// Р‘СЂРѕСЃР°РµС‚ РёСЃРєР»СЋС‡РµРЅРёРµ РµСЃР»Рё СЃРµСЂРІРёСЃ РЅРµ РЅР°Р№РґРµРЅ
     /// </summary>
     public static T Get<T>() where T : class
     {
@@ -59,13 +57,12 @@ public static class ServiceLocator
             return service as T;
         }
 
-        Debug.LogError($"[ServiceLocator] Service {type.Name} not found! Make sure it's registered in GameBootstrap.");
         return null;
     }
 
     /// <summary>
-    /// Попытаться получить сервис из ServiceLocator
-    /// Возвращает true если сервис найден, false если нет
+    /// РџРѕРїС‹С‚Р°С‚СЊСЃСЏ РїРѕР»СѓС‡РёС‚СЊ СЃРµСЂРІРёСЃ РёР· ServiceLocator
+    /// Р’РѕР·РІСЂР°С‰Р°РµС‚ true РµСЃР»Рё СЃРµСЂРІРёСЃ РЅР°Р№РґРµРЅ, false РµСЃР»Рё РЅРµС‚
     /// </summary>
     public static bool TryGet<T>(out T service) where T : class
     {
@@ -82,7 +79,7 @@ public static class ServiceLocator
     }
 
     /// <summary>
-    /// Проверить, зарегистрирован ли сервис
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅ Р»Рё СЃРµСЂРІРёСЃ
     /// </summary>
     public static bool Has<T>() where T : class
     {
@@ -90,7 +87,7 @@ public static class ServiceLocator
     }
 
     /// <summary>
-    /// Отменить регистрацию сервиса
+    /// РћС‚РјРµРЅРёС‚СЊ СЂРµРіРёСЃС‚СЂР°С†РёСЋ СЃРµСЂРІРёСЃР°
     /// </summary>
     public static void Unregister<T>() where T : class
     {
@@ -99,49 +96,44 @@ public static class ServiceLocator
         if (services.ContainsKey(type))
         {
             services.Remove(type);
-            Debug.Log($"[ServiceLocator] Unregistered service: {type.Name}");
         }
     }
 
     /// <summary>
-    /// Очистить все зарегистрированные сервисы
-    /// Используется при переходе между сценами
+    /// РћС‡РёСЃС‚РёС‚СЊ РІСЃРµ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅРЅС‹Рµ СЃРµСЂРІРёСЃС‹
+    /// РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РїСЂРё РїРµСЂРµС…РѕРґРµ РјРµР¶РґСѓ СЃС†РµРЅР°РјРё
     /// </summary>
     public static void Clear()
     {
         services.Clear();
         isInitialized = false;
-        Debug.Log("[ServiceLocator] Cleared all services");
     }
 
     /// <summary>
-    /// Получить количество зарегистрированных сервисов
+    /// РџРѕР»СѓС‡РёС‚СЊ РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅРЅС‹С… СЃРµСЂРІРёСЃРѕРІ
     /// </summary>
     public static int ServiceCount => services.Count;
 
     /// <summary>
-    /// Установить флаг инициализации
+    /// РЈСЃС‚Р°РЅРѕРІРёС‚СЊ С„Р»Р°Рі РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
     /// </summary>
     public static void SetInitialized()
     {
         isInitialized = true;
-        Debug.Log($"[ServiceLocator] Initialized with {services.Count} services");
     }
 
     /// <summary>
-    /// Проверить, инициализирован ли ServiceLocator
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ Р»Рё ServiceLocator
     /// </summary>
     public static bool IsInitialized => isInitialized;
 
     /// <summary>
-    /// Вывести список всех зарегистрированных сервисов (для отладки)
+    /// Р’С‹РІРµСЃС‚Рё СЃРїРёСЃРѕРє РІСЃРµС… Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅРЅС‹С… СЃРµСЂРІРёСЃРѕРІ (РґР»СЏ РѕС‚Р»Р°РґРєРё)
     /// </summary>
     public static void DebugPrintServices()
     {
-        Debug.Log($"[ServiceLocator] Registered services ({services.Count}):");
         foreach (var kvp in services)
         {
-            Debug.Log($"  - {kvp.Key.Name}: {kvp.Value?.GetType().Name ?? "null"}");
         }
     }
 }

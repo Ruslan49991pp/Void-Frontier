@@ -1,36 +1,36 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 
 /// <summary>
-/// Система подбора предметов по нажатию кнопки
-/// УСТАРЕЛО: Теперь подбор предметов работает через ПКМ (SelectionManager.HandleRightClick)
-/// Ищет ближайший предмет в радиусе и подбирает его при нажатии E
+/// РЎРёСЃС‚РµРјР° РїРѕРґР±РѕСЂР° РїСЂРµРґРјРµС‚РѕРІ РїРѕ РЅР°Р¶Р°С‚РёСЋ РєРЅРѕРїРєРё
+/// РЈРЎРўРђР Р•Р›Рћ: РўРµРїРµСЂСЊ РїРѕРґР±РѕСЂ РїСЂРµРґРјРµС‚РѕРІ СЂР°Р±РѕС‚Р°РµС‚ С‡РµСЂРµР· РџРљРњ (SelectionManager.HandleRightClick)
+/// РС‰РµС‚ Р±Р»РёР¶Р°Р№С€РёР№ РїСЂРµРґРјРµС‚ РІ СЂР°РґРёСѓСЃРµ Рё РїРѕРґР±РёСЂР°РµС‚ РµРіРѕ РїСЂРё РЅР°Р¶Р°С‚РёРё E
 /// </summary>
 public class ItemPickupSystem : MonoBehaviour
 {
     [Header("Enable/Disable")]
-    [Tooltip("ВАЖНО: Система отключена по умолчанию. Используйте ПКМ для подбора предметов.")]
+    [Tooltip("Р’РђР–РќРћ: РЎРёСЃС‚РµРјР° РѕС‚РєР»СЋС‡РµРЅР° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ. РСЃРїРѕР»СЊР·СѓР№С‚Рµ РџРљРњ РґР»СЏ РїРѕРґР±РѕСЂР° РїСЂРµРґРјРµС‚РѕРІ.")]
     public bool enablePickupByKey = false;
 
     [Header("Settings")]
-    [Tooltip("Радиус поиска предметов вокруг персонажа")]
+    [Tooltip("Р Р°РґРёСѓСЃ РїРѕРёСЃРєР° РїСЂРµРґРјРµС‚РѕРІ РІРѕРєСЂСѓРі РїРµСЂСЃРѕРЅР°Р¶Р°")]
     public float pickupRadius = 3f;
 
-    [Tooltip("Кнопка для подбора предметов")]
+    [Tooltip("РљРЅРѕРїРєР° РґР»СЏ РїРѕРґР±РѕСЂР° РїСЂРµРґРјРµС‚РѕРІ")]
     public KeyCode pickupKey = KeyCode.E;
 
-    [Tooltip("Показывать подсказку UI над ближайшим предметом")]
+    [Tooltip("РџРѕРєР°Р·С‹РІР°С‚СЊ РїРѕРґСЃРєР°Р·РєСѓ UI РЅР°Рґ Р±Р»РёР¶Р°Р№С€РёРј РїСЂРµРґРјРµС‚РѕРј")]
     public bool showPickupHint = true;
 
     [Header("Visual Settings")]
-    [Tooltip("Цвет подсветки ближайшего предмета")]
+    [Tooltip("Р¦РІРµС‚ РїРѕРґСЃРІРµС‚РєРё Р±Р»РёР¶Р°Р№С€РµРіРѕ РїСЂРµРґРјРµС‚Р°")]
     public Color highlightColor = new Color(1f, 1f, 0f, 0.3f);
 
-    [Tooltip("Префаб UI подсказки (опционально)")]
+    [Tooltip("РџСЂРµС„Р°Р± UI РїРѕРґСЃРєР°Р·РєРё (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ)")]
     public GameObject pickupHintPrefab;
 
-    // Внутренние переменные
+    // Р’РЅСѓС‚СЂРµРЅРЅРёРµ РїРµСЂРµРјРµРЅРЅС‹Рµ
     private Character character;
     private Item nearestItem;
     private Material originalMaterial;
@@ -39,7 +39,7 @@ public class ItemPickupSystem : MonoBehaviour
 
     void Start()
     {
-        // Если система отключена - отключаем весь компонент
+        // Р•СЃР»Рё СЃРёСЃС‚РµРјР° РѕС‚РєР»СЋС‡РµРЅР° - РѕС‚РєР»СЋС‡Р°РµРј РІРµСЃСЊ РєРѕРјРїРѕРЅРµРЅС‚
         if (!enablePickupByKey)
         {
 
@@ -50,12 +50,11 @@ public class ItemPickupSystem : MonoBehaviour
         character = GetComponent<Character>();
         if (character == null)
         {
-            Debug.LogError("[ItemPickupSystem] Character component not found!");
             enabled = false;
             return;
         }
 
-        // Создаем материал для подсветки
+        // РЎРѕР·РґР°РµРј РјР°С‚РµСЂРёР°Р» РґР»СЏ РїРѕРґСЃРІРµС‚РєРё
         highlightMaterial = new Material(Shader.Find("Standard"));
         highlightMaterial.color = highlightColor;
         highlightMaterial.SetFloat("_Mode", 3); // Transparent
@@ -70,10 +69,10 @@ public class ItemPickupSystem : MonoBehaviour
 
     void Update()
     {
-        // Проверяем, включена ли система
+        // РџСЂРѕРІРµСЂСЏРµРј, РІРєР»СЋС‡РµРЅР° Р»Рё СЃРёСЃС‚РµРјР°
         if (!enablePickupByKey)
         {
-            // Убираем подсветку если система отключена
+            // РЈР±РёСЂР°РµРј РїРѕРґСЃРІРµС‚РєСѓ РµСЃР»Рё СЃРёСЃС‚РµРјР° РѕС‚РєР»СЋС‡РµРЅР°
             if (nearestItem != null)
             {
                 RemoveHighlight();
@@ -83,10 +82,10 @@ public class ItemPickupSystem : MonoBehaviour
             return;
         }
 
-        // Ищем ближайший предмет
+        // РС‰РµРј Р±Р»РёР¶Р°Р№С€РёР№ РїСЂРµРґРјРµС‚
         FindNearestItem();
 
-        // Подбираем при нажатии клавиши
+        // РџРѕРґР±РёСЂР°РµРј РїСЂРё РЅР°Р¶Р°С‚РёРё РєР»Р°РІРёС€Рё
         if (Input.GetKeyDown(pickupKey) && nearestItem != null)
         {
             PickupNearestItem();
@@ -94,11 +93,11 @@ public class ItemPickupSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Найти ближайший предмет в радиусе
+    /// РќР°Р№С‚Рё Р±Р»РёР¶Р°Р№С€РёР№ РїСЂРµРґРјРµС‚ РІ СЂР°РґРёСѓСЃРµ
     /// </summary>
     void FindNearestItem()
     {
-        // ЗАЩИТА: Проверяем что nearestItem не был уничтожен перед обращением
+        // Р—РђР©РРўРђ: РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ nearestItem РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ РїРµСЂРµРґ РѕР±СЂР°С‰РµРЅРёРµРј
         if (nearestItem != null && ReferenceEquals(nearestItem, null))
         {
 
@@ -106,7 +105,7 @@ public class ItemPickupSystem : MonoBehaviour
             originalMaterial = null;
         }
 
-        // Убираем подсветку с предыдущего предмета
+        // РЈР±РёСЂР°РµРј РїРѕРґСЃРІРµС‚РєСѓ СЃ РїСЂРµРґС‹РґСѓС‰РµРіРѕ РїСЂРµРґРјРµС‚Р°
         if (nearestItem != null)
         {
             RemoveHighlight();
@@ -115,7 +114,7 @@ public class ItemPickupSystem : MonoBehaviour
         nearestItem = null;
         float nearestDistance = float.MaxValue;
 
-        // Ищем все предметы в радиусе
+        // РС‰РµРј РІСЃРµ РїСЂРµРґРјРµС‚С‹ РІ СЂР°РґРёСѓСЃРµ
         Collider[] colliders = Physics.OverlapSphere(transform.position, pickupRadius);
 
         foreach (Collider col in colliders)
@@ -127,7 +126,7 @@ public class ItemPickupSystem : MonoBehaviour
             try
             {
                 item = col.GetComponent<Item>();
-                // Дополнительная проверка что Item не уничтожен
+                // Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР° С‡С‚Рѕ Item РЅРµ СѓРЅРёС‡С‚РѕР¶РµРЅ
                 if (item != null && ReferenceEquals(item, null))
                 {
                     item = null;
@@ -150,7 +149,7 @@ public class ItemPickupSystem : MonoBehaviour
             }
         }
 
-        // Подсвечиваем ближайший предмет
+        // РџРѕРґСЃРІРµС‡РёРІР°РµРј Р±Р»РёР¶Р°Р№С€РёР№ РїСЂРµРґРјРµС‚
         if (nearestItem != null && !ReferenceEquals(nearestItem, null))
         {
             HighlightItem(nearestItem);
@@ -167,20 +166,20 @@ public class ItemPickupSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Подсветить предмет
+    /// РџРѕРґСЃРІРµС‚РёС‚СЊ РїСЂРµРґРјРµС‚
     /// </summary>
     void HighlightItem(Item item)
     {
         Renderer renderer = item.GetComponent<Renderer>();
         if (renderer != null)
         {
-            // Сохраняем оригинальный материал
+            // РЎРѕС…СЂР°РЅСЏРµРј РѕСЂРёРіРёРЅР°Р»СЊРЅС‹Р№ РјР°С‚РµСЂРёР°Р»
             if (originalMaterial == null)
             {
                 originalMaterial = renderer.material;
             }
 
-            // Меняем цвет для подсветки (не меняя материал полностью)
+            // РњРµРЅСЏРµРј С†РІРµС‚ РґР»СЏ РїРѕРґСЃРІРµС‚РєРё (РЅРµ РјРµРЅСЏСЏ РјР°С‚РµСЂРёР°Р» РїРѕР»РЅРѕСЃС‚СЊСЋ)
             Color originalColor = renderer.material.color;
             Color highlightedColor = Color.Lerp(originalColor, highlightColor, 0.5f);
             renderer.material.color = highlightedColor;
@@ -188,11 +187,11 @@ public class ItemPickupSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Убрать подсветку с предмета
+    /// РЈР±СЂР°С‚СЊ РїРѕРґСЃРІРµС‚РєСѓ СЃ РїСЂРµРґРјРµС‚Р°
     /// </summary>
     void RemoveHighlight()
     {
-        // КРИТИЧЕСКИ ВАЖНО: Проверяем что Item не был уничтожен
+        // РљР РРўРР§Р•РЎРљР Р’РђР–РќРћ: РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ Item РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
         if (nearestItem != null && !ReferenceEquals(nearestItem, null))
         {
             try
@@ -206,15 +205,14 @@ public class ItemPickupSystem : MonoBehaviour
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[ItemPickupSystem] [RemoveHighlight] Exception: {ex.Message}");
-                // Очищаем ссылки чтобы избежать повторных ошибок
+                // РћС‡РёС‰Р°РµРј СЃСЃС‹Р»РєРё С‡С‚РѕР±С‹ РёР·Р±РµР¶Р°С‚СЊ РїРѕРІС‚РѕСЂРЅС‹С… РѕС€РёР±РѕРє
                 nearestItem = null;
                 originalMaterial = null;
             }
         }
         else if (nearestItem != null && ReferenceEquals(nearestItem, null))
         {
-            // Item был уничтожен - очищаем ссылку
+            // Item Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ - РѕС‡РёС‰Р°РµРј СЃСЃС‹Р»РєСѓ
 
             nearestItem = null;
             originalMaterial = null;
@@ -222,11 +220,11 @@ public class ItemPickupSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Показать подсказку UI
+    /// РџРѕРєР°Р·Р°С‚СЊ РїРѕРґСЃРєР°Р·РєСѓ UI
     /// </summary>
     void ShowPickupHint()
     {
-        // ЗАЩИТА: Проверяем что nearestItem не был уничтожен
+        // Р—РђР©РРўРђ: РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ nearestItem РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
         if (nearestItem != null && ReferenceEquals(nearestItem, null))
         {
 
@@ -240,7 +238,7 @@ public class ItemPickupSystem : MonoBehaviour
             currentHintUI = Instantiate(pickupHintPrefab);
         }
 
-        // Позиционируем подсказку над предметом
+        // РџРѕР·РёС†РёРѕРЅРёСЂСѓРµРј РїРѕРґСЃРєР°Р·РєСѓ РЅР°Рґ РїСЂРµРґРјРµС‚РѕРј
         if (currentHintUI != null && nearestItem != null && !ReferenceEquals(nearestItem, null))
         {
             try
@@ -250,7 +248,6 @@ public class ItemPickupSystem : MonoBehaviour
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[ItemPickupSystem] [ShowPickupHint] Exception: {ex.Message}");
                 HidePickupHint();
                 nearestItem = null;
             }
@@ -258,7 +255,7 @@ public class ItemPickupSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Скрыть подсказку UI
+    /// РЎРєСЂС‹С‚СЊ РїРѕРґСЃРєР°Р·РєСѓ UI
     /// </summary>
     void HidePickupHint()
     {
@@ -270,7 +267,7 @@ public class ItemPickupSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Подобрать ближайший предмет
+    /// РџРѕРґРѕР±СЂР°С‚СЊ Р±Р»РёР¶Р°Р№С€РёР№ РїСЂРµРґРјРµС‚
     /// </summary>
     void PickupNearestItem()
     {
@@ -279,10 +276,10 @@ public class ItemPickupSystem : MonoBehaviour
 
 
 
-        // Проверяем, может ли персонаж поднять предмет
+        // РџСЂРѕРІРµСЂСЏРµРј, РјРѕР¶РµС‚ Р»Рё РїРµСЂСЃРѕРЅР°Р¶ РїРѕРґРЅСЏС‚СЊ РїСЂРµРґРјРµС‚
         if (nearestItem.CanBePickedUpBy(character))
         {
-            // Освобождаем клетку в GridManager если предмет занимал её
+            // РћСЃРІРѕР±РѕР¶РґР°РµРј РєР»РµС‚РєСѓ РІ GridManager РµСЃР»Рё РїСЂРµРґРјРµС‚ Р·Р°РЅРёРјР°Р» РµС‘
             GridManager gridManager = FindObjectOfType<GridManager>();
             if (gridManager != null)
             {
@@ -290,12 +287,12 @@ public class ItemPickupSystem : MonoBehaviour
                 gridManager.FreeCell(gridPos);
             }
 
-            // Подбираем предмет
+            // РџРѕРґР±РёСЂР°РµРј РїСЂРµРґРјРµС‚
             nearestItem.PickUp(character);
 
 
 
-            // Убираем подсказку
+            // РЈР±РёСЂР°РµРј РїРѕРґСЃРєР°Р·РєСѓ
             HidePickupHint();
 
             nearestItem = null;
@@ -303,24 +300,23 @@ public class ItemPickupSystem : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"[ItemPickupSystem] Cannot pick up item: too far or inventory full");
         }
     }
 
     void OnDisable()
     {
-        // Убираем подсветку при отключении
+        // РЈР±РёСЂР°РµРј РїРѕРґСЃРІРµС‚РєСѓ РїСЂРё РѕС‚РєР»СЋС‡РµРЅРёРё
         RemoveHighlight();
         HidePickupHint();
     }
 
     void OnDrawGizmosSelected()
     {
-        // Показываем радиус поиска предметов
+        // РџРѕРєР°Р·С‹РІР°РµРј СЂР°РґРёСѓСЃ РїРѕРёСЃРєР° РїСЂРµРґРјРµС‚РѕРІ
         Gizmos.color = Color.cyan;
         Gizmos.DrawWireSphere(transform.position, pickupRadius);
 
-        // Показываем линию к ближайшему предмету
+        // РџРѕРєР°Р·С‹РІР°РµРј Р»РёРЅРёСЋ Рє Р±Р»РёР¶Р°Р№С€РµРјСѓ РїСЂРµРґРјРµС‚Сѓ
         if (nearestItem != null && Application.isPlaying)
         {
             Gizmos.color = Color.yellow;

@@ -1,17 +1,17 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// Тестовый скрипт для создания врагов для тестирования системы указания целей
+/// РўРµСЃС‚РѕРІС‹Р№ СЃРєСЂРёРїС‚ РґР»СЏ СЃРѕР·РґР°РЅРёСЏ РІСЂР°РіРѕРІ РґР»СЏ С‚РµСЃС‚РёСЂРѕРІР°РЅРёСЏ СЃРёСЃС‚РµРјС‹ СѓРєР°Р·Р°РЅРёСЏ С†РµР»РµР№
 /// </summary>
 public class EnemySpawnerTest : MonoBehaviour
 {
     [Header("Enemy Spawn Settings")]
     public int enemyCount = 3;
-    public float spawnRadius = 5f;
-    public Vector3 spawnCenter = new Vector3(5, 0, 5);
+    public float spawnRadius = 8f; // Р Р°РґРёСѓСЃ СЂР°Р·Р±СЂРѕСЃР° СЃРїР°РІРЅР°
+    public Vector3 spawnCenter = new Vector3(25, 0, 25); // РЎРїР°РІРЅ РґР°Р»РµРєРѕ РѕС‚ РёРіСЂРѕРєРѕРІ (РІРЅРµ СЂР°РґРёСѓСЃР° РѕР±РЅР°СЂСѓР¶РµРЅРёСЏ 10 РєР»РµС‚РѕРє)
 
     [Header("Enemy Prefab Settings")]
-    public Material enemyMaterial; // Если не установлен, будет загружен M_Enemy из Resources
+    public Material enemyMaterial; // Р•СЃР»Рё РЅРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅ, Р±СѓРґРµС‚ Р·Р°РіСЂСѓР¶РµРЅ M_Enemy РёР· Resources
     public Color enemyColor = Color.red;
 
     private GridManager gridManager;
@@ -20,12 +20,12 @@ public class EnemySpawnerTest : MonoBehaviour
     {
         gridManager = FindObjectOfType<GridManager>();
 
-        // Создаем врагов через небольшую задержку, чтобы GridManager успел инициализироваться
+        // РЎРѕР·РґР°РµРј РІСЂР°РіРѕРІ С‡РµСЂРµР· РЅРµР±РѕР»СЊС€СѓСЋ Р·Р°РґРµСЂР¶РєСѓ, С‡С‚РѕР±С‹ GridManager СѓСЃРїРµР» РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°С‚СЊСЃСЏ
         Invoke(nameof(SpawnEnemies), 1f);
     }
 
     /// <summary>
-    /// Создать тестовых врагов
+    /// РЎРѕР·РґР°С‚СЊ С‚РµСЃС‚РѕРІС‹С… РІСЂР°РіРѕРІ
     /// </summary>
     public void SpawnEnemies()
     {
@@ -35,7 +35,7 @@ public class EnemySpawnerTest : MonoBehaviour
         {
             GameObject enemy = CreateEnemyCharacter($"Enemy_{i + 1}");
 
-            // Размещаем врага в случайной позиции
+            // Р Р°Р·РјРµС‰Р°РµРј РІСЂР°РіР° РІ СЃР»СѓС‡Р°Р№РЅРѕР№ РїРѕР·РёС†РёРё
             Vector3 spawnPosition = GetRandomSpawnPosition();
             enemy.transform.position = spawnPosition;
 
@@ -44,7 +44,7 @@ public class EnemySpawnerTest : MonoBehaviour
     }
 
     /// <summary>
-    /// Создать врага-персонажа
+    /// РЎРѕР·РґР°С‚СЊ РІСЂР°РіР°-РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     GameObject CreateEnemyCharacter(string enemyName)
     {
@@ -52,19 +52,19 @@ public class EnemySpawnerTest : MonoBehaviour
 
         GameObject enemy;
 
-        // Загружаем префаб SKM_Character из Resources
+        // Р—Р°РіСЂСѓР¶Р°РµРј РїСЂРµС„Р°Р± SKM_Character РёР· Resources
         GameObject characterPrefab = Resources.Load<GameObject>("Prefabs/SKM_Character");
         if (characterPrefab == null)
         {
 
-            // Fallback к капсуле если префаб не найден
+            // Fallback Рє РєР°РїСЃСѓР»Рµ РµСЃР»Рё РїСЂРµС„Р°Р± РЅРµ РЅР°Р№РґРµРЅ
             enemy = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             enemy.name = enemyName;
             enemy.transform.localScale = Vector3.one;
         }
         else
         {
-            // Создаем врага из префаба SKM_Character
+            // РЎРѕР·РґР°РµРј РІСЂР°РіР° РёР· РїСЂРµС„Р°Р±Р° SKM_Character
             enemy = Instantiate(characterPrefab);
             enemy.name = enemyName;
 
@@ -75,11 +75,11 @@ public class EnemySpawnerTest : MonoBehaviour
     }
 
     /// <summary>
-    /// Настроить GameObject как врага
+    /// РќР°СЃС‚СЂРѕРёС‚СЊ GameObject РєР°Рє РІСЂР°РіР°
     /// </summary>
     void SetupEnemyCharacter(GameObject enemy, string enemyName)
     {
-        // Получаем или добавляем компонент Character
+        // РџРѕР»СѓС‡Р°РµРј РёР»Рё РґРѕР±Р°РІР»СЏРµРј РєРѕРјРїРѕРЅРµРЅС‚ Character
         Character character = enemy.GetComponent<Character>();
         if (character == null)
         {
@@ -87,10 +87,10 @@ public class EnemySpawnerTest : MonoBehaviour
 
         }
 
-        // Настраиваем как врага
+        // РќР°СЃС‚СЂР°РёРІР°РµРј РєР°Рє РІСЂР°РіР°
         character.characterData = new CharacterData();
 
-        // Генерируем случайные имена для врагов
+        // Р“РµРЅРµСЂРёСЂСѓРµРј СЃР»СѓС‡Р°Р№РЅС‹Рµ РёРјРµРЅР° РґР»СЏ РІСЂР°РіРѕРІ
         string[] enemyFirstNames = { "Viktor", "Igor", "Boris", "Alexei", "Dmitri", "Sergei", "Pavel", "Nikolai", "Anton", "Maksim" };
         string[] enemyLastNames = { "Volkov", "Petrov", "Kozlov", "Morozov", "Smirnov", "Popov", "Lebedev", "Novikov", "Fedorov", "Orlov" };
 
@@ -103,12 +103,12 @@ public class EnemySpawnerTest : MonoBehaviour
         character.characterData.health = character.characterData.maxHealth;
         character.characterData.bio = $"Hostile {character.characterData.profession} - Level {character.characterData.level}";
 
-        // Настраиваем цвета для врага
+        // РќР°СЃС‚СЂР°РёРІР°РµРј С†РІРµС‚Р° РґР»СЏ РІСЂР°РіР°
         character.defaultColor = enemyColor;
         character.selectedColor = Color.red;
         character.hoverColor = Color.yellow;
 
-        // Находим и настраиваем ВСЕ рендереры
+        // РќР°С…РѕРґРёРј Рё РЅР°СЃС‚СЂР°РёРІР°РµРј Р’РЎР• СЂРµРЅРґРµСЂРµСЂС‹
         MeshRenderer[] allRenderers = enemy.GetComponentsInChildren<MeshRenderer>();
         Renderer primaryRenderer = null;
 
@@ -116,7 +116,7 @@ public class EnemySpawnerTest : MonoBehaviour
 
         if (allRenderers.Length > 0)
         {
-            // Приоритет: 1) enemyMaterial из Inspector'а, 2) GhostRed из Resources, 3) создание на лету
+            // РџСЂРёРѕСЂРёС‚РµС‚: 1) enemyMaterial РёР· Inspector'Р°, 2) GhostRed РёР· Resources, 3) СЃРѕР·РґР°РЅРёРµ РЅР° Р»РµС‚Сѓ
             Material enemyMat = enemyMaterial != null ? enemyMaterial : CreateEnemyMaterial();
 
             foreach (MeshRenderer renderer in allRenderers)
@@ -131,13 +131,13 @@ public class EnemySpawnerTest : MonoBehaviour
                 }
             }
 
-            // Устанавливаем основной рендерер для Character
+            // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РѕСЃРЅРѕРІРЅРѕР№ СЂРµРЅРґРµСЂРµСЂ РґР»СЏ Character
             character.characterRenderer = primaryRenderer;
 
         }
         else
         {
-            // Попробуем найти любые другие рендереры
+            // РџРѕРїСЂРѕР±СѓРµРј РЅР°Р№С‚Рё Р»СЋР±С‹Рµ РґСЂСѓРіРёРµ СЂРµРЅРґРµСЂРµСЂС‹
             Renderer[] anyRenderers = enemy.GetComponentsInChildren<Renderer>();
 
 
@@ -164,7 +164,7 @@ public class EnemySpawnerTest : MonoBehaviour
             }
         }
 
-        // Убеждаемся что есть коллайдер для раскастов
+        // РЈР±РµР¶РґР°РµРјСЃСЏ С‡С‚Рѕ РµСЃС‚СЊ РєРѕР»Р»Р°Р№РґРµСЂ РґР»СЏ СЂР°СЃРєР°СЃС‚РѕРІ
         Collider collider = enemy.GetComponent<Collider>();
         if (collider == null)
         {
@@ -176,15 +176,15 @@ public class EnemySpawnerTest : MonoBehaviour
             }
         }
 
-        // Добавляем движение (но не AI - враги пока статичные)
+        // Р”РѕР±Р°РІР»СЏРµРј РґРІРёР¶РµРЅРёРµ (РЅРѕ РЅРµ AI - РІСЂР°РіРё РїРѕРєР° СЃС‚Р°С‚РёС‡РЅС‹Рµ)
         CharacterMovement movement = enemy.GetComponent<CharacterMovement>();
         if (movement == null)
         {
             movement = enemy.AddComponent<CharacterMovement>();
-            movement.debugMovement = false; // Отключаем дебаг для врагов
+            movement.debugMovement = false; // РћС‚РєР»СЋС‡Р°РµРј РґРµР±Р°Рі РґР»СЏ РІСЂР°РіРѕРІ
         }
 
-        // Добавляем LocationObjectInfo для системы выделения
+        // Р”РѕР±Р°РІР»СЏРµРј LocationObjectInfo РґР»СЏ СЃРёСЃС‚РµРјС‹ РІС‹РґРµР»РµРЅРёСЏ
         LocationObjectInfo objectInfo = enemy.GetComponent<LocationObjectInfo>();
         if (objectInfo == null)
         {
@@ -194,18 +194,18 @@ public class EnemySpawnerTest : MonoBehaviour
         objectInfo.objectName = character.GetFullName();
         objectInfo.health = character.characterData.health;
 
-        // Устанавливаем правильный слой для взаимодействия с SelectionManager
+        // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РїСЂР°РІРёР»СЊРЅС‹Р№ СЃР»РѕР№ РґР»СЏ РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёСЏ СЃ SelectionManager
         enemy.layer = LayerMask.NameToLayer("Default");
 
 
     }
 
     /// <summary>
-    /// Создать надежный материал для врага
+    /// РЎРѕР·РґР°С‚СЊ РЅР°РґРµР¶РЅС‹Р№ РјР°С‚РµСЂРёР°Р» РґР»СЏ РІСЂР°РіР°
     /// </summary>
     Material CreateEnemyMaterial()
     {
-        // Сначала пытаемся загрузить готовый красный материал для врагов
+        // РЎРЅР°С‡Р°Р»Р° РїС‹С‚Р°РµРјСЃСЏ Р·Р°РіСЂСѓР·РёС‚СЊ РіРѕС‚РѕРІС‹Р№ РєСЂР°СЃРЅС‹Р№ РјР°С‚РµСЂРёР°Р» РґР»СЏ РІСЂР°РіРѕРІ
         Material enemyMat = Resources.Load<Material>("Materials/M_Enemy");
         if (enemyMat != null)
         {
@@ -216,7 +216,7 @@ public class EnemySpawnerTest : MonoBehaviour
 
         Material mat = null;
 
-        // Пробуем различные шейдеры в порядке предпочтения
+        // РџСЂРѕР±СѓРµРј СЂР°Р·Р»РёС‡РЅС‹Рµ С€РµР№РґРµСЂС‹ РІ РїРѕСЂСЏРґРєРµ РїСЂРµРґРїРѕС‡С‚РµРЅРёСЏ
         string[] shaderNames = {
             "Standard",
             "Universal Render Pipeline/Lit",
@@ -238,17 +238,17 @@ public class EnemySpawnerTest : MonoBehaviour
             }
         }
 
-        // Если ничего не нашли, создаем с базовым конструктором
+        // Р•СЃР»Рё РЅРёС‡РµРіРѕ РЅРµ РЅР°С€Р»Рё, СЃРѕР·РґР°РµРј СЃ Р±Р°Р·РѕРІС‹Рј РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂРѕРј
         if (mat == null)
         {
             mat = new Material(Shader.Find("Standard") ?? Shader.Find("Legacy Shaders/Diffuse"));
         }
 
-        // Настраиваем материал
+        // РќР°СЃС‚СЂР°РёРІР°РµРј РјР°С‚РµСЂРёР°Р»
         mat.color = enemyColor;
         mat.name = "EnemyMaterial_Generated";
 
-        // Дополнительные настройки для видимости
+        // Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё РґР»СЏ РІРёРґРёРјРѕСЃС‚Рё
         if (mat.HasProperty("_MainTex"))
         {
             mat.SetColor("_Color", enemyColor);
@@ -263,13 +263,13 @@ public class EnemySpawnerTest : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить случайную позицию для спавна врага
+    /// РџРѕР»СѓС‡РёС‚СЊ СЃР»СѓС‡Р°Р№РЅСѓСЋ РїРѕР·РёС†РёСЋ РґР»СЏ СЃРїР°РІРЅР° РІСЂР°РіР°
     /// </summary>
     Vector3 GetRandomSpawnPosition()
     {
         if (gridManager != null)
         {
-            // Пытаемся найти свободную клетку на сетке
+            // РџС‹С‚Р°РµРјСЃСЏ РЅР°Р№С‚Рё СЃРІРѕР±РѕРґРЅСѓСЋ РєР»РµС‚РєСѓ РЅР° СЃРµС‚РєРµ
             for (int attempts = 0; attempts < 20; attempts++)
             {
                 Vector2 randomOffset = Random.insideUnitCircle * spawnRadius;
@@ -288,13 +288,13 @@ public class EnemySpawnerTest : MonoBehaviour
             }
         }
 
-        // Fallback: случайная позиция вокруг центра спавна
+        // Fallback: СЃР»СѓС‡Р°Р№РЅР°СЏ РїРѕР·РёС†РёСЏ РІРѕРєСЂСѓРі С†РµРЅС‚СЂР° СЃРїР°РІРЅР°
         Vector2 fallbackOffset = Random.insideUnitCircle * spawnRadius;
         return spawnCenter + new Vector3(fallbackOffset.x, 0, fallbackOffset.y);
     }
 
     /// <summary>
-    /// Создать дополнительного врага (для тестирования в runtime)
+    /// РЎРѕР·РґР°С‚СЊ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕРіРѕ РІСЂР°РіР° (РґР»СЏ С‚РµСЃС‚РёСЂРѕРІР°РЅРёСЏ РІ runtime)
     /// </summary>
     public void SpawnAdditionalEnemy()
     {
@@ -307,7 +307,7 @@ public class EnemySpawnerTest : MonoBehaviour
 
     void OnDrawGizmosSelected()
     {
-        // Показываем область спавна врагов
+        // РџРѕРєР°Р·С‹РІР°РµРј РѕР±Р»Р°СЃС‚СЊ СЃРїР°РІРЅР° РІСЂР°РіРѕРІ
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(spawnCenter, spawnRadius);
 

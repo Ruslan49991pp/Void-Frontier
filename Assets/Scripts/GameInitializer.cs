@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class GameInitializer : MonoBehaviour
 {
@@ -40,7 +40,7 @@ public class GameInitializer : MonoBehaviour
             EnsureResolutionManager();
         }
 
-        // ОТКЛЮЧЕНО: Не используем динамически генерируемый UI
+        // РћРўРљР›Р®Р§Р•РќРћ: РќРµ РёСЃРїРѕР»СЊР·СѓРµРј РґРёРЅР°РјРёС‡РµСЃРєРё РіРµРЅРµСЂРёСЂСѓРµРјС‹Р№ UI
         // if (autoInitializeUI)
         // {
         //     EnsureGameUI();
@@ -77,50 +77,50 @@ public class GameInitializer : MonoBehaviour
             EnsureObjectSelectDisplay();
         }
 
-        // ОТКЛЮЧЕНО: Весь динамический UI не используется
-        // // Создаем простой дебаг дисплей
+        // РћРўРљР›Р®Р§Р•РќРћ: Р’РµСЃСЊ РґРёРЅР°РјРёС‡РµСЃРєРёР№ UI РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ
+        // // РЎРѕР·РґР°РµРј РїСЂРѕСЃС‚РѕР№ РґРµР±Р°Рі РґРёСЃРїР»РµР№
         // GameObject simpleDebugGO = new GameObject("SimpleDebugDisplay");
         // simpleDebugGO.AddComponent<SimpleDebugDisplay>();
 
-        // // Создаем дебаг монитор
+        // // РЎРѕР·РґР°РµРј РґРµР±Р°Рі РјРѕРЅРёС‚РѕСЂ
         // GameObject debugMonitorGO = new GameObject("DebugSystemMonitor");
         // debugMonitorGO.AddComponent<DebugSystemMonitor>();
 
-        // // Создаем инструкции по отладке
+        // // РЎРѕР·РґР°РµРј РёРЅСЃС‚СЂСѓРєС†РёРё РїРѕ РѕС‚Р»Р°РґРєРµ
         // GameObject debugInstructionsGO = new GameObject("DebugInstructions");
         // debugInstructionsGO.AddComponent<DebugInstructions>();
 
-        // // Удаляем кнопки Center
+        // // РЈРґР°Р»СЏРµРј РєРЅРѕРїРєРё Center
         // GameObject removerGO = new GameObject("RemoveCenterButtons");
         // removerGO.AddComponent<RemoveCenterButtons>();
 
-        // Добавляем тестовый спавнер персонажей
+        // Р”РѕР±Р°РІР»СЏРµРј С‚РµСЃС‚РѕРІС‹Р№ СЃРїР°РІРЅРµСЂ РїРµСЂСЃРѕРЅР°Р¶РµР№
         GameObject spawnerGO = new GameObject("CharacterSpawnerTest");
         spawnerGO.AddComponent<CharacterSpawnerTest>();
 
-        // Добавляем тестовый спавнер врагов
+        // Р”РѕР±Р°РІР»СЏРµРј С‚РµСЃС‚РѕРІС‹Р№ СЃРїР°РІРЅРµСЂ РІСЂР°РіРѕРІ
         GameObject enemySpawnerGO = new GameObject("EnemySpawnerTest");
         enemySpawnerGO.AddComponent<EnemySpawnerTest>();
 
-        // // Добавляем систему обновления персонажей
+        // // Р”РѕР±Р°РІР»СЏРµРј СЃРёСЃС‚РµРјСѓ РѕР±РЅРѕРІР»РµРЅРёСЏ РїРµСЂСЃРѕРЅР°Р¶РµР№
         // GameObject refreshGO = new GameObject("CharacterRefreshTest");
         // refreshGO.AddComponent<CharacterRefreshTest>();
 
-        // // Добавляем отладчик структуры SKM_Character
+        // // Р”РѕР±Р°РІР»СЏРµРј РѕС‚Р»Р°РґС‡РёРє СЃС‚СЂСѓРєС‚СѓСЂС‹ SKM_Character
         // GameObject debuggerGO = new GameObject("SKMCharacterDebugger");
         // debuggerGO.AddComponent<SKMCharacterDebugger>();
 
-        // ОТКЛЮЧЕНО: Не используем динамический UI
-        // // Добавляем UI для тестирования HP
+        // РћРўРљР›Р®Р§Р•РќРћ: РќРµ РёСЃРїРѕР»СЊР·СѓРµРј РґРёРЅР°РјРёС‡РµСЃРєРёР№ UI
+        // // Р”РѕР±Р°РІР»СЏРµРј UI РґР»СЏ С‚РµСЃС‚РёСЂРѕРІР°РЅРёСЏ HP
         // EnsureHPTestUI();
 
-        // // ВРЕМЕННО: Скрываем панель строительства
+        // // Р’Р Р•РњР•РќРќРћ: РЎРєСЂС‹РІР°РµРј РїР°РЅРµР»СЊ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
         // GameObject hideActionAreaGO = new GameObject("HideActionArea");
         // hideActionAreaGO.AddComponent<HideActionArea>();
     }
 
     /// <summary>
-    /// Убедиться что BootstrapManager существует в сцене
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ BootstrapManager СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ СЃС†РµРЅРµ
     /// </summary>
     void EnsureBootstrapManager()
     {
@@ -133,17 +133,17 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что система паузы инициализирована
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ СЃРёСЃС‚РµРјР° РїР°СѓР·С‹ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅР°
     /// </summary>
     void EnsurePauseSystem()
     {
-        // Инициализируем GamePauseManager
+        // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј GamePauseManager
         if (GamePauseManager.Instance != null)
         {
             // Initialized
         }
 
-        // Инициализируем PauseMenuManager
+        // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј PauseMenuManager
         if (PauseMenuManager.Instance != null)
         {
             // Initialized
@@ -151,7 +151,7 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что ResolutionManager существует в сцене
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ ResolutionManager СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ СЃС†РµРЅРµ
     /// </summary>
     void EnsureResolutionManager()
     {
@@ -164,7 +164,7 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что EventSystem существует для UI
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ EventSystem СЃСѓС‰РµСЃС‚РІСѓРµС‚ РґР»СЏ UI
     /// </summary>
     void EnsureEventSystem()
     {
@@ -178,7 +178,7 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что CanvasCharacterIconsManager существует в сцене
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ CanvasCharacterIconsManager СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ СЃС†РµРЅРµ
     /// </summary>
     void EnsureCanvasCharacterIconsManager()
     {
@@ -188,11 +188,11 @@ public class GameInitializer : MonoBehaviour
             GameObject iconManagerGO = new GameObject("CanvasCharacterIconsManager");
             iconManager = iconManagerGO.AddComponent<CanvasCharacterIconsManager>();
 
-            // Загружаем префаб CharacterPortrait
+            // Р—Р°РіСЂСѓР¶Р°РµРј РїСЂРµС„Р°Р± CharacterPortrait
             GameObject prefab = Resources.Load<GameObject>("Prefabs/UI/CharacterPortrait");
             if (prefab == null)
             {
-                // Пробуем без папки Resources
+                // РџСЂРѕР±СѓРµРј Р±РµР· РїР°РїРєРё Resources
                 prefab = UnityEngine.Object.FindObjectOfType<GameObject>();
             }
             iconManager.characterPortraitPrefab = prefab;
@@ -200,7 +200,7 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что HPTestUI существует в сцене
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ HPTestUI СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ СЃС†РµРЅРµ
     /// </summary>
     void EnsureHPTestUI()
     {
@@ -213,7 +213,7 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что EnemyTargetingSystem существует в сцене
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ EnemyTargetingSystem СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ СЃС†РµРЅРµ
     /// </summary>
     void EnsureEnemyTargetingSystem()
     {
@@ -226,7 +226,7 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что TargetingInstructions существует в сцене
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ TargetingInstructions СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ СЃС†РµРЅРµ
     /// </summary>
     void EnsureTargetingInstructions()
     {
@@ -239,7 +239,7 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что InventoryManager существует в сцене
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ InventoryManager СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ СЃС†РµРЅРµ
     /// </summary>
     void EnsureInventoryManager()
     {
@@ -252,16 +252,16 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что EnemySelectDisplay существует в сцене и правильно настроен
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ EnemySelectDisplay СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ СЃС†РµРЅРµ Рё РїСЂР°РІРёР»СЊРЅРѕ РЅР°СЃС‚СЂРѕРµРЅ
     /// </summary>
     void EnsureEnemySelectDisplay()
     {
-        // Ищем EnemySelectDisplay в сцене
+        // РС‰РµРј EnemySelectDisplay РІ СЃС†РµРЅРµ
         EnemySelectDisplay enemySelectDisplay = FindObjectOfType<EnemySelectDisplay>();
 
         if (enemySelectDisplay == null)
         {
-            // Ищем EnemySelect на Canvas_MainUI
+            // РС‰РµРј EnemySelect РЅР° Canvas_MainUI
             GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>(true);
             GameObject enemySelectPanel = null;
 
@@ -276,11 +276,11 @@ public class GameInitializer : MonoBehaviour
 
             if (enemySelectPanel != null)
             {
-                // Добавляем компонент EnemySelectDisplay если его нет
+                // Р”РѕР±Р°РІР»СЏРµРј РєРѕРјРїРѕРЅРµРЅС‚ EnemySelectDisplay РµСЃР»Рё РµРіРѕ РЅРµС‚
                 enemySelectDisplay = enemySelectPanel.GetComponent<EnemySelectDisplay>();
                 if (enemySelectDisplay == null)
                 {
-                    // Активируем панель перед добавлением компонента чтобы вызвался Awake()
+                    // РђРєС‚РёРІРёСЂСѓРµРј РїР°РЅРµР»СЊ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј РєРѕРјРїРѕРЅРµРЅС‚Р° С‡С‚РѕР±С‹ РІС‹Р·РІР°Р»СЃСЏ Awake()
                     bool wasActive = enemySelectPanel.activeSelf;
                     if (!wasActive)
                     {
@@ -289,7 +289,7 @@ public class GameInitializer : MonoBehaviour
 
                     enemySelectDisplay = enemySelectPanel.AddComponent<EnemySelectDisplay>();
 
-                    // Деактивируем панель обратно если была неактивной
+                    // Р”РµР°РєС‚РёРІРёСЂСѓРµРј РїР°РЅРµР»СЊ РѕР±СЂР°С‚РЅРѕ РµСЃР»Рё Р±С‹Р»Р° РЅРµР°РєС‚РёРІРЅРѕР№
                     if (!wasActive)
                     {
                         enemySelectPanel.SetActive(false);
@@ -297,13 +297,13 @@ public class GameInitializer : MonoBehaviour
                 }
                 else
                 {
-                    // Активируем панель на момент инициализации чтобы вызвался Awake() и Start()
+                    // РђРєС‚РёРІРёСЂСѓРµРј РїР°РЅРµР»СЊ РЅР° РјРѕРјРµРЅС‚ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё С‡С‚РѕР±С‹ РІС‹Р·РІР°Р»СЃСЏ Awake() Рё Start()
                     if (!enemySelectPanel.activeSelf)
                     {
                         enemySelectPanel.SetActive(true);
 
-                        // Деактивируем панель обратно после небольшой задержки
-                        // Используем корутину на GameInitializer (активном объекте)
+                        // Р”РµР°РєС‚РёРІРёСЂСѓРµРј РїР°РЅРµР»СЊ РѕР±СЂР°С‚РЅРѕ РїРѕСЃР»Рµ РЅРµР±РѕР»СЊС€РѕР№ Р·Р°РґРµСЂР¶РєРё
+                        // РСЃРїРѕР»СЊР·СѓРµРј РєРѕСЂСѓС‚РёРЅСѓ РЅР° GameInitializer (Р°РєС‚РёРІРЅРѕРј РѕР±СЉРµРєС‚Рµ)
                         StartCoroutine(DeactivatePanelAfterDelay(enemySelectPanel, 0.1f));
                     }
                 }
@@ -312,16 +312,16 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что ObjectSelectDisplay существует в сцене и правильно настроен
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ ObjectSelectDisplay СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ СЃС†РµРЅРµ Рё РїСЂР°РІРёР»СЊРЅРѕ РЅР°СЃС‚СЂРѕРµРЅ
     /// </summary>
     void EnsureObjectSelectDisplay()
     {
-        // Ищем ObjectSelectDisplay в сцене
+        // РС‰РµРј ObjectSelectDisplay РІ СЃС†РµРЅРµ
         ObjectSelectDisplay objectSelectDisplay = FindObjectOfType<ObjectSelectDisplay>();
 
         if (objectSelectDisplay == null)
         {
-            // Ищем ObjectSelect на Canvas_MainUI
+            // РС‰РµРј ObjectSelect РЅР° Canvas_MainUI
             GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>(true);
             GameObject objectSelectPanel = null;
 
@@ -336,11 +336,11 @@ public class GameInitializer : MonoBehaviour
 
             if (objectSelectPanel != null)
             {
-                // Добавляем компонент ObjectSelectDisplay если его нет
+                // Р”РѕР±Р°РІР»СЏРµРј РєРѕРјРїРѕРЅРµРЅС‚ ObjectSelectDisplay РµСЃР»Рё РµРіРѕ РЅРµС‚
                 objectSelectDisplay = objectSelectPanel.GetComponent<ObjectSelectDisplay>();
                 if (objectSelectDisplay == null)
                 {
-                    // Активируем панель перед добавлением компонента чтобы вызвался Awake(), Start() и OnEnable()
+                    // РђРєС‚РёРІРёСЂСѓРµРј РїР°РЅРµР»СЊ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј РєРѕРјРїРѕРЅРµРЅС‚Р° С‡С‚РѕР±С‹ РІС‹Р·РІР°Р»СЃСЏ Awake(), Start() Рё OnEnable()
                     bool wasActive = objectSelectPanel.activeSelf;
                     if (!wasActive)
                     {
@@ -348,15 +348,15 @@ public class GameInitializer : MonoBehaviour
                     }
 
                     objectSelectDisplay = objectSelectPanel.AddComponent<ObjectSelectDisplay>();
-                    // Компонент сам скроет панель в Start()
+                    // РљРѕРјРїРѕРЅРµРЅС‚ СЃР°Рј СЃРєСЂРѕРµС‚ РїР°РЅРµР»СЊ РІ Start()
                 }
                 else
                 {
-                    // Активируем панель на момент инициализации чтобы вызвался Start() и OnEnable()
+                    // РђРєС‚РёРІРёСЂСѓРµРј РїР°РЅРµР»СЊ РЅР° РјРѕРјРµРЅС‚ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё С‡С‚РѕР±С‹ РІС‹Р·РІР°Р»СЃСЏ Start() Рё OnEnable()
                     if (!objectSelectPanel.activeSelf)
                     {
                         objectSelectPanel.SetActive(true);
-                        // Компонент сам скроет панель в Start()
+                        // РљРѕРјРїРѕРЅРµРЅС‚ СЃР°Рј СЃРєСЂРѕРµС‚ РїР°РЅРµР»СЊ РІ Start()
                     }
                 }
             }
@@ -364,7 +364,7 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Корутина для деактивации панели после задержки
+    /// РљРѕСЂСѓС‚РёРЅР° РґР»СЏ РґРµР°РєС‚РёРІР°С†РёРё РїР°РЅРµР»Рё РїРѕСЃР»Рµ Р·Р°РґРµСЂР¶РєРё
     /// </summary>
     System.Collections.IEnumerator DeactivatePanelAfterDelay(GameObject panel, float delay)
     {
@@ -376,20 +376,19 @@ public class GameInitializer : MonoBehaviour
     }
 
     /// <summary>
-    /// Убедиться что ItemFactory инициализирован с ItemDatabase
+    /// РЈР±РµРґРёС‚СЊСЃСЏ С‡С‚Рѕ ItemFactory РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ СЃ ItemDatabase
     /// </summary>
     void EnsureItemFactory()
     {
-        // Загружаем ItemDatabase из Resources
+        // Р—Р°РіСЂСѓР¶Р°РµРј ItemDatabase РёР· Resources
         ItemDatabase itemDatabase = Resources.Load<ItemDatabase>("ItemDatabase");
 
         if (itemDatabase == null)
         {
-            Debug.LogWarning("[GameInitializer] ItemDatabase not found in Resources! Create it via Assets -> Create -> Inventory -> Item Database");
             return;
         }
 
-        // Инициализируем ItemFactory
+        // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј ItemFactory
         ItemFactory.Initialize(itemDatabase);
     }
 }

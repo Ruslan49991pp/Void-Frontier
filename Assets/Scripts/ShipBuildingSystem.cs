@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
@@ -6,7 +6,7 @@ public class RoomData
 {
     public string roomName;
     public string roomType;
-    public Vector2Int size; // размер в клетках
+    public Vector2Int size; // СЂР°Р·РјРµСЂ РІ РєР»РµС‚РєР°С…
     public int cost;
     public GameObject prefab;
     public Color previewColor = Color.green;
@@ -28,40 +28,40 @@ public class ShipBuildingSystem : MonoBehaviour
     public Material previewMaterial;
     public LayerMask groundLayerMask = 1;
 
-    // Состояния строительства
+    // РЎРѕСЃС‚РѕСЏРЅРёСЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     public enum BuildingPhase
     {
-        None,           // Режим строительства неактивен
-        PlacingRoom,    // Этап 1: Размещение призрака комнаты
-        PlacingDoor     // Этап 2: Размещение двери
+        None,           // Р РµР¶РёРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° РЅРµР°РєС‚РёРІРµРЅ
+        PlacingRoom,    // Р­С‚Р°Рї 1: Р Р°Р·РјРµС‰РµРЅРёРµ РїСЂРёР·СЂР°РєР° РєРѕРјРЅР°С‚С‹
+        PlacingDoor     // Р­С‚Р°Рї 2: Р Р°Р·РјРµС‰РµРЅРёРµ РґРІРµСЂРё
     }
 
-    // Внутренние переменные
+    // Р’РЅСѓС‚СЂРµРЅРЅРёРµ РїРµСЂРµРјРµРЅРЅС‹Рµ
     private bool buildingMode = false;
     private bool deletionMode = false;
     private BuildingPhase currentPhase = BuildingPhase.None;
     private int selectedRoomIndex = 0;
     private GameObject previewObject;
-    private GameObject doorPreviewObject; // Призрак двери
-    private Vector2Int pendingRoomPosition; // Позиция размещаемой комнаты
-    private Vector2Int pendingRoomSize; // Размер размещаемой комнаты
-    private int pendingRoomRotation; // Поворот размещаемой комнаты
-    private List<Vector2Int> straightWallPositions = new List<Vector2Int>(); // Позиции прямых стен для двери
-    private Vector2Int doorPosition = Vector2Int.zero; // Текущая позиция двери
+    private GameObject doorPreviewObject; // РџСЂРёР·СЂР°Рє РґРІРµСЂРё
+    private Vector2Int pendingRoomPosition; // РџРѕР·РёС†РёСЏ СЂР°Р·РјРµС‰Р°РµРјРѕР№ РєРѕРјРЅР°С‚С‹
+    private Vector2Int pendingRoomSize; // Р Р°Р·РјРµСЂ СЂР°Р·РјРµС‰Р°РµРјРѕР№ РєРѕРјРЅР°С‚С‹
+    private int pendingRoomRotation; // РџРѕРІРѕСЂРѕС‚ СЂР°Р·РјРµС‰Р°РµРјРѕР№ РєРѕРјРЅР°С‚С‹
+    private List<Vector2Int> straightWallPositions = new List<Vector2Int>(); // РџРѕР·РёС†РёРё РїСЂСЏРјС‹С… СЃС‚РµРЅ РґР»СЏ РґРІРµСЂРё
+    private Vector2Int doorPosition = Vector2Int.zero; // РўРµРєСѓС‰Р°СЏ РїРѕР·РёС†РёСЏ РґРІРµСЂРё
     private List<GameObject> previewCells = new List<GameObject>();
     private List<GameObject> builtRooms = new List<GameObject>();
 
-    // Автоматическое строительство при выборе двери (ОТКЛЮЧЕНО)
+    // РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРµ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РїСЂРё РІС‹Р±РѕСЂРµ РґРІРµСЂРё (РћРўРљР›Р®Р§Р•РќРћ)
     private float doorSelectionTimer = 0f;
-    private const float AUTO_BUILD_DELAY = float.MaxValue; // автоматическое строительство отключено
+    private const float AUTO_BUILD_DELAY = float.MaxValue; // Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРµ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РѕС‚РєР»СЋС‡РµРЅРѕ
     private Vector2Int lastDoorPosition = Vector2Int.zero;
     private bool roomBuilt = false;
     private GameObject highlightedRoom = null;
     private Material originalMaterial = null;
-    private int roomRotation = 0; // Поворот комнаты в градусах (0, 90, 180, 270)
-    private bool scrollWheelUsedThisFrame = false; // Флаг использования ролика в этом кадре
+    private int roomRotation = 0; // РџРѕРІРѕСЂРѕС‚ РєРѕРјРЅР°С‚С‹ РІ РіСЂР°РґСѓСЃР°С… (0, 90, 180, 270)
+    private bool scrollWheelUsedThisFrame = false; // Р¤Р»Р°Рі РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ СЂРѕР»РёРєР° РІ СЌС‚РѕРј РєР°РґСЂРµ
 
-    // События
+    // РЎРѕР±С‹С‚РёСЏ
     public System.Action<GameObject> OnRoomBuilt;
     public System.Action<GameObject> OnRoomDeleted;
     public System.Action OnBuildingModeChanged;
@@ -74,10 +74,10 @@ public class ShipBuildingSystem : MonoBehaviour
 
     void Update()
     {
-        // Сбрасываем флаг использования ролика в начале кадра
+        // РЎР±СЂР°СЃС‹РІР°РµРј С„Р»Р°Рі РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ СЂРѕР»РёРєР° РІ РЅР°С‡Р°Р»Рµ РєР°РґСЂР°
         scrollWheelUsedThisFrame = false;
 
-        // Проверяем паузу, но разрешаем строительство во время паузы стройки
+        // РџСЂРѕРІРµСЂСЏРµРј РїР°СѓР·Сѓ, РЅРѕ СЂР°Р·СЂРµС€Р°РµРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РІРѕ РІСЂРµРјСЏ РїР°СѓР·С‹ СЃС‚СЂРѕР№РєРё
         bool isPaused = GamePauseManager.Instance.IsPaused();
         bool isBuildModePause = GamePauseManager.Instance.IsBuildModePause();
 
@@ -94,7 +94,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Инициализация системы строительства
+    /// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ СЃРёСЃС‚РµРјС‹ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     void InitializeBuildingSystem()
     {
@@ -108,15 +108,15 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Создание стандартных типов комнат (теперь только формы/размеры)
+    /// РЎРѕР·РґР°РЅРёРµ СЃС‚Р°РЅРґР°СЂС‚РЅС‹С… С‚РёРїРѕРІ РєРѕРјРЅР°С‚ (С‚РµРїРµСЂСЊ С‚РѕР»СЊРєРѕ С„РѕСЂРјС‹/СЂР°Р·РјРµСЂС‹)
     /// </summary>
     void CreateDefaultRooms()
     {
         if (availableRooms.Count == 0)
         {
-            // Маленький модуль 4x4
+            // РњР°Р»РµРЅСЊРєРёР№ РјРѕРґСѓР»СЊ 4x4
             RoomData smallModule = new RoomData();
-            smallModule.roomName = "Малый модуль";
+            smallModule.roomName = "РњР°Р»С‹Р№ РјРѕРґСѓР»СЊ";
             smallModule.roomType = "Module";
             smallModule.size = new Vector2Int(4, 4);
             smallModule.cost = 40;
@@ -124,9 +124,9 @@ public class ShipBuildingSystem : MonoBehaviour
             smallModule.prefab = null;
             availableRooms.Add(smallModule);
 
-            // Средний модуль 6x6
+            // РЎСЂРµРґРЅРёР№ РјРѕРґСѓР»СЊ 6x6
             RoomData mediumModule = new RoomData();
-            mediumModule.roomName = "Средний модуль";
+            mediumModule.roomName = "РЎСЂРµРґРЅРёР№ РјРѕРґСѓР»СЊ";
             mediumModule.roomType = "Module";
             mediumModule.size = new Vector2Int(6, 6);
             mediumModule.cost = 80;
@@ -134,9 +134,9 @@ public class ShipBuildingSystem : MonoBehaviour
             mediumModule.prefab = null;
             availableRooms.Add(mediumModule);
 
-            // Большой модуль 8x8
+            // Р‘РѕР»СЊС€РѕР№ РјРѕРґСѓР»СЊ 8x8
             RoomData largeModule = new RoomData();
-            largeModule.roomName = "Большой модуль";
+            largeModule.roomName = "Р‘РѕР»СЊС€РѕР№ РјРѕРґСѓР»СЊ";
             largeModule.roomType = "Module";
             largeModule.size = new Vector2Int(8, 8);
             largeModule.cost = 120;
@@ -145,30 +145,30 @@ public class ShipBuildingSystem : MonoBehaviour
             availableRooms.Add(largeModule);
         }
 
-        // Создаем список доступных главных объектов
+        // РЎРѕР·РґР°РµРј СЃРїРёСЃРѕРє РґРѕСЃС‚СѓРїРЅС‹С… РіР»Р°РІРЅС‹С… РѕР±СЉРµРєС‚РѕРІ
         if (availableMainObjects.Count == 0)
         {
-            // Система жизнеобеспечения
+            // РЎРёСЃС‚РµРјР° Р¶РёР·РЅРµРѕР±РµСЃРїРµС‡РµРЅРёСЏ
             MainObjectData lifeSupport = new MainObjectData(
-                "Система жизнеобеспечения",
+                "РЎРёСЃС‚РµРјР° Р¶РёР·РЅРµРѕР±РµСЃРїРµС‡РµРЅРёСЏ",
                 MainObjectType.LifeSupport,
                 200f,
                 100
             );
             availableMainObjects.Add(lifeSupport);
 
-            // Рука-манипулятор
+            // Р СѓРєР°-РјР°РЅРёРїСѓР»СЏС‚РѕСЂ
             MainObjectData manipulatorArm = new MainObjectData(
-                "Рука-манипулятор",
+                "Р СѓРєР°-РјР°РЅРёРїСѓР»СЏС‚РѕСЂ",
                 MainObjectType.ManipulatorArm,
                 150f,
                 80
             );
             availableMainObjects.Add(manipulatorArm);
 
-            // Реакторная установка
+            // Р РµР°РєС‚РѕСЂРЅР°СЏ СѓСЃС‚Р°РЅРѕРІРєР°
             MainObjectData reactor = new MainObjectData(
-                "Реакторная установка",
+                "Р РµР°РєС‚РѕСЂРЅР°СЏ СѓСЃС‚Р°РЅРѕРІРєР°",
                 MainObjectType.ReactorInstallation,
                 300f,
                 200
@@ -181,30 +181,30 @@ public class ShipBuildingSystem : MonoBehaviour
 
 
     /// <summary>
-    /// Создание префаба комнаты
+    /// РЎРѕР·РґР°РЅРёРµ РїСЂРµС„Р°Р±Р° РєРѕРјРЅР°С‚С‹
     /// </summary>
     GameObject CreateRoomPrefab(RoomData roomData)
     {
         GameObject roomPrefab = new GameObject($"{roomData.roomName}_Prefab");
 
-        // Создаем визуальное представление
+        // РЎРѕР·РґР°РµРј РІРёР·СѓР°Р»СЊРЅРѕРµ РїСЂРµРґСЃС‚Р°РІР»РµРЅРёРµ
         GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
         visual.name = "RoomVisual";
         visual.transform.SetParent(roomPrefab.transform);
         visual.transform.localPosition = Vector3.zero;
 
-        // Масштабируем по размеру комнаты
+        // РњР°СЃС€С‚Р°Р±РёСЂСѓРµРј РїРѕ СЂР°Р·РјРµСЂСѓ РєРѕРјРЅР°С‚С‹
         float width = roomData.size.x * gridManager.cellSize;
         float height = roomData.size.y * gridManager.cellSize;
         visual.transform.localScale = new Vector3(width, 2f, height);
 
-        // Настраиваем материал
+        // РќР°СЃС‚СЂР°РёРІР°РµРј РјР°С‚РµСЂРёР°Р»
         Renderer renderer = visual.GetComponent<Renderer>();
         Material roomMaterial = new Material(Shader.Find("Standard"));
         roomMaterial.color = new Color(0.8f, 0.8f, 1f, 1f);
         renderer.material = roomMaterial;
 
-        // Добавляем информацию об объекте
+        // Р”РѕР±Р°РІР»СЏРµРј РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± РѕР±СЉРµРєС‚Рµ
         LocationObjectInfo objectInfo = roomPrefab.AddComponent<LocationObjectInfo>();
         objectInfo.objectName = roomData.roomName;
         objectInfo.objectType = roomData.roomType;
@@ -216,7 +216,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Включить/выключить режим строительства
+    /// Р’РєР»СЋС‡РёС‚СЊ/РІС‹РєР»СЋС‡РёС‚СЊ СЂРµР¶РёРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     public void ToggleBuildingMode()
     {
@@ -235,7 +235,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Установить режим строительства (используется из GameUI)
+    /// РЈСЃС‚Р°РЅРѕРІРёС‚СЊ СЂРµР¶РёРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° (РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РёР· GameUI)
     /// </summary>
     public void SetBuildMode(bool enabled)
     {
@@ -260,7 +260,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Запустить режим строительства
+    /// Р—Р°РїСѓСЃС‚РёС‚СЊ СЂРµР¶РёРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     void StartBuildingMode()
     {
@@ -268,7 +268,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Остановить режим строительства
+    /// РћСЃС‚Р°РЅРѕРІРёС‚СЊ СЂРµР¶РёРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     void StopBuildingMode()
     {
@@ -289,7 +289,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Создать объект предварительного просмотра
+    /// РЎРѕР·РґР°С‚СЊ РѕР±СЉРµРєС‚ РїСЂРµРґРІР°СЂРёС‚РµР»СЊРЅРѕРіРѕ РїСЂРѕСЃРјРѕС‚СЂР°
     /// </summary>
     void CreatePreviewObject()
     {
@@ -303,32 +303,32 @@ public class ShipBuildingSystem : MonoBehaviour
 
         ClearPreviewCells();
 
-        // Создаем призрак комнаты с настоящими стенами (используем временную позицию, обновится в UpdatePreview)
+        // РЎРѕР·РґР°РµРј РїСЂРёР·СЂР°Рє РєРѕРјРЅР°С‚С‹ СЃ РЅР°СЃС‚РѕСЏС‰РёРјРё СЃС‚РµРЅР°РјРё (РёСЃРїРѕР»СЊР·СѓРµРј РІСЂРµРјРµРЅРЅСѓСЋ РїРѕР·РёС†РёСЋ, РѕР±РЅРѕРІРёС‚СЃСЏ РІ UpdatePreview)
         Vector2Int rotatedSize = GetRotatedRoomSize(currentRoom.size, roomRotation);
         previewObject = CreateGhostRoom(Vector2Int.zero, rotatedSize, currentRoom.roomName + "_Preview", roomRotation);
     }
 
     /// <summary>
-    /// Создать призрак комнаты с полупрозрачными стенами
+    /// РЎРѕР·РґР°С‚СЊ РїСЂРёР·СЂР°Рє РєРѕРјРЅР°С‚С‹ СЃ РїРѕР»СѓРїСЂРѕР·СЂР°С‡РЅС‹РјРё СЃС‚РµРЅР°РјРё
     /// </summary>
     GameObject CreateGhostRoom(Vector2Int gridPosition, Vector2Int roomSize, string roomName, int rotation = 0)
     {
         GameObject ghostRoom = new GameObject(roomName);
 
-        // Пол не создаем - в реальных комнатах его нет
+        // РџРѕР» РЅРµ СЃРѕР·РґР°РµРј - РІ СЂРµР°Р»СЊРЅС‹С… РєРѕРјРЅР°С‚Р°С… РµРіРѕ РЅРµС‚
 
-        // Создаем призрачные стены с учетом поворота
+        // РЎРѕР·РґР°РµРј РїСЂРёР·СЂР°С‡РЅС‹Рµ СЃС‚РµРЅС‹ СЃ СѓС‡РµС‚РѕРј РїРѕРІРѕСЂРѕС‚Р°
         CreateGhostWalls(ghostRoom, Vector2Int.zero, roomSize, rotation);
 
         return ghostRoom;
     }
 
     /// <summary>
-    /// Создать призрачный пол
+    /// РЎРѕР·РґР°С‚СЊ РїСЂРёР·СЂР°С‡РЅС‹Р№ РїРѕР»
     /// </summary>
     void CreateGhostFloor(GameObject parent, Vector2Int gridPosition, Vector2Int roomSize)
     {
-        // Создаем пол только для внутренних клеток (без стен по периметру)
+        // РЎРѕР·РґР°РµРј РїРѕР» С‚РѕР»СЊРєРѕ РґР»СЏ РІРЅСѓС‚СЂРµРЅРЅРёС… РєР»РµС‚РѕРє (Р±РµР· СЃС‚РµРЅ РїРѕ РїРµСЂРёРјРµС‚СЂСѓ)
         int innerWidth = Mathf.Max(1, roomSize.x - 2);
         int innerHeight = Mathf.Max(1, roomSize.y - 2);
 
@@ -338,12 +338,12 @@ public class ShipBuildingSystem : MonoBehaviour
             floor.name = "GhostFloor";
             floor.transform.SetParent(parent.transform);
 
-            // Размеры внутреннего пола
+            // Р Р°Р·РјРµСЂС‹ РІРЅСѓС‚СЂРµРЅРЅРµРіРѕ РїРѕР»Р°
             float width = innerWidth * gridManager.cellSize;
             float height = innerHeight * gridManager.cellSize;
             float floorThickness = 0.1f;
 
-            // Позиция - центр внутренней области
+            // РџРѕР·РёС†РёСЏ - С†РµРЅС‚СЂ РІРЅСѓС‚СЂРµРЅРЅРµР№ РѕР±Р»Р°СЃС‚Рё
             Vector3 centerOffset = new Vector3(
                 (roomSize.x - 1) * gridManager.cellSize * 0.5f,
                 -floorThickness * 0.5f,
@@ -353,20 +353,20 @@ public class ShipBuildingSystem : MonoBehaviour
             floor.transform.localPosition = centerOffset;
             floor.transform.localScale = new Vector3(width, floorThickness, height);
 
-            // Убираем коллайдер
+            // РЈР±РёСЂР°РµРј РєРѕР»Р»Р°Р№РґРµСЂ
             Destroy(floor.GetComponent<Collider>());
 
-            // Применяем призрачный материал
+            // РџСЂРёРјРµРЅСЏРµРј РїСЂРёР·СЂР°С‡РЅС‹Р№ РјР°С‚РµСЂРёР°Р»
             ApplyGhostMaterial(floor.GetComponent<Renderer>(), true);
         }
     }
 
     /// <summary>
-    /// Создать призрачные стены
+    /// РЎРѕР·РґР°С‚СЊ РїСЂРёР·СЂР°С‡РЅС‹Рµ СЃС‚РµРЅС‹
     /// </summary>
     void CreateGhostWalls(GameObject parent, Vector2Int gridPosition, Vector2Int roomSize, int rotation = 0)
     {
-        // Используем ту же логику что и в RoomBuilder для получения стен
+        // РСЃРїРѕР»СЊР·СѓРµРј С‚Сѓ Р¶Рµ Р»РѕРіРёРєСѓ С‡С‚Рѕ Рё РІ RoomBuilder РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ СЃС‚РµРЅ
         List<WallData> walls = GetGhostRoomWalls(gridPosition, roomSize, rotation);
 
         foreach (WallData wallData in walls)
@@ -376,7 +376,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить список стен для призрачной комнаты (копия логики из RoomBuilder)
+    /// РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє СЃС‚РµРЅ РґР»СЏ РїСЂРёР·СЂР°С‡РЅРѕР№ РєРѕРјРЅР°С‚С‹ (РєРѕРїРёСЏ Р»РѕРіРёРєРё РёР· RoomBuilder)
     /// </summary>
     List<WallData> GetGhostRoomWalls(Vector2Int gridPosition, Vector2Int roomSize, int rotation = 0)
     {
@@ -388,12 +388,12 @@ public class ShipBuildingSystem : MonoBehaviour
             {
                 Vector2Int cellPos = new Vector2Int(gridPosition.x + x, gridPosition.y + y);
 
-                // Проверяем, является ли клетка частью периметра
+                // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РєР»РµС‚РєР° С‡Р°СЃС‚СЊСЋ РїРµСЂРёРјРµС‚СЂР°
                 bool isPerimeter = (x == 0 || x == roomSize.x - 1 || y == 0 || y == roomSize.y - 1);
 
                 if (isPerimeter)
                 {
-                    // Определяем сторону комнаты для стены с учетом поворота
+                    // РћРїСЂРµРґРµР»СЏРµРј СЃС‚РѕСЂРѕРЅСѓ РєРѕРјРЅР°С‚С‹ РґР»СЏ СЃС‚РµРЅС‹ СЃ СѓС‡РµС‚РѕРј РїРѕРІРѕСЂРѕС‚Р°
                     WallSide wallSide = DetermineGhostWallSide(x, y, roomSize, rotation);
                     WallType wallType = DetermineGhostWallType(wallSide);
 
@@ -406,7 +406,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Определить сторону комнаты для призрачной стены
+    /// РћРїСЂРµРґРµР»РёС‚СЊ СЃС‚РѕСЂРѕРЅСѓ РєРѕРјРЅР°С‚С‹ РґР»СЏ РїСЂРёР·СЂР°С‡РЅРѕР№ СЃС‚РµРЅС‹
     /// </summary>
     WallSide DetermineGhostWallSide(int relativeX, int relativeY, Vector2Int roomSize, int rotation = 0)
     {
@@ -417,23 +417,23 @@ public class ShipBuildingSystem : MonoBehaviour
 
         WallSide baseSide = WallSide.None;
 
-        // Сначала проверяем углы
+        // РЎРЅР°С‡Р°Р»Р° РїСЂРѕРІРµСЂСЏРµРј СѓРіР»С‹
         if (isTopEdge && isLeftEdge) baseSide = WallSide.TopLeft;
         else if (isTopEdge && isRightEdge) baseSide = WallSide.TopRight;
         else if (isBottomEdge && isLeftEdge) baseSide = WallSide.BottomLeft;
         else if (isBottomEdge && isRightEdge) baseSide = WallSide.BottomRight;
-        // Затем обычные стороны
+        // Р—Р°С‚РµРј РѕР±С‹С‡РЅС‹Рµ СЃС‚РѕСЂРѕРЅС‹
         else if (isTopEdge) baseSide = WallSide.Top;
         else if (isBottomEdge) baseSide = WallSide.Bottom;
         else if (isLeftEdge) baseSide = WallSide.Left;
         else if (isRightEdge) baseSide = WallSide.Right;
 
-        // Применяем поворот к определенной стороне
+        // РџСЂРёРјРµРЅСЏРµРј РїРѕРІРѕСЂРѕС‚ Рє РѕРїСЂРµРґРµР»РµРЅРЅРѕР№ СЃС‚РѕСЂРѕРЅРµ
         return RotateWallSide(baseSide, rotation);
     }
 
     /// <summary>
-    /// Повернуть сторону стены на заданный угол
+    /// РџРѕРІРµСЂРЅСѓС‚СЊ СЃС‚РѕСЂРѕРЅСѓ СЃС‚РµРЅС‹ РЅР° Р·Р°РґР°РЅРЅС‹Р№ СѓРіРѕР»
     /// </summary>
     WallSide RotateWallSide(WallSide originalSide, int rotation)
     {
@@ -476,7 +476,7 @@ public class ShipBuildingSystem : MonoBehaviour
                     case 3: return WallSide.Bottom;
                     default: return WallSide.Left;
                 }
-            // Углы
+            // РЈРіР»С‹
             case WallSide.TopLeft:
                 switch (rotationSteps)
                 {
@@ -515,7 +515,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Определить тип призрачной стены
+    /// РћРїСЂРµРґРµР»РёС‚СЊ С‚РёРї РїСЂРёР·СЂР°С‡РЅРѕР№ СЃС‚РµРЅС‹
     /// </summary>
     WallType DetermineGhostWallType(WallSide wallSide)
     {
@@ -532,11 +532,11 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Создать призрачную стену
+    /// РЎРѕР·РґР°С‚СЊ РїСЂРёР·СЂР°С‡РЅСѓСЋ СЃС‚РµРЅСѓ
     /// </summary>
     void CreateGhostWall(GameObject parent, WallData wallData, int roomRotation = 0)
     {
-        // Выбираем правильный префаб
+        // Р’С‹Р±РёСЂР°РµРј РїСЂР°РІРёР»СЊРЅС‹Р№ РїСЂРµС„Р°Р±
         GameObject prefabToUse = null;
         if (wallData.wallType == WallType.Corner && RoomBuilder.Instance.wallCornerPrefab != null)
         {
@@ -551,27 +551,27 @@ public class ShipBuildingSystem : MonoBehaviour
         {
             GameObject ghostWall = Instantiate(prefabToUse, parent.transform);
 
-            // Используем относительные координаты в имени (wallData.position - это абсолютные координаты)
+            // РСЃРїРѕР»СЊР·СѓРµРј РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅС‹Рµ РєРѕРѕСЂРґРёРЅР°С‚С‹ РІ РёРјРµРЅРё (wallData.position - СЌС‚Рѕ Р°Р±СЃРѕР»СЋС‚РЅС‹Рµ РєРѕРѕСЂРґРёРЅР°С‚С‹)
             int relativeX = wallData.position.x - wallData.roomPosition.x;
             int relativeY = wallData.position.y - wallData.roomPosition.y;
             ghostWall.name = $"GhostWall_{relativeX}_{relativeY}_{wallData.wallSide}";
 
-            // Позиционирование временное - будет обновлено в UpdateGhostRoomPosition
+            // РџРѕР·РёС†РёРѕРЅРёСЂРѕРІР°РЅРёРµ РІСЂРµРјРµРЅРЅРѕРµ - Р±СѓРґРµС‚ РѕР±РЅРѕРІР»РµРЅРѕ РІ UpdateGhostRoomPosition
             Vector3 worldPos = GridToWorldPosition(wallData.position);
             ghostWall.transform.position = worldPos;
 
-            // Поворот с учетом поворота комнаты - используем тот же метод что и для обычных стен
+            // РџРѕРІРѕСЂРѕС‚ СЃ СѓС‡РµС‚РѕРј РїРѕРІРѕСЂРѕС‚Р° РєРѕРјРЅР°С‚С‹ - РёСЃРїРѕР»СЊР·СѓРµРј С‚РѕС‚ Р¶Рµ РјРµС‚РѕРґ С‡С‚Рѕ Рё РґР»СЏ РѕР±С‹С‡РЅС‹С… СЃС‚РµРЅ
             float wallRotation = wallData.GetRotationTowardRoom();
             ghostWall.transform.localRotation = Quaternion.Euler(0, wallRotation, 0);
 
-            // Убираем коллайдеры
+            // РЈР±РёСЂР°РµРј РєРѕР»Р»Р°Р№РґРµСЂС‹
             Collider[] colliders = ghostWall.GetComponentsInChildren<Collider>();
             foreach (Collider col in colliders)
             {
                 Destroy(col);
             }
 
-            // Применяем призрачный материал ко всем рендерерам
+            // РџСЂРёРјРµРЅСЏРµРј РїСЂРёР·СЂР°С‡РЅС‹Р№ РјР°С‚РµСЂРёР°Р» РєРѕ РІСЃРµРј СЂРµРЅРґРµСЂРµСЂР°Рј
             Renderer[] renderers = ghostWall.GetComponentsInChildren<Renderer>();
             foreach (Renderer renderer in renderers)
             {
@@ -582,7 +582,7 @@ public class ShipBuildingSystem : MonoBehaviour
 
 
     /// <summary>
-    /// Преобразование координат сетки в мировые (для призраков)
+    /// РџСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ РєРѕРѕСЂРґРёРЅР°С‚ СЃРµС‚РєРё РІ РјРёСЂРѕРІС‹Рµ (РґР»СЏ РїСЂРёР·СЂР°РєРѕРІ)
     /// </summary>
     Vector3 GridToWorldPosition(Vector2Int gridPos)
     {
@@ -591,41 +591,41 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновить позиции всех элементов призрачной комнаты
+    /// РћР±РЅРѕРІРёС‚СЊ РїРѕР·РёС†РёРё РІСЃРµС… СЌР»РµРјРµРЅС‚РѕРІ РїСЂРёР·СЂР°С‡РЅРѕР№ РєРѕРјРЅР°С‚С‹
     /// </summary>
     void UpdateGhostRoomPosition(GameObject ghostRoom, Vector2Int gridPos, Vector2Int roomSize)
     {
         if (ghostRoom == null) return;
 
-        // Находим все призрачные стены и обновляем их позиции
+        // РќР°С…РѕРґРёРј РІСЃРµ РїСЂРёР·СЂР°С‡РЅС‹Рµ СЃС‚РµРЅС‹ Рё РѕР±РЅРѕРІР»СЏРµРј РёС… РїРѕР·РёС†РёРё
         Transform[] children = ghostRoom.GetComponentsInChildren<Transform>();
         foreach (Transform child in children)
         {
             if (child.name.StartsWith("GhostWall_"))
             {
-                // Извлекаем относительные координаты из имени стены
+                // РР·РІР»РµРєР°РµРј РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅС‹Рµ РєРѕРѕСЂРґРёРЅР°С‚С‹ РёР· РёРјРµРЅРё СЃС‚РµРЅС‹
                 string[] nameParts = child.name.Split('_');
                 if (nameParts.Length >= 3)
                 {
                     int relativeX = int.Parse(nameParts[1]);
                     int relativeY = int.Parse(nameParts[2]);
 
-                    // Вычисляем абсолютные координаты стены
+                    // Р’С‹С‡РёСЃР»СЏРµРј Р°Р±СЃРѕР»СЋС‚РЅС‹Рµ РєРѕРѕСЂРґРёРЅР°С‚С‹ СЃС‚РµРЅС‹
                     Vector2Int absolutePos = new Vector2Int(gridPos.x + relativeX, gridPos.y + relativeY);
 
-                    // Обновляем позицию стены
+                    // РћР±РЅРѕРІР»СЏРµРј РїРѕР·РёС†РёСЋ СЃС‚РµРЅС‹
                     Vector3 worldPos = GridToWorldPosition(absolutePos);
                     child.transform.position = worldPos;
                 }
             }
         }
 
-        // Устанавливаем базовую позицию родительского объекта
+        // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р±Р°Р·РѕРІСѓСЋ РїРѕР·РёС†РёСЋ СЂРѕРґРёС‚РµР»СЊСЃРєРѕРіРѕ РѕР±СЉРµРєС‚Р°
         ghostRoom.transform.position = Vector3.zero;
     }
 
     /// <summary>
-    /// Применить призрачный материал к рендереру
+    /// РџСЂРёРјРµРЅРёС‚СЊ РїСЂРёР·СЂР°С‡РЅС‹Р№ РјР°С‚РµСЂРёР°Р» Рє СЂРµРЅРґРµСЂРµСЂСѓ
     /// </summary>
     void ApplyGhostMaterial(Renderer renderer, bool canPlace)
     {
@@ -648,33 +648,33 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновление предварительного просмотра
+    /// РћР±РЅРѕРІР»РµРЅРёРµ РїСЂРµРґРІР°СЂРёС‚РµР»СЊРЅРѕРіРѕ РїСЂРѕСЃРјРѕС‚СЂР°
     /// </summary>
     void UpdatePreview()
     {
         if (previewObject == null || playerCamera == null)
             return;
 
-        // В фазе размещения двери призрак комнаты должен оставаться зафиксированным
+        // Р’ С„Р°Р·Рµ СЂР°Р·РјРµС‰РµРЅРёСЏ РґРІРµСЂРё РїСЂРёР·СЂР°Рє РєРѕРјРЅР°С‚С‹ РґРѕР»Р¶РµРЅ РѕСЃС‚Р°РІР°С‚СЊСЃСЏ Р·Р°С„РёРєСЃРёСЂРѕРІР°РЅРЅС‹Рј
         if (currentPhase == BuildingPhase.PlacingDoor)
         {
-            // Обновляем только цвет призрака комнаты (зеленый, так как позиция уже выбрана)
+            // РћР±РЅРѕРІР»СЏРµРј С‚РѕР»СЊРєРѕ С†РІРµС‚ РїСЂРёР·СЂР°РєР° РєРѕРјРЅР°С‚С‹ (Р·РµР»РµРЅС‹Р№, С‚Р°Рє РєР°Рє РїРѕР·РёС†РёСЏ СѓР¶Рµ РІС‹Р±СЂР°РЅР°)
             UpdatePreviewColor(true);
             return;
         }
 
-        // Только в фазе размещения комнаты обновляем позицию призрака
+        // РўРѕР»СЊРєРѕ РІ С„Р°Р·Рµ СЂР°Р·РјРµС‰РµРЅРёСЏ РєРѕРјРЅР°С‚С‹ РѕР±РЅРѕРІР»СЏРµРј РїРѕР·РёС†РёСЋ РїСЂРёР·СЂР°РєР°
         if (currentPhase != BuildingPhase.PlacingRoom)
             return;
 
-        // Получаем позицию мыши в мире
+        // РџРѕР»СѓС‡Р°РµРј РїРѕР·РёС†РёСЋ РјС‹С€Рё РІ РјРёСЂРµ
         Vector3 mousePosition = Input.mousePosition;
         Ray ray = playerCamera.ScreenPointToRay(mousePosition);
 
         Vector3 worldPos;
         Vector2Int gridPos;
 
-        // Попробуем raycast на землю/объекты
+        // РџРѕРїСЂРѕР±СѓРµРј raycast РЅР° Р·РµРјР»СЋ/РѕР±СЉРµРєС‚С‹
         if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity))
         {
             worldPos = hit.point;
@@ -682,7 +682,7 @@ public class ShipBuildingSystem : MonoBehaviour
         }
         else
         {
-            // Если raycast не попал, используем плоскость Y=0
+            // Р•СЃР»Рё raycast РЅРµ РїРѕРїР°Р», РёСЃРїРѕР»СЊР·СѓРµРј РїР»РѕСЃРєРѕСЃС‚СЊ Y=0
             Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
             if (groundPlane.Raycast(ray, out float distance))
             {
@@ -691,34 +691,34 @@ public class ShipBuildingSystem : MonoBehaviour
             }
             else
             {
-                return; // Не можем определить позицию
+                return; // РќРµ РјРѕР¶РµРј РѕРїСЂРµРґРµР»РёС‚СЊ РїРѕР·РёС†РёСЋ
             }
         }
 
         Vector3 snapPosition = gridManager.GridToWorld(gridPos);
 
-        // Обновляем призрачную комнату с правильными координатами
+        // РћР±РЅРѕРІР»СЏРµРј РїСЂРёР·СЂР°С‡РЅСѓСЋ РєРѕРјРЅР°С‚Сѓ СЃ РїСЂР°РІРёР»СЊРЅС‹РјРё РєРѕРѕСЂРґРёРЅР°С‚Р°РјРё
         RoomData currentRoom = availableRooms[selectedRoomIndex];
         Vector2Int rotatedSize = GetRotatedRoomSize(currentRoom.size, roomRotation);
         UpdateGhostRoomPosition(previewObject, gridPos, rotatedSize);
 
-        // Убираем индикаторы клеток - теперь используем полноценный призрак комнаты
+        // РЈР±РёСЂР°РµРј РёРЅРґРёРєР°С‚РѕСЂС‹ РєР»РµС‚РѕРє - С‚РµРїРµСЂСЊ РёСЃРїРѕР»СЊР·СѓРµРј РїРѕР»РЅРѕС†РµРЅРЅС‹Р№ РїСЂРёР·СЂР°Рє РєРѕРјРЅР°С‚С‹
         // UpdatePreviewCells(gridPos, currentRoom);
 
-        // Проверяем, можно ли разместить комнату и обновляем цвет призрака
+        // РџСЂРѕРІРµСЂСЏРµРј, РјРѕР¶РЅРѕ Р»Рё СЂР°Р·РјРµСЃС‚РёС‚СЊ РєРѕРјРЅР°С‚Сѓ Рё РѕР±РЅРѕРІР»СЏРµРј С†РІРµС‚ РїСЂРёР·СЂР°РєР°
         bool canPlace = CanPlaceRoom(gridPos, currentRoom, roomRotation);
         UpdatePreviewColor(canPlace);
 
     }
 
     /// <summary>
-    /// Обновить цвет призрака здания в зависимости от возможности строительства
+    /// РћР±РЅРѕРІРёС‚СЊ С†РІРµС‚ РїСЂРёР·СЂР°РєР° Р·РґР°РЅРёСЏ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     void UpdatePreviewColor(bool canPlace)
     {
         if (previewObject == null) return;
 
-        // Обновляем материалы всех рендереров в призрачной комнате
+        // РћР±РЅРѕРІР»СЏРµРј РјР°С‚РµСЂРёР°Р»С‹ РІСЃРµС… СЂРµРЅРґРµСЂРµСЂРѕРІ РІ РїСЂРёР·СЂР°С‡РЅРѕР№ РєРѕРјРЅР°С‚Рµ
         Renderer[] renderers = previewObject.GetComponentsInChildren<Renderer>();
         foreach (Renderer renderer in renderers)
         {
@@ -727,15 +727,15 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработка ввода в режиме строительства
+    /// РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РІ СЂРµР¶РёРјРµ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     void HandleBuildingInput()
     {
-        // Проверяем, не находится ли мышь над UI элементом
+        // РџСЂРѕРІРµСЂСЏРµРј, РЅРµ РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё РјС‹С€СЊ РЅР°Рґ UI СЌР»РµРјРµРЅС‚РѕРј
         bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
                                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
-        // Обрабатываем ввод в зависимости от текущей фазы строительства
+        // РћР±СЂР°Р±Р°С‚С‹РІР°РµРј РІРІРѕРґ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ С‚РµРєСѓС‰РµР№ С„Р°Р·С‹ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
         switch (currentPhase)
         {
             case BuildingPhase.PlacingRoom:
@@ -746,22 +746,22 @@ public class ShipBuildingSystem : MonoBehaviour
                 break;
         }
 
-        // Общие клавиши для всех фаз
+        // РћР±С‰РёРµ РєР»Р°РІРёС€Рё РґР»СЏ РІСЃРµС… С„Р°Р·
         HandleCommonBuildingInput();
     }
 
     /// <summary>
-    /// Обработка ввода для фазы размещения комнаты
+    /// РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РґР»СЏ С„Р°Р·С‹ СЂР°Р·РјРµС‰РµРЅРёСЏ РєРѕРјРЅР°С‚С‹
     /// </summary>
     void HandleRoomPlacementInput(bool isPointerOverUI)
     {
-        // ЛКМ - зафиксировать позицию комнаты и перейти к размещению двери
+        // Р›РљРњ - Р·Р°С„РёРєСЃРёСЂРѕРІР°С‚СЊ РїРѕР·РёС†РёСЋ РєРѕРјРЅР°С‚С‹ Рё РїРµСЂРµР№С‚Рё Рє СЂР°Р·РјРµС‰РµРЅРёСЋ РґРІРµСЂРё
         if (Input.GetMouseButtonDown(0) && !isPointerOverUI)
         {
             TryPlaceRoomGhost();
         }
 
-        // ПКМ - отменить выбор комнаты или выйти из режима строительства
+        // РџРљРњ - РѕС‚РјРµРЅРёС‚СЊ РІС‹Р±РѕСЂ РєРѕРјРЅР°С‚С‹ РёР»Рё РІС‹Р№С‚Рё РёР· СЂРµР¶РёРјР° СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
         if (Input.GetMouseButtonDown(1) && !isPointerOverUI)
         {
             if (selectedRoomIndex >= 0)
@@ -776,25 +776,25 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработка ввода для фазы размещения двери
+    /// РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РґР»СЏ С„Р°Р·С‹ СЂР°Р·РјРµС‰РµРЅРёСЏ РґРІРµСЂРё
     /// </summary>
     void HandleDoorPlacementInput(bool isPointerOverUI)
     {
         FileLogger.Log($"DEBUG: HandleDoorPlacementInput called - doorPosition: {doorPosition}, timer: {doorSelectionTimer:F2}, roomBuilt: {roomBuilt}");
 
-        // Обновляем позицию двери по движению мыши
+        // РћР±РЅРѕРІР»СЏРµРј РїРѕР·РёС†РёСЋ РґРІРµСЂРё РїРѕ РґРІРёР¶РµРЅРёСЋ РјС‹С€Рё
         UpdateDoorPosition();
 
-        // ЛКМ - мгновенно финализировать строительство
+        // Р›РљРњ - РјРіРЅРѕРІРµРЅРЅРѕ С„РёРЅР°Р»РёР·РёСЂРѕРІР°С‚СЊ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ
         if (Input.GetMouseButtonDown(0) && !isPointerOverUI && !roomBuilt)
         {
             FileLogger.Log("DEBUG: Manual build triggered by LEFT CLICK");
             TryFinalizeBuildRoom();
         }
 
-        // Автоматическое строительство ОТКЛЮЧЕНО - только ручное подтверждение ЛКМ
+        // РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРµ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РћРўРљР›Р®Р§Р•РќРћ - С‚РѕР»СЊРєРѕ СЂСѓС‡РЅРѕРµ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ Р›РљРњ
 
-        // ПКМ - вернуться к размещению комнаты
+        // РџРљРњ - РІРµСЂРЅСѓС‚СЊСЃСЏ Рє СЂР°Р·РјРµС‰РµРЅРёСЋ РєРѕРјРЅР°С‚С‹
         if (Input.GetMouseButtonDown(1) && !isPointerOverUI)
         {
             ReturnToRoomPlacement();
@@ -802,15 +802,15 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновить позицию двери в зависимости от позиции мыши
+    /// РћР±РЅРѕРІРёС‚СЊ РїРѕР·РёС†РёСЋ РґРІРµСЂРё РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РїРѕР·РёС†РёРё РјС‹С€Рё
     /// </summary>
     void UpdateDoorPosition()
     {
         Vector2Int mouseGridPos = GetGridPositionFromMouse();
         FileLogger.Log($"DEBUG: UpdateDoorPosition - mouseGridPos: {mouseGridPos}, current doorPosition: {doorPosition}");
 
-        // Находим ближайшую прямую стену к позиции мыши
-        Vector2Int closestWallPos = doorPosition; // по умолчанию текущая позиция
+        // РќР°С…РѕРґРёРј Р±Р»РёР¶Р°Р№С€СѓСЋ РїСЂСЏРјСѓСЋ СЃС‚РµРЅСѓ Рє РїРѕР·РёС†РёРё РјС‹С€Рё
+        Vector2Int closestWallPos = doorPosition; // РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ С‚РµРєСѓС‰Р°СЏ РїРѕР·РёС†РёСЏ
         float minDistance = float.MaxValue;
 
         foreach (Vector2Int wallPos in straightWallPositions)
@@ -823,7 +823,7 @@ public class ShipBuildingSystem : MonoBehaviour
             }
         }
 
-        // Обновляем позицию двери если она изменилась
+        // РћР±РЅРѕРІР»СЏРµРј РїРѕР·РёС†РёСЋ РґРІРµСЂРё РµСЃР»Рё РѕРЅР° РёР·РјРµРЅРёР»Р°СЃСЊ
         if (closestWallPos != doorPosition)
         {
             FileLogger.Log($"DEBUG: Door position changed from {doorPosition} to {closestWallPos}");
@@ -837,11 +837,11 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Общие клавиши для всех фаз строительства
+    /// РћР±С‰РёРµ РєР»Р°РІРёС€Рё РґР»СЏ РІСЃРµС… С„Р°Р· СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     void HandleCommonBuildingInput()
     {
-        // Q и E - поворот комнаты (только в фазе размещения комнаты)
+        // Q Рё E - РїРѕРІРѕСЂРѕС‚ РєРѕРјРЅР°С‚С‹ (С‚РѕР»СЊРєРѕ РІ С„Р°Р·Рµ СЂР°Р·РјРµС‰РµРЅРёСЏ РєРѕРјРЅР°С‚С‹)
         if (currentPhase == BuildingPhase.PlacingRoom)
         {
             if (Input.GetKeyDown(KeyCode.Q))
@@ -854,7 +854,7 @@ public class ShipBuildingSystem : MonoBehaviour
                 RotateRoom(90);
             }
 
-            // Ролик мышки - поворот (только в фазе размещения комнаты)
+            // Р РѕР»РёРє РјС‹С€РєРё - РїРѕРІРѕСЂРѕС‚ (С‚РѕР»СЊРєРѕ РІ С„Р°Р·Рµ СЂР°Р·РјРµС‰РµРЅРёСЏ РєРѕРјРЅР°С‚С‹)
             float scrollWheel = Input.GetAxis("Mouse ScrollWheel");
             if (Mathf.Abs(scrollWheel) > 0.0001f)
             {
@@ -872,7 +872,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Попытка зафиксировать позицию комнаты и перейти к размещению двери
+    /// РџРѕРїС‹С‚РєР° Р·Р°С„РёРєСЃРёСЂРѕРІР°С‚СЊ РїРѕР·РёС†РёСЋ РєРѕРјРЅР°С‚С‹ Рё РїРµСЂРµР№С‚Рё Рє СЂР°Р·РјРµС‰РµРЅРёСЋ РґРІРµСЂРё
     /// </summary>
     void TryPlaceRoomGhost()
     {
@@ -886,33 +886,33 @@ public class ShipBuildingSystem : MonoBehaviour
             return;
         }
 
-        // Сохраняем данные о размещаемой комнате
+        // РЎРѕС…СЂР°РЅСЏРµРј РґР°РЅРЅС‹Рµ Рѕ СЂР°Р·РјРµС‰Р°РµРјРѕР№ РєРѕРјРЅР°С‚Рµ
         pendingRoomPosition = gridPosition;
         pendingRoomSize = GetRotatedRoomSize(roomData.size, roomRotation);
         pendingRoomRotation = roomRotation;
 
-        // Переходим к фазе размещения двери
+        // РџРµСЂРµС…РѕРґРёРј Рє С„Р°Р·Рµ СЂР°Р·РјРµС‰РµРЅРёСЏ РґРІРµСЂРё
         currentPhase = BuildingPhase.PlacingDoor;
 
-        // Сбрасываем флаги автоматического строительства
+        // РЎР±СЂР°СЃС‹РІР°РµРј С„Р»Р°РіРё Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРіРѕ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
         doorSelectionTimer = 0f;
         roomBuilt = false;
         lastDoorPosition = Vector2Int.zero;
 
-        // Фиксируем призрак комнаты в выбранной позиции
+        // Р¤РёРєСЃРёСЂСѓРµРј РїСЂРёР·СЂР°Рє РєРѕРјРЅР°С‚С‹ РІ РІС‹Р±СЂР°РЅРЅРѕР№ РїРѕР·РёС†РёРё
         UpdateGhostRoomPosition(previewObject, pendingRoomPosition, pendingRoomSize);
 
-        // Находим все прямые стены для размещения двери
+        // РќР°С…РѕРґРёРј РІСЃРµ РїСЂСЏРјС‹Рµ СЃС‚РµРЅС‹ РґР»СЏ СЂР°Р·РјРµС‰РµРЅРёСЏ РґРІРµСЂРё
         FindStraightWallPositions();
 
-        // Создаем призрак двери
+        // РЎРѕР·РґР°РµРј РїСЂРёР·СЂР°Рє РґРІРµСЂРё
         CreateDoorPreview();
 
         FileLogger.Log("Phase 2: Placing door - room ghost locked");
     }
 
     /// <summary>
-    /// Найти позиции прямых стен для размещения двери
+    /// РќР°Р№С‚Рё РїРѕР·РёС†РёРё РїСЂСЏРјС‹С… СЃС‚РµРЅ РґР»СЏ СЂР°Р·РјРµС‰РµРЅРёСЏ РґРІРµСЂРё
     /// </summary>
     void FindStraightWallPositions()
     {
@@ -925,12 +925,12 @@ public class ShipBuildingSystem : MonoBehaviour
             {
                 Vector2Int cellPos = new Vector2Int(pendingRoomPosition.x + x, pendingRoomPosition.y + y);
 
-                // Проверяем, является ли клетка частью периметра
+                // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РєР»РµС‚РєР° С‡Р°СЃС‚СЊСЋ РїРµСЂРёРјРµС‚СЂР°
                 bool isPerimeter = (x == 0 || x == pendingRoomSize.x - 1 || y == 0 || y == pendingRoomSize.y - 1);
 
                 if (isPerimeter)
                 {
-                    // Проверяем, является ли это прямой стеной (не угол)
+                    // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚Рѕ РїСЂСЏРјРѕР№ СЃС‚РµРЅРѕР№ (РЅРµ СѓРіРѕР»)
                     bool isCorner = (x == 0 && y == 0) ||
                                    (x == 0 && y == pendingRoomSize.y - 1) ||
                                    (x == pendingRoomSize.x - 1 && y == 0) ||
@@ -949,7 +949,7 @@ public class ShipBuildingSystem : MonoBehaviour
             }
         }
 
-        // Устанавливаем начальную позицию двери на первой доступной прямой стене
+        // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РЅР°С‡Р°Р»СЊРЅСѓСЋ РїРѕР·РёС†РёСЋ РґРІРµСЂРё РЅР° РїРµСЂРІРѕР№ РґРѕСЃС‚СѓРїРЅРѕР№ РїСЂСЏРјРѕР№ СЃС‚РµРЅРµ
         if (straightWallPositions.Count > 0)
         {
             doorPosition = straightWallPositions[0];
@@ -964,36 +964,36 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Создать призрак двери
+    /// РЎРѕР·РґР°С‚СЊ РїСЂРёР·СЂР°Рє РґРІРµСЂРё
     /// </summary>
     void CreateDoorPreview()
     {
         if (doorPreviewObject != null)
             DestroyImmediate(doorPreviewObject);
 
-        // Загружаем префаб двери
+        // Р—Р°РіСЂСѓР¶Р°РµРј РїСЂРµС„Р°Р± РґРІРµСЂРё
         GameObject doorPrefab = Resources.Load<GameObject>("Prefabs/SM_Door");
         if (doorPrefab == null)
         {
-            // Fallback: создаем простой куб если префаб не найден
+            // Fallback: СЃРѕР·РґР°РµРј РїСЂРѕСЃС‚РѕР№ РєСѓР± РµСЃР»Рё РїСЂРµС„Р°Р± РЅРµ РЅР°Р№РґРµРЅ
             doorPreviewObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
             doorPreviewObject.name = "DoorPreview_Fallback";
             DestroyImmediate(doorPreviewObject.GetComponent<Collider>());
         }
         else
         {
-            // Создаем экземпляр префаба двери
+            // РЎРѕР·РґР°РµРј СЌРєР·РµРјРїР»СЏСЂ РїСЂРµС„Р°Р±Р° РґРІРµСЂРё
             doorPreviewObject = Instantiate(doorPrefab);
             doorPreviewObject.name = "DoorPreview";
 
-            // Убираем коллайдеры у призрака
+            // РЈР±РёСЂР°РµРј РєРѕР»Р»Р°Р№РґРµСЂС‹ Сѓ РїСЂРёР·СЂР°РєР°
             Collider[] colliders = doorPreviewObject.GetComponentsInChildren<Collider>();
             foreach (Collider col in colliders)
                 DestroyImmediate(col);
         }
 
-        // Убираем красную подсветку - дверь остается в оригинальном виде
-        // Просто делаем двери полупрозрачными чтобы показать что это призрак
+        // РЈР±РёСЂР°РµРј РєСЂР°СЃРЅСѓСЋ РїРѕРґСЃРІРµС‚РєСѓ - РґРІРµСЂСЊ РѕСЃС‚Р°РµС‚СЃСЏ РІ РѕСЂРёРіРёРЅР°Р»СЊРЅРѕРј РІРёРґРµ
+        // РџСЂРѕСЃС‚Рѕ РґРµР»Р°РµРј РґРІРµСЂРё РїРѕР»СѓРїСЂРѕР·СЂР°С‡РЅС‹РјРё С‡С‚РѕР±С‹ РїРѕРєР°Р·Р°С‚СЊ С‡С‚Рѕ СЌС‚Рѕ РїСЂРёР·СЂР°Рє
         Renderer[] renderers = doorPreviewObject.GetComponentsInChildren<Renderer>();
         foreach (Renderer renderer in renderers)
         {
@@ -1003,7 +1003,7 @@ public class ShipBuildingSystem : MonoBehaviour
                 Color originalColor = ghostMaterial.color;
                 ghostMaterial.color = new Color(originalColor.r, originalColor.g, originalColor.b, 0.7f);
 
-                // Настройка прозрачности
+                // РќР°СЃС‚СЂРѕР№РєР° РїСЂРѕР·СЂР°С‡РЅРѕСЃС‚Рё
                 if (ghostMaterial.HasProperty("_Mode"))
                     ghostMaterial.SetFloat("_Mode", 3); // Transparent mode
                 if (ghostMaterial.HasProperty("_SrcBlend"))
@@ -1018,12 +1018,12 @@ public class ShipBuildingSystem : MonoBehaviour
             }
         }
 
-        // Позиционируем призрак двери
+        // РџРѕР·РёС†РёРѕРЅРёСЂСѓРµРј РїСЂРёР·СЂР°Рє РґРІРµСЂРё
         UpdateDoorPreviewPosition();
     }
 
     /// <summary>
-    /// Обновить позицию призрака двери
+    /// РћР±РЅРѕРІРёС‚СЊ РїРѕР·РёС†РёСЋ РїСЂРёР·СЂР°РєР° РґРІРµСЂРё
     /// </summary>
     void UpdateDoorPreviewPosition()
     {
@@ -1032,11 +1032,11 @@ public class ShipBuildingSystem : MonoBehaviour
         Vector3 worldPos = gridManager.GridToWorld(doorPosition);
         doorPreviewObject.transform.position = worldPos;
 
-        // Получаем ориентацию стены в этой позиции для правильного поворота двери
+        // РџРѕР»СѓС‡Р°РµРј РѕСЂРёРµРЅС‚Р°С†РёСЋ СЃС‚РµРЅС‹ РІ СЌС‚РѕР№ РїРѕР·РёС†РёРё РґР»СЏ РїСЂР°РІРёР»СЊРЅРѕРіРѕ РїРѕРІРѕСЂРѕС‚Р° РґРІРµСЂРё
         float doorRotation = GetWallRotationAtPosition(doorPosition);
         doorPreviewObject.transform.rotation = Quaternion.Euler(0, doorRotation, 0);
 
-        // Если это fallback куб, устанавливаем размер
+        // Р•СЃР»Рё СЌС‚Рѕ fallback РєСѓР±, СѓСЃС‚Р°РЅР°РІР»РёРІР°РµРј СЂР°Р·РјРµСЂ
         if (doorPreviewObject.name.Contains("Fallback"))
         {
             doorPreviewObject.transform.localScale = new Vector3(gridManager.cellSize * 0.8f, 2f, gridManager.cellSize * 0.8f);
@@ -1044,26 +1044,26 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить ориентацию стены в указанной позиции
+    /// РџРѕР»СѓС‡РёС‚СЊ РѕСЂРёРµРЅС‚Р°С†РёСЋ СЃС‚РµРЅС‹ РІ СѓРєР°Р·Р°РЅРЅРѕР№ РїРѕР·РёС†РёРё
     /// </summary>
     float GetWallRotationAtPosition(Vector2Int position)
     {
-        // Получаем оригинальный размер комнаты (до поворота)
+        // РџРѕР»СѓС‡Р°РµРј РѕСЂРёРіРёРЅР°Р»СЊРЅС‹Р№ СЂР°Р·РјРµСЂ РєРѕРјРЅР°С‚С‹ (РґРѕ РїРѕРІРѕСЂРѕС‚Р°)
         RoomData currentRoom = availableRooms[selectedRoomIndex];
         Vector2Int originalRoomSize = currentRoom.size;
 
-        // Определяем где находится позиция относительно комнаты
+        // РћРїСЂРµРґРµР»СЏРµРј РіРґРµ РЅР°С…РѕРґРёС‚СЃСЏ РїРѕР·РёС†РёСЏ РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ РєРѕРјРЅР°С‚С‹
         Vector2Int relativePos = position - pendingRoomPosition;
 
-        // Определяем сторону стены в повернутой комнате используя ту же логику что и в RoomBuilder
+        // РћРїСЂРµРґРµР»СЏРµРј СЃС‚РѕСЂРѕРЅСѓ СЃС‚РµРЅС‹ РІ РїРѕРІРµСЂРЅСѓС‚РѕР№ РєРѕРјРЅР°С‚Рµ РёСЃРїРѕР»СЊР·СѓСЏ С‚Сѓ Р¶Рµ Р»РѕРіРёРєСѓ С‡С‚Рѕ Рё РІ RoomBuilder
         WallSide wallSide = DetermineWallSideInRotatedRoom(relativePos, pendingRoomSize, pendingRoomRotation);
 
-        // Получаем поворот стены используя тот же алгоритм что и в RoomBuilder
+        // РџРѕР»СѓС‡Р°РµРј РїРѕРІРѕСЂРѕС‚ СЃС‚РµРЅС‹ РёСЃРїРѕР»СЊР·СѓСЏ С‚РѕС‚ Р¶Рµ Р°Р»РіРѕСЂРёС‚Рј С‡С‚Рѕ Рё РІ RoomBuilder
         return GetWallRotationFromSide(wallSide, pendingRoomRotation);
     }
 
     /// <summary>
-    /// Определить сторону стены в повернутой комнате (копия логики из RoomBuilder)
+    /// РћРїСЂРµРґРµР»РёС‚СЊ СЃС‚РѕСЂРѕРЅСѓ СЃС‚РµРЅС‹ РІ РїРѕРІРµСЂРЅСѓС‚РѕР№ РєРѕРјРЅР°С‚Рµ (РєРѕРїРёСЏ Р»РѕРіРёРєРё РёР· RoomBuilder)
     /// </summary>
     WallSide DetermineWallSideInRotatedRoom(Vector2Int relativePos, Vector2Int roomSize, int rotation)
     {
@@ -1074,37 +1074,37 @@ public class ShipBuildingSystem : MonoBehaviour
 
         WallSide baseSide = WallSide.None;
 
-        // Сначала проверяем углы (комбинации сторон)
+        // РЎРЅР°С‡Р°Р»Р° РїСЂРѕРІРµСЂСЏРµРј СѓРіР»С‹ (РєРѕРјР±РёРЅР°С†РёРё СЃС‚РѕСЂРѕРЅ)
         if (isTopEdge && isLeftEdge) baseSide = WallSide.TopLeft;
         else if (isTopEdge && isRightEdge) baseSide = WallSide.TopRight;
         else if (isBottomEdge && isLeftEdge) baseSide = WallSide.BottomLeft;
         else if (isBottomEdge && isRightEdge) baseSide = WallSide.BottomRight;
-        // Затем проверяем обычные стороны
+        // Р—Р°С‚РµРј РїСЂРѕРІРµСЂСЏРµРј РѕР±С‹С‡РЅС‹Рµ СЃС‚РѕСЂРѕРЅС‹
         else if (isTopEdge) baseSide = WallSide.Top;
         else if (isBottomEdge) baseSide = WallSide.Bottom;
         else if (isLeftEdge) baseSide = WallSide.Left;
         else if (isRightEdge) baseSide = WallSide.Right;
 
-        // Применяем поворот к определенной стороне (та же логика что в RoomBuilder)
+        // РџСЂРёРјРµРЅСЏРµРј РїРѕРІРѕСЂРѕС‚ Рє РѕРїСЂРµРґРµР»РµРЅРЅРѕР№ СЃС‚РѕСЂРѕРЅРµ (С‚Р° Р¶Рµ Р»РѕРіРёРєР° С‡С‚Рѕ РІ RoomBuilder)
         return RotateWallSide(baseSide, rotation);
     }
 
     /// <summary>
-    /// Получить поворот стены от стороны (копия логики из RoomBuilder.GetRotationTowardRoom)
+    /// РџРѕР»СѓС‡РёС‚СЊ РїРѕРІРѕСЂРѕС‚ СЃС‚РµРЅС‹ РѕС‚ СЃС‚РѕСЂРѕРЅС‹ (РєРѕРїРёСЏ Р»РѕРіРёРєРё РёР· RoomBuilder.GetRotationTowardRoom)
     /// </summary>
     float GetWallRotationFromSide(WallSide wallSide, int roomRotation)
     {
-        // Получаем базовый поворот для стены как будто комната повернута на 0°
+        // РџРѕР»СѓС‡Р°РµРј Р±Р°Р·РѕРІС‹Р№ РїРѕРІРѕСЂРѕС‚ РґР»СЏ СЃС‚РµРЅС‹ РєР°Рє Р±СѓРґС‚Рѕ РєРѕРјРЅР°С‚Р° РїРѕРІРµСЂРЅСѓС‚Р° РЅР° 0В°
         float baseRotation;
         switch (wallSide)
         {
-            // Прямые стены - смотрят внутрь комнаты
-            case WallSide.Top:    baseRotation = 180f; break; // смотрит вниз
-            case WallSide.Bottom: baseRotation = 0f; break;   // смотрит вверх
-            case WallSide.Left:   baseRotation = 90f; break;  // смотрит вправо
-            case WallSide.Right:  baseRotation = 270f; break; // смотрит влево
+            // РџСЂСЏРјС‹Рµ СЃС‚РµРЅС‹ - СЃРјРѕС‚СЂСЏС‚ РІРЅСѓС‚СЂСЊ РєРѕРјРЅР°С‚С‹
+            case WallSide.Top:    baseRotation = 180f; break; // СЃРјРѕС‚СЂРёС‚ РІРЅРёР·
+            case WallSide.Bottom: baseRotation = 0f; break;   // СЃРјРѕС‚СЂРёС‚ РІРІРµСЂС…
+            case WallSide.Left:   baseRotation = 90f; break;  // СЃРјРѕС‚СЂРёС‚ РІРїСЂР°РІРѕ
+            case WallSide.Right:  baseRotation = 270f; break; // СЃРјРѕС‚СЂРёС‚ РІР»РµРІРѕ
 
-            // Угловые стены (L-образные) - точное совпадение коннекторов
+            // РЈРіР»РѕРІС‹Рµ СЃС‚РµРЅС‹ (L-РѕР±СЂР°Р·РЅС‹Рµ) - С‚РѕС‡РЅРѕРµ СЃРѕРІРїР°РґРµРЅРёРµ РєРѕРЅРЅРµРєС‚РѕСЂРѕРІ
             case WallSide.TopLeft:     baseRotation = 90f; break;
             case WallSide.TopRight:    baseRotation = 180f; break;
             case WallSide.BottomLeft:  baseRotation = 0f; break;
@@ -1113,7 +1113,7 @@ public class ShipBuildingSystem : MonoBehaviour
             default: baseRotation = 0f; break;
         }
 
-        // Компенсируем поворот комнаты: вычитаем roomRotation из базового поворота
+        // РљРѕРјРїРµРЅСЃРёСЂСѓРµРј РїРѕРІРѕСЂРѕС‚ РєРѕРјРЅР°С‚С‹: РІС‹С‡РёС‚Р°РµРј roomRotation РёР· Р±Р°Р·РѕРІРѕРіРѕ РїРѕРІРѕСЂРѕС‚Р°
         float finalRotation = (baseRotation - roomRotation) % 360f;
         if (finalRotation < 0) finalRotation += 360f;
 
@@ -1121,7 +1121,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Финализировать строительство комнаты с дверью
+    /// Р¤РёРЅР°Р»РёР·РёСЂРѕРІР°С‚СЊ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РєРѕРјРЅР°С‚С‹ СЃ РґРІРµСЂСЊСЋ
     /// </summary>
     void TryFinalizeBuildRoom()
     {
@@ -1133,48 +1133,48 @@ public class ShipBuildingSystem : MonoBehaviour
         FileLogger.Log($"Building room at {pendingRoomPosition}, size {pendingRoomSize}, rotation {pendingRoomRotation}");
         FileLogger.Log($"Door will be placed at {doorPosition}");
 
-        // Логируем все существующие двери перед строительством
+        // Р›РѕРіРёСЂСѓРµРј РІСЃРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ РґРІРµСЂРё РїРµСЂРµРґ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕРј
         LogExistingDoors();
 
-        // Строим комнату БЕЗ стены в позиции двери
+        // РЎС‚СЂРѕРёРј РєРѕРјРЅР°С‚Сѓ Р‘Р•Р— СЃС‚РµРЅС‹ РІ РїРѕР·РёС†РёРё РґРІРµСЂРё
         FileLogger.Log("Building room walls (excluding door position)...");
         BuildRoomWithDoor(pendingRoomPosition, roomData, pendingRoomRotation, doorPosition);
 
-        // Создаем дверь в выбранной позиции
+        // РЎРѕР·РґР°РµРј РґРІРµСЂСЊ РІ РІС‹Р±СЂР°РЅРЅРѕР№ РїРѕР·РёС†РёРё
         FileLogger.Log($"Creating door at {doorPosition}...");
         CreateDoorAtPosition(doorPosition);
 
-        // Освобождаем клетку где стоит дверь
+        // РћСЃРІРѕР±РѕР¶РґР°РµРј РєР»РµС‚РєСѓ РіРґРµ СЃС‚РѕРёС‚ РґРІРµСЂСЊ
         FileLogger.Log($"Freeing door cell at {doorPosition}...");
         gridManager.FreeCell(doorPosition);
 
-        // Логируем все двери после строительства
+        // Р›РѕРіРёСЂСѓРµРј РІСЃРµ РґРІРµСЂРё РїРѕСЃР»Рµ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
         LogExistingDoors();
 
-        // Очищаем призраки
+        // РћС‡РёС‰Р°РµРј РїСЂРёР·СЂР°РєРё
         if (previewObject != null)
             DestroyImmediate(previewObject);
         if (doorPreviewObject != null)
             DestroyImmediate(doorPreviewObject);
 
-        // Помечаем что комната построена
+        // РџРѕРјРµС‡Р°РµРј С‡С‚Рѕ РєРѕРјРЅР°С‚Р° РїРѕСЃС‚СЂРѕРµРЅР°
         roomBuilt = true;
 
-        // Возвращаемся к фазе размещения комнаты для следующего строительства
+        // Р’РѕР·РІСЂР°С‰Р°РµРјСЃСЏ Рє С„Р°Р·Рµ СЂР°Р·РјРµС‰РµРЅРёСЏ РєРѕРјРЅР°С‚С‹ РґР»СЏ СЃР»РµРґСѓСЋС‰РµРіРѕ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
         currentPhase = BuildingPhase.PlacingRoom;
-        roomRotation = 0; // Сбрасываем поворот
+        roomRotation = 0; // РЎР±СЂР°СЃС‹РІР°РµРј РїРѕРІРѕСЂРѕС‚
 
-        // Сбрасываем таймер автоматического строительства
+        // РЎР±СЂР°СЃС‹РІР°РµРј С‚Р°Р№РјРµСЂ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРіРѕ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
         doorSelectionTimer = 0f;
         roomBuilt = false;
 
-        CreatePreviewObject(); // Создаем новый призрак комнаты
+        CreatePreviewObject(); // РЎРѕР·РґР°РµРј РЅРѕРІС‹Р№ РїСЂРёР·СЂР°Рє РєРѕРјРЅР°С‚С‹
 
         FileLogger.Log($"=== DEBUG: ROOM FINALIZATION COMPLETE ===");
     }
 
     /// <summary>
-    /// Логировать все существующие двери на сцене
+    /// Р›РѕРіРёСЂРѕРІР°С‚СЊ РІСЃРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ РґРІРµСЂРё РЅР° СЃС†РµРЅРµ
     /// </summary>
     void LogExistingDoors()
     {
@@ -1196,26 +1196,26 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Строить комнату с дверью (исключая позицию двери из стен)
+    /// РЎС‚СЂРѕРёС‚СЊ РєРѕРјРЅР°С‚Сѓ СЃ РґРІРµСЂСЊСЋ (РёСЃРєР»СЋС‡Р°СЏ РїРѕР·РёС†РёСЋ РґРІРµСЂРё РёР· СЃС‚РµРЅ)
     /// </summary>
     void BuildRoomWithDoor(Vector2Int gridPosition, RoomData roomData, int rotation, Vector2Int doorPosition)
     {
-        // Сначала говорим RoomBuilder исключить позицию двери
+        // РЎРЅР°С‡Р°Р»Р° РіРѕРІРѕСЂРёРј RoomBuilder РёСЃРєР»СЋС‡РёС‚СЊ РїРѕР·РёС†РёСЋ РґРІРµСЂРё
         RoomBuilder.Instance.SetDoorExclusion(doorPosition);
 
-        // Строим комнату как обычно
+        // РЎС‚СЂРѕРёРј РєРѕРјРЅР°С‚Сѓ РєР°Рє РѕР±С‹С‡РЅРѕ
         BuildRoom(gridPosition, roomData, rotation);
 
-        // Очищаем исключение
+        // РћС‡РёС‰Р°РµРј РёСЃРєР»СЋС‡РµРЅРёРµ
         RoomBuilder.Instance.ClearDoorExclusion();
     }
 
     /// <summary>
-    /// Создать дверь в указанной позиции
+    /// РЎРѕР·РґР°С‚СЊ РґРІРµСЂСЊ РІ СѓРєР°Р·Р°РЅРЅРѕР№ РїРѕР·РёС†РёРё
     /// </summary>
     void CreateDoorAtPosition(Vector2Int position)
     {
-        // Загружаем префаб двери
+        // Р—Р°РіСЂСѓР¶Р°РµРј РїСЂРµС„Р°Р± РґРІРµСЂРё
         GameObject doorPrefab = Resources.Load<GameObject>("Prefabs/SM_Door");
         if (doorPrefab == null)
         {
@@ -1223,67 +1223,67 @@ public class ShipBuildingSystem : MonoBehaviour
             return;
         }
 
-        // Вычисляем позицию и поворот двери
+        // Р’С‹С‡РёСЃР»СЏРµРј РїРѕР·РёС†РёСЋ Рё РїРѕРІРѕСЂРѕС‚ РґРІРµСЂРё
         Vector3 worldPos = gridManager.GridToWorld(position);
         float doorRotation = GetWallRotationAtPosition(position);
         Quaternion rotation = Quaternion.Euler(0, doorRotation, 0);
 
-        // Создаем дверь
+        // РЎРѕР·РґР°РµРј РґРІРµСЂСЊ
         GameObject door = Instantiate(doorPrefab, worldPos, rotation);
         door.name = $"Door_{position.x}_{position.y}";
 
-        FileLogger.Log($"DEBUG: Door created: {door.name} at {door.transform.position} with rotation {doorRotation}°");
+        FileLogger.Log($"DEBUG: Door created: {door.name} at {door.transform.position} with rotation {doorRotation}В°");
         FileLogger.Log($"SUCCESS: Created door at {position}");
     }
 
     /// <summary>
-    /// Вернуться к размещению комнаты
+    /// Р’РµСЂРЅСѓС‚СЊСЃСЏ Рє СЂР°Р·РјРµС‰РµРЅРёСЋ РєРѕРјРЅР°С‚С‹
     /// </summary>
     void ReturnToRoomPlacement()
     {
-        // Очищаем призрак двери
+        // РћС‡РёС‰Р°РµРј РїСЂРёР·СЂР°Рє РґРІРµСЂРё
         if (doorPreviewObject != null)
             DestroyImmediate(doorPreviewObject);
 
-        // Возвращаемся к фазе размещения комнаты
+        // Р’РѕР·РІСЂР°С‰Р°РµРјСЃСЏ Рє С„Р°Р·Рµ СЂР°Р·РјРµС‰РµРЅРёСЏ РєРѕРјРЅР°С‚С‹
         currentPhase = BuildingPhase.PlacingRoom;
 
         FileLogger.Log("Returned to Phase 1: Placing room");
     }
 
     /// <summary>
-    /// Повернуть комнату на заданный угол
+    /// РџРѕРІРµСЂРЅСѓС‚СЊ РєРѕРјРЅР°С‚Сѓ РЅР° Р·Р°РґР°РЅРЅС‹Р№ СѓРіРѕР»
     /// </summary>
     void RotateRoom(int degrees)
     {
         roomRotation = (roomRotation + degrees) % 360;
         if (roomRotation < 0) roomRotation += 360;
 
-        // Обновляем предпросмотр в зависимости от фазы
+        // РћР±РЅРѕРІР»СЏРµРј РїСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ С„Р°Р·С‹
         if (buildingMode)
         {
             if (currentPhase == BuildingPhase.PlacingRoom && previewObject != null)
             {
-                // В фазе размещения комнаты - пересоздаем призрак комнаты
+                // Р’ С„Р°Р·Рµ СЂР°Р·РјРµС‰РµРЅРёСЏ РєРѕРјРЅР°С‚С‹ - РїРµСЂРµСЃРѕР·РґР°РµРј РїСЂРёР·СЂР°Рє РєРѕРјРЅР°С‚С‹
                 CreatePreviewObject();
             }
             else if (currentPhase == BuildingPhase.PlacingDoor)
             {
-                // В фазе размещения двери - полностью пересоздаем призрак комнаты
+                // Р’ С„Р°Р·Рµ СЂР°Р·РјРµС‰РµРЅРёСЏ РґРІРµСЂРё - РїРѕР»РЅРѕСЃС‚СЊСЋ РїРµСЂРµСЃРѕР·РґР°РµРј РїСЂРёР·СЂР°Рє РєРѕРјРЅР°С‚С‹
                 RoomData roomData = availableRooms[selectedRoomIndex];
                 pendingRoomSize = GetRotatedRoomSize(roomData.size, roomRotation);
                 pendingRoomRotation = roomRotation;
 
-                // Пересоздаем призрак комнаты с правильными поворотами стен
+                // РџРµСЂРµСЃРѕР·РґР°РµРј РїСЂРёР·СЂР°Рє РєРѕРјРЅР°С‚С‹ СЃ РїСЂР°РІРёР»СЊРЅС‹РјРё РїРѕРІРѕСЂРѕС‚Р°РјРё СЃС‚РµРЅ
                 if (previewObject != null)
                     DestroyImmediate(previewObject);
 
                 previewObject = CreateGhostRoom(pendingRoomPosition, pendingRoomSize, roomData.roomName + "_Preview", roomRotation);
 
-                // Пересчитываем позиции прямых стен
+                // РџРµСЂРµСЃС‡РёС‚С‹РІР°РµРј РїРѕР·РёС†РёРё РїСЂСЏРјС‹С… СЃС‚РµРЅ
                 FindStraightWallPositions();
 
-                // Обновляем призрак двери
+                // РћР±РЅРѕРІР»СЏРµРј РїСЂРёР·СЂР°Рє РґРІРµСЂРё
                 if (doorPreviewObject != null)
                 {
                     UpdateDoorPreviewPosition();
@@ -1295,27 +1295,27 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить размер комнаты с учетом поворота
+    /// РџРѕР»СѓС‡РёС‚СЊ СЂР°Р·РјРµСЂ РєРѕРјРЅР°С‚С‹ СЃ СѓС‡РµС‚РѕРј РїРѕРІРѕСЂРѕС‚Р°
     /// </summary>
     Vector2Int GetRotatedRoomSize(Vector2Int originalSize, int rotation)
     {
         if (rotation == 90 || rotation == 270)
         {
-            // При повороте на 90 или 270 градусов меняем местами X и Y
+            // РџСЂРё РїРѕРІРѕСЂРѕС‚Рµ РЅР° 90 РёР»Рё 270 РіСЂР°РґСѓСЃРѕРІ РјРµРЅСЏРµРј РјРµСЃС‚Р°РјРё X Рё Y
             return new Vector2Int(originalSize.y, originalSize.x);
         }
         return originalSize;
     }
 
     /// <summary>
-    /// Отменить выбор комнаты
+    /// РћС‚РјРµРЅРёС‚СЊ РІС‹Р±РѕСЂ РєРѕРјРЅР°С‚С‹
     /// </summary>
     public void ClearRoomSelection()
     {
         selectedRoomIndex = -1;
-        roomRotation = 0; // Сбрасываем поворот при смене выбора
+        roomRotation = 0; // РЎР±СЂР°СЃС‹РІР°РµРј РїРѕРІРѕСЂРѕС‚ РїСЂРё СЃРјРµРЅРµ РІС‹Р±РѕСЂР°
 
-        // Убираем предпросмотр
+        // РЈР±РёСЂР°РµРј РїСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ
         if (previewObject != null)
         {
             DestroyImmediate(previewObject);
@@ -1328,14 +1328,14 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Установить выбранный тип комнаты
+    /// РЈСЃС‚Р°РЅРѕРІРёС‚СЊ РІС‹Р±СЂР°РЅРЅС‹Р№ С‚РёРї РєРѕРјРЅР°С‚С‹
     /// </summary>
     public void SetSelectedRoomType(int index)
     {
         if (index >= 0 && index < availableRooms.Count)
         {
             selectedRoomIndex = index;
-            roomRotation = 0; // Сбрасываем поворот при смене типа комнаты
+            roomRotation = 0; // РЎР±СЂР°СЃС‹РІР°РµРј РїРѕРІРѕСЂРѕС‚ РїСЂРё СЃРјРµРЅРµ С‚РёРїР° РєРѕРјРЅР°С‚С‹
             FileLogger.Log($"[SetSelectedRoomType] Changed to room {index} ({availableRooms[index].roomName}), buildingMode: {buildingMode}");
             if (buildingMode)
             {
@@ -1345,12 +1345,12 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Переключиться к следующему типу комнаты
+    /// РџРµСЂРµРєР»СЋС‡РёС‚СЊСЃСЏ Рє СЃР»РµРґСѓСЋС‰РµРјСѓ С‚РёРїСѓ РєРѕРјРЅР°С‚С‹
     /// </summary>
     public void CycleRoomType()
     {
         selectedRoomIndex = (selectedRoomIndex + 1) % availableRooms.Count;
-        roomRotation = 0; // Сбрасываем поворот при смене типа комнаты
+        roomRotation = 0; // РЎР±СЂР°СЃС‹РІР°РµРј РїРѕРІРѕСЂРѕС‚ РїСЂРё СЃРјРµРЅРµ С‚РёРїР° РєРѕРјРЅР°С‚С‹
         if (buildingMode)
         {
             CreatePreviewObject();
@@ -1358,21 +1358,21 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Попытка построить комнату
+    /// РџРѕРїС‹С‚РєР° РїРѕСЃС‚СЂРѕРёС‚СЊ РєРѕРјРЅР°С‚Сѓ
     /// </summary>
     void TryBuildRoom()
     {
         if (previewObject == null || playerCamera == null)
             return;
 
-        // Используем ту же логику определения позиции, что и в UpdatePreview
+        // РСЃРїРѕР»СЊР·СѓРµРј С‚Сѓ Р¶Рµ Р»РѕРіРёРєСѓ РѕРїСЂРµРґРµР»РµРЅРёСЏ РїРѕР·РёС†РёРё, С‡С‚Рѕ Рё РІ UpdatePreview
         Vector3 mousePosition = Input.mousePosition;
         Ray ray = playerCamera.ScreenPointToRay(mousePosition);
 
         Vector3 worldPos;
         Vector2Int gridPos;
 
-        // Попробуем raycast на землю/объекты
+        // РџРѕРїСЂРѕР±СѓРµРј raycast РЅР° Р·РµРјР»СЋ/РѕР±СЉРµРєС‚С‹
         if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity))
         {
             worldPos = hit.point;
@@ -1380,7 +1380,7 @@ public class ShipBuildingSystem : MonoBehaviour
         }
         else
         {
-            // Если raycast не попал, используем плоскость Y=0
+            // Р•СЃР»Рё raycast РЅРµ РїРѕРїР°Р», РёСЃРїРѕР»СЊР·СѓРµРј РїР»РѕСЃРєРѕСЃС‚СЊ Y=0
             Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
             if (groundPlane.Raycast(ray, out float distance))
             {
@@ -1389,7 +1389,7 @@ public class ShipBuildingSystem : MonoBehaviour
             }
             else
             {
-                return; // Не можем определить позицию
+                return; // РќРµ РјРѕР¶РµРј РѕРїСЂРµРґРµР»РёС‚СЊ РїРѕР·РёС†РёСЋ
             }
         }
 
@@ -1404,7 +1404,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверка возможности размещения комнаты
+    /// РџСЂРѕРІРµСЂРєР° РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё СЂР°Р·РјРµС‰РµРЅРёСЏ РєРѕРјРЅР°С‚С‹
     /// </summary>
     bool CanPlaceRoom(Vector2Int gridPosition, RoomData roomData, int rotation = 0)
     {
@@ -1413,7 +1413,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Построить комнату (используя новую систему BuildCustomRoom)
+    /// РџРѕСЃС‚СЂРѕРёС‚СЊ РєРѕРјРЅР°С‚Сѓ (РёСЃРїРѕР»СЊР·СѓСЏ РЅРѕРІСѓСЋ СЃРёСЃС‚РµРјСѓ BuildCustomRoom)
     /// </summary>
     void BuildRoom(Vector2Int gridPosition, RoomData roomData, int rotation = 0)
     {
@@ -1424,12 +1424,12 @@ public class ShipBuildingSystem : MonoBehaviour
 
         FileLogger.Log($"DEBUG: Rotated size: {rotatedSize}");
 
-        // Используем новую систему BuildCustomRoom для создания комнат
+        // РСЃРїРѕР»СЊР·СѓРµРј РЅРѕРІСѓСЋ СЃРёСЃС‚РµРјСѓ BuildCustomRoom РґР»СЏ СЃРѕР·РґР°РЅРёСЏ РєРѕРјРЅР°С‚
         if (roomData.prefab == null)
         {
             FileLogger.Log($"DEBUG: Building custom room for {roomData.roomName} using BuildCustomRoom");
 
-            // Генерируем списки позиций стен и пола для прямоугольной комнаты
+            // Р“РµРЅРµСЂРёСЂСѓРµРј СЃРїРёСЃРєРё РїРѕР·РёС†РёР№ СЃС‚РµРЅ Рё РїРѕР»Р° РґР»СЏ РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРѕР№ РєРѕРјРЅР°С‚С‹
             List<Vector2Int> wallPositions = new List<Vector2Int>();
             List<Vector2Int> floorPositions = new List<Vector2Int>();
 
@@ -1439,7 +1439,7 @@ public class ShipBuildingSystem : MonoBehaviour
                 {
                     Vector2Int cellPos = new Vector2Int(gridPosition.x + x, gridPosition.y + y);
 
-                    // Проверяем, является ли клетка частью периметра (стена) или внутренней частью (пол)
+                    // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РєР»РµС‚РєР° С‡Р°СЃС‚СЊСЋ РїРµСЂРёРјРµС‚СЂР° (СЃС‚РµРЅР°) РёР»Рё РІРЅСѓС‚СЂРµРЅРЅРµР№ С‡Р°СЃС‚СЊСЋ (РїРѕР»)
                     bool isPerimeter = (x == 0 || x == rotatedSize.x - 1 || y == 0 || y == rotatedSize.y - 1);
 
                     if (isPerimeter)
@@ -1453,13 +1453,13 @@ public class ShipBuildingSystem : MonoBehaviour
                 }
             }
 
-            // Вызываем BuildCustomRoom с сгенерированными позициями
+            // Р’С‹Р·С‹РІР°РµРј BuildCustomRoom СЃ СЃРіРµРЅРµСЂРёСЂРѕРІР°РЅРЅС‹РјРё РїРѕР·РёС†РёСЏРјРё
             room = RoomBuilder.Instance.BuildCustomRoom(gridPosition, rotatedSize, roomData.roomName, wallPositions, floorPositions);
             room.name = $"{roomData.roomName}_{builtRooms.Count + 1}";
 
             FileLogger.Log($"DEBUG: BuildCustomRoom completed, room created: {room.name}");
 
-            // Добавляем RoomInfo компонент для хранения информации о комнате
+            // Р”РѕР±Р°РІР»СЏРµРј RoomInfo РєРѕРјРїРѕРЅРµРЅС‚ РґР»СЏ С…СЂР°РЅРµРЅРёСЏ РёРЅС„РѕСЂРјР°С†РёРё Рѕ РєРѕРјРЅР°С‚Рµ
             RoomInfo roomInfo = room.GetComponent<RoomInfo>();
             if (roomInfo != null)
             {
@@ -1472,7 +1472,7 @@ public class ShipBuildingSystem : MonoBehaviour
         }
         else
         {
-            // Старый способ с префабами (для совместимости)
+            // РЎС‚Р°СЂС‹Р№ СЃРїРѕСЃРѕР± СЃ РїСЂРµС„Р°Р±Р°РјРё (РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё)
             Vector3 centerOffset = new Vector3(
                 (rotatedSize.x - 1) * 0.5f * gridManager.cellSize,
                 0,
@@ -1485,20 +1485,20 @@ public class ShipBuildingSystem : MonoBehaviour
             room.name = $"{roomData.roomName}_{builtRooms.Count + 1}";
         }
 
-        // Занимаем только периметр комнаты (стены), внутренние клетки остаются свободными
+        // Р—Р°РЅРёРјР°РµРј С‚РѕР»СЊРєРѕ РїРµСЂРёРјРµС‚СЂ РєРѕРјРЅР°С‚С‹ (СЃС‚РµРЅС‹), РІРЅСѓС‚СЂРµРЅРЅРёРµ РєР»РµС‚РєРё РѕСЃС‚Р°СЋС‚СЃСЏ СЃРІРѕР±РѕРґРЅС‹РјРё
         gridManager.OccupyCellPerimeter(gridPosition, rotatedSize.x, rotatedSize.y, room, roomData.roomType);
 
-        // Регистрируем стены как непроходимые
+        // Р РµРіРёСЃС‚СЂРёСЂСѓРµРј СЃС‚РµРЅС‹ РєР°Рє РЅРµРїСЂРѕС…РѕРґРёРјС‹Рµ
         RegisterRoomWalls(gridPosition, rotatedSize);
 
-        // Добавляем в список построенных комнат
+        // Р”РѕР±Р°РІР»СЏРµРј РІ СЃРїРёСЃРѕРє РїРѕСЃС‚СЂРѕРµРЅРЅС‹С… РєРѕРјРЅР°С‚
         builtRooms.Add(room);
 
         OnRoomBuilt?.Invoke(room);
     }
 
     /// <summary>
-    /// Зарегистрировать стены комнаты как препятствия в GridManager
+    /// Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊ СЃС‚РµРЅС‹ РєРѕРјРЅР°С‚С‹ РєР°Рє РїСЂРµРїСЏС‚СЃС‚РІРёСЏ РІ GridManager
     /// </summary>
     void RegisterRoomWalls(Vector2Int gridPosition, Vector2Int roomSize)
     {
@@ -1511,10 +1511,10 @@ public class ShipBuildingSystem : MonoBehaviour
             {
                 Vector2Int wallGridPos = wallComp.wallData.position;
 
-                // Проверяем, относится ли стена к нашей комнате
+                // РџСЂРѕРІРµСЂСЏРµРј, РѕС‚РЅРѕСЃРёС‚СЃСЏ Р»Рё СЃС‚РµРЅР° Рє РЅР°С€РµР№ РєРѕРјРЅР°С‚Рµ
                 if (IsWallPartOfRoom(wallGridPos, gridPosition, roomSize))
                 {
-                    // Занимаем клетку стены в GridManager
+                    // Р—Р°РЅРёРјР°РµРј РєР»РµС‚РєСѓ СЃС‚РµРЅС‹ РІ GridManager
                     gridManager.OccupyCell(wallGridPos, wall, "Wall");
                 }
             }
@@ -1522,18 +1522,18 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, относится ли стена к данной комнате
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РѕС‚РЅРѕСЃРёС‚СЃСЏ Р»Рё СЃС‚РµРЅР° Рє РґР°РЅРЅРѕР№ РєРѕРјРЅР°С‚Рµ
     /// </summary>
     bool IsWallPartOfRoom(Vector2Int wallPos, Vector2Int roomPos, Vector2Int roomSize)
     {
-        // Проверяем, находится ли стена в пределах комнаты
+        // РџСЂРѕРІРµСЂСЏРµРј, РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё СЃС‚РµРЅР° РІ РїСЂРµРґРµР»Р°С… РєРѕРјРЅР°С‚С‹
         bool inBoundsX = (wallPos.x >= roomPos.x && wallPos.x < roomPos.x + roomSize.x);
         bool inBoundsY = (wallPos.y >= roomPos.y && wallPos.y < roomPos.y + roomSize.y);
 
         if (!inBoundsX || !inBoundsY)
             return false;
 
-        // Проверяем, является ли позиция частью периметра
+        // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РїРѕР·РёС†РёСЏ С‡Р°СЃС‚СЊСЋ РїРµСЂРёРјРµС‚СЂР°
         int relX = wallPos.x - roomPos.x;
         int relY = wallPos.y - roomPos.y;
 
@@ -1543,18 +1543,18 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Освободить клетки стен комнаты в GridManager
+    /// РћСЃРІРѕР±РѕРґРёС‚СЊ РєР»РµС‚РєРё СЃС‚РµРЅ РєРѕРјРЅР°С‚С‹ РІ GridManager
     /// </summary>
     void FreeRoomWallCells(Vector2Int gridPosition, Vector2Int roomSize)
     {
-        // Освобождаем клетки периметра комнаты (стены)
+        // РћСЃРІРѕР±РѕР¶РґР°РµРј РєР»РµС‚РєРё РїРµСЂРёРјРµС‚СЂР° РєРѕРјРЅР°С‚С‹ (СЃС‚РµРЅС‹)
         for (int x = 0; x < roomSize.x; x++)
         {
             for (int y = 0; y < roomSize.y; y++)
             {
                 Vector2Int cellPos = new Vector2Int(gridPosition.x + x, gridPosition.y + y);
 
-                // Проверяем, является ли клетка частью периметра
+                // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РєР»РµС‚РєР° С‡Р°СЃС‚СЊСЋ РїРµСЂРёРјРµС‚СЂР°
                 bool isPerimeter = (x == 0 || x == roomSize.x - 1 || y == 0 || y == roomSize.y - 1);
 
                 if (isPerimeter)
@@ -1566,7 +1566,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить текущий тип комнаты
+    /// РџРѕР»СѓС‡РёС‚СЊ С‚РµРєСѓС‰РёР№ С‚РёРї РєРѕРјРЅР°С‚С‹
     /// </summary>
     public RoomData GetCurrentRoomType()
     {
@@ -1576,7 +1576,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, активен ли режим строительства
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, Р°РєС‚РёРІРµРЅ Р»Рё СЂРµР¶РёРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
     /// </summary>
     public bool IsBuildingModeActive()
     {
@@ -1584,7 +1584,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, был ли ролик мыши использован для поворота в этом кадре
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, Р±С‹Р» Р»Рё СЂРѕР»РёРє РјС‹С€Рё РёСЃРїРѕР»СЊР·РѕРІР°РЅ РґР»СЏ РїРѕРІРѕСЂРѕС‚Р° РІ СЌС‚РѕРј РєР°РґСЂРµ
     /// </summary>
     public bool IsScrollWheelUsedThisFrame()
     {
@@ -1592,7 +1592,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить список построенных комнат
+    /// РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє РїРѕСЃС‚СЂРѕРµРЅРЅС‹С… РєРѕРјРЅР°С‚
     /// </summary>
     public List<GameObject> GetBuiltRooms()
     {
@@ -1600,7 +1600,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Включить/выключить режим удаления
+    /// Р’РєР»СЋС‡РёС‚СЊ/РІС‹РєР»СЋС‡РёС‚СЊ СЂРµР¶РёРј СѓРґР°Р»РµРЅРёСЏ
     /// </summary>
     public void ToggleDeletionMode()
     {
@@ -1609,7 +1609,7 @@ public class ShipBuildingSystem : MonoBehaviour
 
         if (deletionMode)
         {
-            // Выключаем режим строительства если он был активен
+            // Р’С‹РєР»СЋС‡Р°РµРј СЂРµР¶РёРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° РµСЃР»Рё РѕРЅ Р±С‹Р» Р°РєС‚РёРІРµРЅ
             if (buildingMode)
             {
                 buildingMode = false;
@@ -1619,7 +1619,7 @@ public class ShipBuildingSystem : MonoBehaviour
         }
         else
         {
-            // При выходе из режима разрушения убираем подсветку
+            // РџСЂРё РІС‹С…РѕРґРµ РёР· СЂРµР¶РёРјР° СЂР°Р·СЂСѓС€РµРЅРёСЏ СѓР±РёСЂР°РµРј РїРѕРґСЃРІРµС‚РєСѓ
             if (highlightedRoom != null)
             {
                 RemoveRoomHighlight(highlightedRoom);
@@ -1631,7 +1631,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, активен ли режим удаления
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, Р°РєС‚РёРІРµРЅ Р»Рё СЂРµР¶РёРј СѓРґР°Р»РµРЅРёСЏ
     /// </summary>
     public bool IsDeletionModeActive()
     {
@@ -1639,7 +1639,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновление подсветки комнат в режиме разрушения
+    /// РћР±РЅРѕРІР»РµРЅРёРµ РїРѕРґСЃРІРµС‚РєРё РєРѕРјРЅР°С‚ РІ СЂРµР¶РёРјРµ СЂР°Р·СЂСѓС€РµРЅРёСЏ
     /// </summary>
     void UpdateDeletionHighlight()
     {
@@ -1650,7 +1650,7 @@ public class ShipBuildingSystem : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity))
         {
-            // Проверяем, является ли объект комнатой
+            // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РѕР±СЉРµРєС‚ РєРѕРјРЅР°С‚РѕР№
             GameObject hitObject = hit.collider.gameObject;
             FileLogger.Log($"Raycast hit object: {hitObject.name}");
 
@@ -1667,13 +1667,13 @@ public class ShipBuildingSystem : MonoBehaviour
             }
         }
 
-        // Убираем старую подсветку
+        // РЈР±РёСЂР°РµРј СЃС‚Р°СЂСѓСЋ РїРѕРґСЃРІРµС‚РєСѓ
         if (highlightedRoom != null && highlightedRoom != newHighlightedRoom)
         {
             RemoveRoomHighlight(highlightedRoom);
         }
 
-        // Добавляем новую подсветку
+        // Р”РѕР±Р°РІР»СЏРµРј РЅРѕРІСѓСЋ РїРѕРґСЃРІРµС‚РєСѓ
         if (newHighlightedRoom != null && newHighlightedRoom != highlightedRoom)
         {
             AddRoomHighlight(newHighlightedRoom);
@@ -1683,7 +1683,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Добавить красную подсветку комнате
+    /// Р”РѕР±Р°РІРёС‚СЊ РєСЂР°СЃРЅСѓСЋ РїРѕРґСЃРІРµС‚РєСѓ РєРѕРјРЅР°С‚Рµ
     /// </summary>
     void AddRoomHighlight(GameObject room)
     {
@@ -1692,13 +1692,13 @@ public class ShipBuildingSystem : MonoBehaviour
         {
             if (renderer != null)
             {
-                // Сохраняем оригинальный материал если еще не сохранен
+                // РЎРѕС…СЂР°РЅСЏРµРј РѕСЂРёРіРёРЅР°Р»СЊРЅС‹Р№ РјР°С‚РµСЂРёР°Р» РµСЃР»Рё РµС‰Рµ РЅРµ СЃРѕС…СЂР°РЅРµРЅ
                 if (originalMaterial == null)
                 {
                     originalMaterial = renderer.material;
                 }
 
-                // Создаем красный материал для подсветки
+                // РЎРѕР·РґР°РµРј РєСЂР°СЃРЅС‹Р№ РјР°С‚РµСЂРёР°Р» РґР»СЏ РїРѕРґСЃРІРµС‚РєРё
                 Material highlightMaterial = new Material(renderer.material);
                 highlightMaterial.color = Color.red;
                 renderer.material = highlightMaterial;
@@ -1707,7 +1707,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Убрать подсветку с комнаты
+    /// РЈР±СЂР°С‚СЊ РїРѕРґСЃРІРµС‚РєСѓ СЃ РєРѕРјРЅР°С‚С‹
     /// </summary>
     void RemoveRoomHighlight(GameObject room)
     {
@@ -1724,21 +1724,21 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработка ввода в режиме удаления
+    /// РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РІ СЂРµР¶РёРјРµ СѓРґР°Р»РµРЅРёСЏ
     /// </summary>
     void HandleDeletionInput()
     {
-        // Проверяем, не находится ли мышь над UI элементом
+        // РџСЂРѕРІРµСЂСЏРµРј, РЅРµ РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё РјС‹С€СЊ РЅР°Рґ UI СЌР»РµРјРµРЅС‚РѕРј
         bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
                                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
-        // ЛКМ - удалить комнату (только если мышь НЕ над UI)
+        // Р›РљРњ - СѓРґР°Р»РёС‚СЊ РєРѕРјРЅР°С‚Сѓ (С‚РѕР»СЊРєРѕ РµСЃР»Рё РјС‹С€СЊ РќР• РЅР°Рґ UI)
         if (Input.GetMouseButtonDown(0) && !isPointerOverUI)
         {
             TryDeleteRoom();
         }
 
-        // ПКМ - выйти из режима удаления (только если мышь НЕ над UI)
+        // РџРљРњ - РІС‹Р№С‚Рё РёР· СЂРµР¶РёРјР° СѓРґР°Р»РµРЅРёСЏ (С‚РѕР»СЊРєРѕ РµСЃР»Рё РјС‹С€СЊ РќР• РЅР°Рґ UI)
         if (Input.GetMouseButtonDown(1) && !isPointerOverUI)
         {
             ToggleDeletionMode();
@@ -1746,7 +1746,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Попытка удалить комнату
+    /// РџРѕРїС‹С‚РєР° СѓРґР°Р»РёС‚СЊ РєРѕРјРЅР°С‚Сѓ
     /// </summary>
     void TryDeleteRoom()
     {
@@ -1755,10 +1755,10 @@ public class ShipBuildingSystem : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity))
         {
-            // Проверяем, является ли объект комнатой
+            // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РѕР±СЉРµРєС‚ РєРѕРјРЅР°С‚РѕР№
             GameObject hitObject = hit.collider.gameObject;
 
-            // Проверяем родительские объекты на наличие RoomInfo
+            // РџСЂРѕРІРµСЂСЏРµРј СЂРѕРґРёС‚РµР»СЊСЃРєРёРµ РѕР±СЉРµРєС‚С‹ РЅР° РЅР°Р»РёС‡РёРµ RoomInfo
             RoomInfo roomInfo = hitObject.GetComponentInParent<RoomInfo>();
             if (roomInfo != null)
             {
@@ -1768,11 +1768,11 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Удалить комнату по позиции на сетке
+    /// РЈРґР°Р»РёС‚СЊ РєРѕРјРЅР°С‚Сѓ РїРѕ РїРѕР·РёС†РёРё РЅР° СЃРµС‚РєРµ
     /// </summary>
     public bool DeleteRoom(Vector2Int position)
     {
-        // Ищем комнату в указанной позиции
+        // РС‰РµРј РєРѕРјРЅР°С‚Сѓ РІ СѓРєР°Р·Р°РЅРЅРѕР№ РїРѕР·РёС†РёРё
         foreach (GameObject room in builtRooms)
         {
             RoomInfo roomInfo = room.GetComponent<RoomInfo>();
@@ -1783,12 +1783,11 @@ public class ShipBuildingSystem : MonoBehaviour
             }
         }
 
-        Debug.LogWarning($"[ShipBuildingSystem] No room found at position {position}");
         return false;
     }
 
     /// <summary>
-    /// Удалить комнату
+    /// РЈРґР°Р»РёС‚СЊ РєРѕРјРЅР°С‚Сѓ
     /// </summary>
     public void DeleteRoom(GameObject room)
     {
@@ -1801,23 +1800,23 @@ public class ShipBuildingSystem : MonoBehaviour
 
         FileLogger.Log($"DEBUG: Starting DeleteRoom for {roomInfo.roomName} at position {roomInfo.gridPosition}, size {roomInfo.roomSize}, rotation {roomInfo.roomRotation}");
 
-        // Получаем размер с учетом поворота комнаты
+        // РџРѕР»СѓС‡Р°РµРј СЂР°Р·РјРµСЂ СЃ СѓС‡РµС‚РѕРј РїРѕРІРѕСЂРѕС‚Р° РєРѕРјРЅР°С‚С‹
         Vector2Int rotatedSize = GetRotatedRoomSize(roomInfo.roomSize, roomInfo.roomRotation);
         FileLogger.Log($"DEBUG: Rotated size calculated as {rotatedSize}");
 
-        // Освобождаем клетки стен в GridManager
+        // РћСЃРІРѕР±РѕР¶РґР°РµРј РєР»РµС‚РєРё СЃС‚РµРЅ РІ GridManager
         FileLogger.Log("DEBUG: Freeing room wall cells");
         FreeRoomWallCells(roomInfo.gridPosition, rotatedSize);
 
-        // Освобождаем только периметр комнаты (стены) в GridManager
+        // РћСЃРІРѕР±РѕР¶РґР°РµРј С‚РѕР»СЊРєРѕ РїРµСЂРёРјРµС‚СЂ РєРѕРјРЅР°С‚С‹ (СЃС‚РµРЅС‹) РІ GridManager
         FileLogger.Log("DEBUG: Freeing cell perimeter in GridManager");
         gridManager.FreeCellPerimeter(roomInfo.gridPosition, rotatedSize.x, rotatedSize.y);
 
-        // Удаляем стены через RoomBuilder
+        // РЈРґР°Р»СЏРµРј СЃС‚РµРЅС‹ С‡РµСЂРµР· RoomBuilder
         FileLogger.Log("DEBUG: Calling RoomBuilder.RemoveRoom");
         RoomBuilder.Instance.RemoveRoom(roomInfo.gridPosition, roomInfo.roomSize, roomInfo.roomRotation);
 
-        // Удаляем из списка построенных комнат
+        // РЈРґР°Р»СЏРµРј РёР· СЃРїРёСЃРєР° РїРѕСЃС‚СЂРѕРµРЅРЅС‹С… РєРѕРјРЅР°С‚
         if (builtRooms.Contains(room))
         {
             FileLogger.Log("DEBUG: Removing room from builtRooms list");
@@ -1828,11 +1827,11 @@ public class ShipBuildingSystem : MonoBehaviour
             FileLogger.Log("WARNING: Room not found in builtRooms list");
         }
 
-        // Уведомляем о удалении
+        // РЈРІРµРґРѕРјР»СЏРµРј Рѕ СѓРґР°Р»РµРЅРёРё
         FileLogger.Log("DEBUG: Invoking OnRoomDeleted event");
         OnRoomDeleted?.Invoke(room);
 
-        // Уничтожаем объект
+        // РЈРЅРёС‡С‚РѕР¶Р°РµРј РѕР±СЉРµРєС‚
         FileLogger.Log("DEBUG: Destroying room GameObject");
         DestroyImmediate(room);
 
@@ -1840,32 +1839,32 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновить индикаторы клеток для предварительного просмотра
+    /// РћР±РЅРѕРІРёС‚СЊ РёРЅРґРёРєР°С‚РѕСЂС‹ РєР»РµС‚РѕРє РґР»СЏ РїСЂРµРґРІР°СЂРёС‚РµР»СЊРЅРѕРіРѕ РїСЂРѕСЃРјРѕС‚СЂР°
     /// </summary>
     void UpdatePreviewCells(Vector2Int gridPos, RoomData roomData)
     {
-        // Очищаем старые индикаторы
+        // РћС‡РёС‰Р°РµРј СЃС‚Р°СЂС‹Рµ РёРЅРґРёРєР°С‚РѕСЂС‹
         ClearPreviewCells();
 
-        // Создаем новые индикаторы для каждой клетки комнаты
+        // РЎРѕР·РґР°РµРј РЅРѕРІС‹Рµ РёРЅРґРёРєР°С‚РѕСЂС‹ РґР»СЏ РєР°Р¶РґРѕР№ РєР»РµС‚РєРё РєРѕРјРЅР°С‚С‹
         for (int x = 0; x < roomData.size.x; x++)
         {
             for (int y = 0; y < roomData.size.y; y++)
             {
                 Vector2Int cellPos = new Vector2Int(gridPos.x + x, gridPos.y + y);
 
-                // Проверяем, свободна ли клетка
+                // РџСЂРѕРІРµСЂСЏРµРј, СЃРІРѕР±РѕРґРЅР° Р»Рё РєР»РµС‚РєР°
                 bool isValidPosition = gridManager.IsValidGridPosition(cellPos);
                 bool isCellFree = isValidPosition && gridManager.IsCellFree(cellPos);
 
-                // Дополнительная проверка - если позиция за пределами сетки, считаем недоступной
+                // Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР° - РµСЃР»Рё РїРѕР·РёС†РёСЏ Р·Р° РїСЂРµРґРµР»Р°РјРё СЃРµС‚РєРё, СЃС‡РёС‚Р°РµРј РЅРµРґРѕСЃС‚СѓРїРЅРѕР№
                 if (!isValidPosition)
                 {
                     isCellFree = false;
                 }
 
 
-                // Создаем визуальный индикатор
+                // РЎРѕР·РґР°РµРј РІРёР·СѓР°Р»СЊРЅС‹Р№ РёРЅРґРёРєР°С‚РѕСЂ
                 GameObject cellIndicator = CreateCellIndicator(cellPos, isCellFree);
                 previewCells.Add(cellIndicator);
             }
@@ -1873,31 +1872,31 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Создать индикатор для одной клетки
+    /// РЎРѕР·РґР°С‚СЊ РёРЅРґРёРєР°С‚РѕСЂ РґР»СЏ РѕРґРЅРѕР№ РєР»РµС‚РєРё
     /// </summary>
     GameObject CreateCellIndicator(Vector2Int gridPos, bool isAvailable)
     {
         GameObject indicator = GameObject.CreatePrimitive(PrimitiveType.Cube);
         indicator.name = $"CellIndicator_{gridPos.x}_{gridPos.y}";
 
-        // Позиционируем индикатор
+        // РџРѕР·РёС†РёРѕРЅРёСЂСѓРµРј РёРЅРґРёРєР°С‚РѕСЂ
         Vector3 worldPos = gridManager.GridToWorld(gridPos);
-        worldPos.y = 0.5f; // Еще выше для лучшей видимости
+        worldPos.y = 0.5f; // Р•С‰Рµ РІС‹С€Рµ РґР»СЏ Р»СѓС‡С€РµР№ РІРёРґРёРјРѕСЃС‚Рё
         indicator.transform.position = worldPos;
 
-        // Размер индикатора - покрывает большую часть клетки
+        // Р Р°Р·РјРµСЂ РёРЅРґРёРєР°С‚РѕСЂР° - РїРѕРєСЂС‹РІР°РµС‚ Р±РѕР»СЊС€СѓСЋ С‡Р°СЃС‚СЊ РєР»РµС‚РєРё
         float indicatorSize = gridManager.cellSize * 0.9f;
         indicator.transform.localScale = new Vector3(indicatorSize, 0.5f, indicatorSize);
 
-        // Убираем коллайдер
+        // РЈР±РёСЂР°РµРј РєРѕР»Р»Р°Р№РґРµСЂ
         Collider collider = indicator.GetComponent<Collider>();
         if (collider != null)
             DestroyImmediate(collider);
 
-        // Настраиваем материал
+        // РќР°СЃС‚СЂР°РёРІР°РµРј РјР°С‚РµСЂРёР°Р»
         Renderer renderer = indicator.GetComponent<Renderer>();
 
-        // Попробуем Legacy шейдеры которые точно есть в Unity
+        // РџРѕРїСЂРѕР±СѓРµРј Legacy С€РµР№РґРµСЂС‹ РєРѕС‚РѕСЂС‹Рµ С‚РѕС‡РЅРѕ РµСЃС‚СЊ РІ Unity
         Material mat = new Material(Shader.Find("Legacy Shaders/Transparent/Diffuse"));
         if (mat.shader == null)
         {
@@ -1914,12 +1913,12 @@ public class ShipBuildingSystem : MonoBehaviour
 
         if (isAvailable)
         {
-            // Очень яркий зеленый для доступных клеток
+            // РћС‡РµРЅСЊ СЏСЂРєРёР№ Р·РµР»РµРЅС‹Р№ РґР»СЏ РґРѕСЃС‚СѓРїРЅС‹С… РєР»РµС‚РѕРє
             mat.color = new Color(0f, 1f, 0f, 1f);
         }
         else
         {
-            // Очень яркий красный для недоступных клеток
+            // РћС‡РµРЅСЊ СЏСЂРєРёР№ РєСЂР°СЃРЅС‹Р№ РґР»СЏ РЅРµРґРѕСЃС‚СѓРїРЅС‹С… РєР»РµС‚РѕРє
             mat.color = new Color(1f, 0f, 0f, 1f);
         }
 
@@ -1929,7 +1928,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Очистить все индикаторы клеток
+    /// РћС‡РёСЃС‚РёС‚СЊ РІСЃРµ РёРЅРґРёРєР°С‚РѕСЂС‹ РєР»РµС‚РѕРє
     /// </summary>
     void ClearPreviewCells()
     {
@@ -1942,7 +1941,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить список доступных комнат для UI
+    /// РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє РґРѕСЃС‚СѓРїРЅС‹С… РєРѕРјРЅР°С‚ РґР»СЏ UI
     /// </summary>
     public List<RoomData> GetAvailableRooms()
     {
@@ -1976,7 +1975,7 @@ public class ShipBuildingSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить текущий выбранный индекс комнаты
+    /// РџРѕР»СѓС‡РёС‚СЊ С‚РµРєСѓС‰РёР№ РІС‹Р±СЂР°РЅРЅС‹Р№ РёРЅРґРµРєСЃ РєРѕРјРЅР°С‚С‹
     /// </summary>
     public int GetSelectedRoomIndex()
     {

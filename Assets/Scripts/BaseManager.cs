@@ -1,46 +1,46 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// BaseManager - базовый класс для всех менеджеров/систем игры
+/// BaseManager - Р±Р°Р·РѕРІС‹Р№ РєР»Р°СЃСЃ РґР»СЏ РІСЃРµС… РјРµРЅРµРґР¶РµСЂРѕРІ/СЃРёСЃС‚РµРј РёРіСЂС‹
 ///
-/// АРХИТЕКТУРА: Обеспечивает:
-/// 1. Единый паттерн инициализации для всех систем
-/// 2. Интеграцию с ServiceLocator и EventBus
-/// 3. Стандартизированный жизненный цикл
-/// 4. Общие утилиты для логирования и отладки
+/// РђР РҐРРўР•РљРўРЈР Рђ: РћР±РµСЃРїРµС‡РёРІР°РµС‚:
+/// 1. Р•РґРёРЅС‹Р№ РїР°С‚С‚РµСЂРЅ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё РґР»СЏ РІСЃРµС… СЃРёСЃС‚РµРј
+/// 2. РРЅС‚РµРіСЂР°С†РёСЋ СЃ ServiceLocator Рё EventBus
+/// 3. РЎС‚Р°РЅРґР°СЂС‚РёР·РёСЂРѕРІР°РЅРЅС‹Р№ Р¶РёР·РЅРµРЅРЅС‹Р№ С†РёРєР»
+/// 4. РћР±С‰РёРµ СѓС‚РёР»РёС‚С‹ РґР»СЏ Р»РѕРіРёСЂРѕРІР°РЅРёСЏ Рё РѕС‚Р»Р°РґРєРё
 ///
-/// ЖИЗНЕННЫЙ ЦИКЛ:
+/// Р–РР—РќР•РќРќР«Р™ Р¦РРљР›:
 ///   Start() -> InitializeManager() -> OnManagerInitialized()
 ///   OnDestroy() -> ShutdownManager() -> OnManagerShutdown()
 ///
-/// ВАЖНО: Инициализация происходит в Start(), чтобы ServiceLocator был доступен
+/// Р’РђР–РќРћ: РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїСЂРѕРёСЃС…РѕРґРёС‚ РІ Start(), С‡С‚РѕР±С‹ ServiceLocator Р±С‹Р» РґРѕСЃС‚СѓРїРµРЅ
 ///
-/// ИСПОЛЬЗОВАНИЕ:
+/// РРЎРџРћР›Р¬Р—РћР’РђРќРР•:
 ///   public class MyManager : BaseManager
 ///   {
 ///       protected override void OnManagerInitialized()
 ///       {
-///           // Инициализация вашей системы
-///           // ServiceLocator уже доступен
+///           // РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РІР°С€РµР№ СЃРёСЃС‚РµРјС‹
+///           // ServiceLocator СѓР¶Рµ РґРѕСЃС‚СѓРїРµРЅ
 ///       }
 ///
 ///       protected override void OnManagerShutdown()
 ///       {
-///           // Очистка ресурсов
-///           // Отписка от событий
+///           // РћС‡РёСЃС‚РєР° СЂРµСЃСѓСЂСЃРѕРІ
+///           // РћС‚РїРёСЃРєР° РѕС‚ СЃРѕР±С‹С‚РёР№
 ///       }
 ///   }
 /// </summary>
 public abstract class BaseManager : MonoBehaviour
 {
     [Header("Base Manager Settings")]
-    [Tooltip("Выводить отладочные сообщения в консоль")]
+    [Tooltip("Р’С‹РІРѕРґРёС‚СЊ РѕС‚Р»Р°РґРѕС‡РЅС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ РІ РєРѕРЅСЃРѕР»СЊ")]
     [SerializeField] protected bool debugLogging = false;
 
-    // Флаг инициализации
+    // Р¤Р»Р°Рі РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
     private bool isInitialized = false;
 
-    // Имя менеджера для логирования
+    // РРјСЏ РјРµРЅРµРґР¶РµСЂР° РґР»СЏ Р»РѕРіРёСЂРѕРІР°РЅРёСЏ
     protected virtual string ManagerName => GetType().Name;
 
     // ========================================================================
@@ -48,8 +48,8 @@ public abstract class BaseManager : MonoBehaviour
     // ========================================================================
 
     /// <summary>
-    /// Start вызывается после Awake и после того как ServiceLocator инициализирован
-    /// НЕ переопределяйте этот метод! Используйте OnManagerInitialized()
+    /// Start РІС‹Р·С‹РІР°РµС‚СЃСЏ РїРѕСЃР»Рµ Awake Рё РїРѕСЃР»Рµ С‚РѕРіРѕ РєР°Рє ServiceLocator РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ
+    /// РќР• РїРµСЂРµРѕРїСЂРµРґРµР»СЏР№С‚Рµ СЌС‚РѕС‚ РјРµС‚РѕРґ! РСЃРїРѕР»СЊР·СѓР№С‚Рµ OnManagerInitialized()
     /// </summary>
     protected virtual void Start()
     {
@@ -57,8 +57,8 @@ public abstract class BaseManager : MonoBehaviour
     }
 
     /// <summary>
-    /// OnDestroy вызывается при уничтожении объекта
-    /// НЕ переопределяйте этот метод! Используйте OnManagerShutdown()
+    /// OnDestroy РІС‹Р·С‹РІР°РµС‚СЃСЏ РїСЂРё СѓРЅРёС‡С‚РѕР¶РµРЅРёРё РѕР±СЉРµРєС‚Р°
+    /// РќР• РїРµСЂРµРѕРїСЂРµРґРµР»СЏР№С‚Рµ СЌС‚РѕС‚ РјРµС‚РѕРґ! РСЃРїРѕР»СЊР·СѓР№С‚Рµ OnManagerShutdown()
     /// </summary>
     protected virtual void OnDestroy()
     {
@@ -70,7 +70,7 @@ public abstract class BaseManager : MonoBehaviour
     // ========================================================================
 
     /// <summary>
-    /// Инициализация менеджера
+    /// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РјРµРЅРµРґР¶РµСЂР°
     /// </summary>
     private void InitializeManager()
     {
@@ -82,7 +82,7 @@ public abstract class BaseManager : MonoBehaviour
 
         Log($"Initializing {ManagerName}...");
 
-        // Вызываем переопределяемый метод инициализации
+        // Р’С‹Р·С‹РІР°РµРј РїРµСЂРµРѕРїСЂРµРґРµР»СЏРµРјС‹Р№ РјРµС‚РѕРґ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
         OnManagerInitialized();
 
         isInitialized = true;
@@ -90,7 +90,7 @@ public abstract class BaseManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Завершение работы менеджера
+    /// Р—Р°РІРµСЂС€РµРЅРёРµ СЂР°Р±РѕС‚С‹ РјРµРЅРµРґР¶РµСЂР°
     /// </summary>
     private void ShutdownManager()
     {
@@ -101,7 +101,7 @@ public abstract class BaseManager : MonoBehaviour
 
         Log($"Shutting down {ManagerName}...");
 
-        // Вызываем переопределяемый метод завершения
+        // Р’С‹Р·С‹РІР°РµРј РїРµСЂРµРѕРїСЂРµРґРµР»СЏРµРјС‹Р№ РјРµС‚РѕРґ Р·Р°РІРµСЂС€РµРЅРёСЏ
         OnManagerShutdown();
 
         isInitialized = false;
@@ -109,22 +109,22 @@ public abstract class BaseManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Переопределите этот метод для инициализации вашей системы
-    /// Вызывается ОДИН РАЗ при создании менеджера
+    /// РџРµСЂРµРѕРїСЂРµРґРµР»РёС‚Рµ СЌС‚РѕС‚ РјРµС‚РѕРґ РґР»СЏ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё РІР°С€РµР№ СЃРёСЃС‚РµРјС‹
+    /// Р’С‹Р·С‹РІР°РµС‚СЃСЏ РћР”РРќ Р РђР— РїСЂРё СЃРѕР·РґР°РЅРёРё РјРµРЅРµРґР¶РµСЂР°
     /// </summary>
     protected virtual void OnManagerInitialized()
     {
-        // Переопределите в дочерних классах
+        // РџРµСЂРµРѕРїСЂРµРґРµР»РёС‚Рµ РІ РґРѕС‡РµСЂРЅРёС… РєР»Р°СЃСЃР°С…
     }
 
     /// <summary>
-    /// Переопределите этот метод для очистки ресурсов
-    /// Вызывается ОДИН РАЗ при уничтожении менеджера
-    /// ВАЖНО: Всегда отписывайтесь от EventBus здесь!
+    /// РџРµСЂРµРѕРїСЂРµРґРµР»РёС‚Рµ СЌС‚РѕС‚ РјРµС‚РѕРґ РґР»СЏ РѕС‡РёСЃС‚РєРё СЂРµСЃСѓСЂСЃРѕРІ
+    /// Р’С‹Р·С‹РІР°РµС‚СЃСЏ РћР”РРќ Р РђР— РїСЂРё СѓРЅРёС‡С‚РѕР¶РµРЅРёРё РјРµРЅРµРґР¶РµСЂР°
+    /// Р’РђР–РќРћ: Р’СЃРµРіРґР° РѕС‚РїРёСЃС‹РІР°Р№С‚РµСЃСЊ РѕС‚ EventBus Р·РґРµСЃСЊ!
     /// </summary>
     protected virtual void OnManagerShutdown()
     {
-        // Переопределите в дочерних классах
+        // РџРµСЂРµРѕРїСЂРµРґРµР»РёС‚Рµ РІ РґРѕС‡РµСЂРЅРёС… РєР»Р°СЃСЃР°С…
     }
 
     // ========================================================================
@@ -132,12 +132,12 @@ public abstract class BaseManager : MonoBehaviour
     // ========================================================================
 
     /// <summary>
-    /// Проверить, инициализирован ли менеджер
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ Р»Рё РјРµРЅРµРґР¶РµСЂ
     /// </summary>
     public bool IsInitialized => isInitialized;
 
     /// <summary>
-    /// Получить сервис из ServiceLocator с проверкой
+    /// РџРѕР»СѓС‡РёС‚СЊ СЃРµСЂРІРёСЃ РёР· ServiceLocator СЃ РїСЂРѕРІРµСЂРєРѕР№
     /// </summary>
     protected T GetService<T>() where T : class
     {
@@ -156,7 +156,7 @@ public abstract class BaseManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Попытаться получить сервис из ServiceLocator
+    /// РџРѕРїС‹С‚Р°С‚СЊСЃСЏ РїРѕР»СѓС‡РёС‚СЊ СЃРµСЂРІРёСЃ РёР· ServiceLocator
     /// </summary>
     protected bool TryGetService<T>(out T service) where T : class
     {
@@ -174,37 +174,33 @@ public abstract class BaseManager : MonoBehaviour
     // ========================================================================
 
     /// <summary>
-    /// Вывести сообщение в лог (если включен debugLogging)
+    /// Р’С‹РІРµСЃС‚Рё СЃРѕРѕР±С‰РµРЅРёРµ РІ Р»РѕРі (РµСЃР»Рё РІРєР»СЋС‡РµРЅ debugLogging)
     /// </summary>
     protected void Log(string message)
     {
         if (debugLogging)
         {
-            Debug.Log($"[{ManagerName}] {message}");
         }
     }
 
     /// <summary>
-    /// Вывести предупреждение в лог (всегда)
+    /// Р’С‹РІРµСЃС‚Рё РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ РІ Р»РѕРі (РІСЃРµРіРґР°)
     /// </summary>
     protected void LogWarning(string message)
     {
-        Debug.LogWarning($"[{ManagerName}] {message}");
     }
 
     /// <summary>
-    /// Вывести ошибку в лог (всегда)
+    /// Р’С‹РІРµСЃС‚Рё РѕС€РёР±РєСѓ РІ Р»РѕРі (РІСЃРµРіРґР°)
     /// </summary>
     protected void LogError(string message)
     {
-        Debug.LogError($"[{ManagerName}] {message}");
     }
 
     /// <summary>
-    /// Вывести сообщение в лог (принудительно, игнорируя debugLogging)
+    /// Р’С‹РІРµСЃС‚Рё СЃРѕРѕР±С‰РµРЅРёРµ РІ Р»РѕРі (РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ, РёРіРЅРѕСЂРёСЂСѓСЏ debugLogging)
     /// </summary>
     protected void LogForce(string message)
     {
-        Debug.Log($"[{ManagerName}] {message}");
     }
 }

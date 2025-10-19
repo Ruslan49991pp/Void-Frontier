@@ -1,42 +1,42 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// EventBus - централизованная система обмена сообщениями между системами
+/// EventBus - С†РµРЅС‚СЂР°Р»РёР·РѕРІР°РЅРЅР°СЏ СЃРёСЃС‚РµРјР° РѕР±РјРµРЅР° СЃРѕРѕР±С‰РµРЅРёСЏРјРё РјРµР¶РґСѓ СЃРёСЃС‚РµРјР°РјРё
 ///
-/// АРХИТЕКТУРА: Event-driven architecture позволяет:
-/// 1. Полностью отделить отправителей от получателей
-/// 2. Множественные слушатели для одного события
-/// 3. Легко добавлять/удалять слушатели без изменения кода
-/// 4. Упростить отладку через централизованную точку
+/// РђР РҐРРўР•РљРўРЈР Рђ: Event-driven architecture РїРѕР·РІРѕР»СЏРµС‚:
+/// 1. РџРѕР»РЅРѕСЃС‚СЊСЋ РѕС‚РґРµР»РёС‚СЊ РѕС‚РїСЂР°РІРёС‚РµР»РµР№ РѕС‚ РїРѕР»СѓС‡Р°С‚РµР»РµР№
+/// 2. РњРЅРѕР¶РµСЃС‚РІРµРЅРЅС‹Рµ СЃР»СѓС€Р°С‚РµР»Рё РґР»СЏ РѕРґРЅРѕРіРѕ СЃРѕР±С‹С‚РёСЏ
+/// 3. Р›РµРіРєРѕ РґРѕР±Р°РІР»СЏС‚СЊ/СѓРґР°Р»СЏС‚СЊ СЃР»СѓС€Р°С‚РµР»Рё Р±РµР· РёР·РјРµРЅРµРЅРёСЏ РєРѕРґР°
+/// 4. РЈРїСЂРѕСЃС‚РёС‚СЊ РѕС‚Р»Р°РґРєСѓ С‡РµСЂРµР· С†РµРЅС‚СЂР°Р»РёР·РѕРІР°РЅРЅСѓСЋ С‚РѕС‡РєСѓ
 ///
-/// PERFORMANCE: Использует Dictionary для быстрого доступа к подписчикам
+/// PERFORMANCE: РСЃРїРѕР»СЊР·СѓРµС‚ Dictionary РґР»СЏ Р±С‹СЃС‚СЂРѕРіРѕ РґРѕСЃС‚СѓРїР° Рє РїРѕРґРїРёСЃС‡РёРєР°Рј
 ///
-/// ИСПОЛЬЗОВАНИЕ:
-///   // Подписка
+/// РРЎРџРћР›Р¬Р—РћР’РђРќРР•:
+///   // РџРѕРґРїРёСЃРєР°
 ///   EventBus.Subscribe<CharacterSpawnedEvent>(OnCharacterSpawned);
 ///
 ///   void OnCharacterSpawned(CharacterSpawnedEvent evt) {
 ///       Debug.Log($"Character spawned: {evt.character.GetFullName()}");
 ///   }
 ///
-///   // Публикация
+///   // РџСѓР±Р»РёРєР°С†РёСЏ
 ///   EventBus.Publish(new CharacterSpawnedEvent(character));
 ///
-///   // Отписка (ВАЖНО: всегда отписывайтесь в OnDestroy!)
+///   // РћС‚РїРёСЃРєР° (Р’РђР–РќРћ: РІСЃРµРіРґР° РѕС‚РїРёСЃС‹РІР°Р№С‚РµСЃСЊ РІ OnDestroy!)
 ///   EventBus.Unsubscribe<CharacterSpawnedEvent>(OnCharacterSpawned);
 /// </summary>
 public static class EventBus
 {
-    // Словарь подписчиков для каждого типа события
+    // РЎР»РѕРІР°СЂСЊ РїРѕРґРїРёСЃС‡РёРєРѕРІ РґР»СЏ РєР°Р¶РґРѕРіРѕ С‚РёРїР° СЃРѕР±С‹С‚РёСЏ
     private static readonly Dictionary<Type, List<Delegate>> subscribers = new Dictionary<Type, List<Delegate>>();
 
-    // Флаг для отладки
+    // Р¤Р»Р°Рі РґР»СЏ РѕС‚Р»Р°РґРєРё
     private static bool debugMode = false;
 
     /// <summary>
-    /// Подписаться на событие
+    /// РџРѕРґРїРёСЃР°С‚СЊСЃСЏ РЅР° СЃРѕР±С‹С‚РёРµ
     /// </summary>
     public static void Subscribe<T>(Action<T> handler) where T : GameEvent
     {
@@ -47,25 +47,23 @@ public static class EventBus
             subscribers[eventType] = new List<Delegate>();
         }
 
-        // Проверяем, что этот обработчик еще не подписан
+        // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ СЌС‚РѕС‚ РѕР±СЂР°Р±РѕС‚С‡РёРє РµС‰Рµ РЅРµ РїРѕРґРїРёСЃР°РЅ
         if (!subscribers[eventType].Contains(handler))
         {
             subscribers[eventType].Add(handler);
 
             if (debugMode)
             {
-                Debug.Log($"[EventBus] Subscribed to {eventType.Name}. Total subscribers: {subscribers[eventType].Count}");
             }
         }
         else
         {
-            Debug.LogWarning($"[EventBus] Handler already subscribed to {eventType.Name}");
         }
     }
 
     /// <summary>
-    /// Отписаться от события
-    /// ВАЖНО: Всегда вызывайте в OnDestroy() чтобы избежать утечек памяти!
+    /// РћС‚РїРёСЃР°С‚СЊСЃСЏ РѕС‚ СЃРѕР±С‹С‚РёСЏ
+    /// Р’РђР–РќРћ: Р’СЃРµРіРґР° РІС‹Р·С‹РІР°Р№С‚Рµ РІ OnDestroy() С‡С‚РѕР±С‹ РёР·Р±РµР¶Р°С‚СЊ СѓС‚РµС‡РµРє РїР°РјСЏС‚Рё!
     /// </summary>
     public static void Unsubscribe<T>(Action<T> handler) where T : GameEvent
     {
@@ -77,10 +75,9 @@ public static class EventBus
             {
                 if (debugMode)
                 {
-                    Debug.Log($"[EventBus] Unsubscribed from {eventType.Name}. Remaining subscribers: {subscribers[eventType].Count}");
                 }
 
-                // Удаляем пустые списки
+                // РЈРґР°Р»СЏРµРј РїСѓСЃС‚С‹Рµ СЃРїРёСЃРєРё
                 if (subscribers[eventType].Count == 0)
                 {
                     subscribers.Remove(eventType);
@@ -88,13 +85,12 @@ public static class EventBus
             }
             else
             {
-                Debug.LogWarning($"[EventBus] Handler not found for {eventType.Name}");
             }
         }
     }
 
     /// <summary>
-    /// Опубликовать событие - уведомить всех подписчиков
+    /// РћРїСѓР±Р»РёРєРѕРІР°С‚СЊ СЃРѕР±С‹С‚РёРµ - СѓРІРµРґРѕРјРёС‚СЊ РІСЃРµС… РїРѕРґРїРёСЃС‡РёРєРѕРІ
     /// </summary>
     public static void Publish<T>(T gameEvent) where T : GameEvent
     {
@@ -102,25 +98,22 @@ public static class EventBus
 
         if (subscribers.ContainsKey(eventType))
         {
-            // Создаем копию списка на случай если кто-то отпишется во время обработки
+            // РЎРѕР·РґР°РµРј РєРѕРїРёСЋ СЃРїРёСЃРєР° РЅР° СЃР»СѓС‡Р°Р№ РµСЃР»Рё РєС‚Рѕ-С‚Рѕ РѕС‚РїРёС€РµС‚СЃСЏ РІРѕ РІСЂРµРјСЏ РѕР±СЂР°Р±РѕС‚РєРё
             List<Delegate> handlersCopy = new List<Delegate>(subscribers[eventType]);
 
             if (debugMode)
             {
-                Debug.Log($"[EventBus] Publishing {eventType.Name} to {handlersCopy.Count} subscribers");
             }
 
             foreach (Delegate handler in handlersCopy)
             {
                 try
                 {
-                    // Вызываем обработчик
+                    // Р’С‹Р·С‹РІР°РµРј РѕР±СЂР°Р±РѕС‚С‡РёРє
                     (handler as Action<T>)?.Invoke(gameEvent);
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[EventBus] Error invoking handler for {eventType.Name}: {ex.Message}");
-                    Debug.LogError($"[EventBus] Stack trace: {ex.StackTrace}");
                 }
             }
         }
@@ -128,13 +121,12 @@ public static class EventBus
         {
             if (debugMode)
             {
-                Debug.Log($"[EventBus] No subscribers for {eventType.Name}");
             }
         }
     }
 
     /// <summary>
-    /// Проверить, есть ли подписчики на событие
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РµСЃС‚СЊ Р»Рё РїРѕРґРїРёСЃС‡РёРєРё РЅР° СЃРѕР±С‹С‚РёРµ
     /// </summary>
     public static bool HasSubscribers<T>() where T : GameEvent
     {
@@ -143,7 +135,7 @@ public static class EventBus
     }
 
     /// <summary>
-    /// Получить количество подписчиков на событие
+    /// РџРѕР»СѓС‡РёС‚СЊ РєРѕР»РёС‡РµСЃС‚РІРѕ РїРѕРґРїРёСЃС‡РёРєРѕРІ РЅР° СЃРѕР±С‹С‚РёРµ
     /// </summary>
     public static int GetSubscriberCount<T>() where T : GameEvent
     {
@@ -152,34 +144,30 @@ public static class EventBus
     }
 
     /// <summary>
-    /// Очистить всех подписчиков для всех событий
-    /// ВНИМАНИЕ: Используйте только при переходе между сценами!
+    /// РћС‡РёСЃС‚РёС‚СЊ РІСЃРµС… РїРѕРґРїРёСЃС‡РёРєРѕРІ РґР»СЏ РІСЃРµС… СЃРѕР±С‹С‚РёР№
+    /// Р’РќРРњРђРќРР•: РСЃРїРѕР»СЊР·СѓР№С‚Рµ С‚РѕР»СЊРєРѕ РїСЂРё РїРµСЂРµС…РѕРґРµ РјРµР¶РґСѓ СЃС†РµРЅР°РјРё!
     /// </summary>
     public static void Clear()
     {
         subscribers.Clear();
-        Debug.Log("[EventBus] Cleared all subscribers");
     }
 
     /// <summary>
-    /// Включить/выключить режим отладки
+    /// Р’РєР»СЋС‡РёС‚СЊ/РІС‹РєР»СЋС‡РёС‚СЊ СЂРµР¶РёРј РѕС‚Р»Р°РґРєРё
     /// </summary>
     public static void SetDebugMode(bool enabled)
     {
         debugMode = enabled;
-        Debug.Log($"[EventBus] Debug mode {(enabled ? "enabled" : "disabled")}");
     }
 
     /// <summary>
-    /// Вывести статистику подписчиков (для отладки)
+    /// Р’С‹РІРµСЃС‚Рё СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕРґРїРёСЃС‡РёРєРѕРІ (РґР»СЏ РѕС‚Р»Р°РґРєРё)
     /// </summary>
     public static void DebugPrintStatistics()
     {
-        Debug.Log($"[EventBus] Statistics: {subscribers.Count} event types registered");
 
         foreach (var kvp in subscribers)
         {
-            Debug.Log($"  - {kvp.Key.Name}: {kvp.Value.Count} subscribers");
         }
     }
 }

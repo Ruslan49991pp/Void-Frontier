@@ -1,23 +1,23 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// GameUtilities - коллекция утилитарных методов для общих операций
+/// GameUtilities - РєРѕР»Р»РµРєС†РёСЏ СѓС‚РёР»РёС‚Р°СЂРЅС‹С… РјРµС‚РѕРґРѕРІ РґР»СЏ РѕР±С‰РёС… РѕРїРµСЂР°С†РёР№
 ///
-/// CODE QUALITY: Централизация дублирующегося кода:
-/// 1. Уменьшает дублирование кода (DRY principle)
-/// 2. Обеспечивает единообразие операций
-/// 3. Упрощает тестирование
-/// 4. Улучшает читаемость кода
+/// CODE QUALITY: Р¦РµРЅС‚СЂР°Р»РёР·Р°С†РёСЏ РґСѓР±Р»РёСЂСѓСЋС‰РµРіРѕСЃСЏ РєРѕРґР°:
+/// 1. РЈРјРµРЅСЊС€Р°РµС‚ РґСѓР±Р»РёСЂРѕРІР°РЅРёРµ РєРѕРґР° (DRY principle)
+/// 2. РћР±РµСЃРїРµС‡РёРІР°РµС‚ РµРґРёРЅРѕРѕР±СЂР°Р·РёРµ РѕРїРµСЂР°С†РёР№
+/// 3. РЈРїСЂРѕС‰Р°РµС‚ С‚РµСЃС‚РёСЂРѕРІР°РЅРёРµ
+/// 4. РЈР»СѓС‡С€Р°РµС‚ С‡РёС‚Р°РµРјРѕСЃС‚СЊ РєРѕРґР°
 ///
-/// ИСПОЛЬЗОВАНИЕ:
-///   // Безопасное получение компонента
+/// РРЎРџРћР›Р¬Р—РћР’РђРќРР•:
+///   // Р‘РµР·РѕРїР°СЃРЅРѕРµ РїРѕР»СѓС‡РµРЅРёРµ РєРѕРјРїРѕРЅРµРЅС‚Р°
 ///   Character character = GameUtils.GetComponentSafe<Character>(gameObject);
 ///
-///   // Проверка дистанции
+///   // РџСЂРѕРІРµСЂРєР° РґРёСЃС‚Р°РЅС†РёРё
 ///   if (GameUtils.IsInRange(player, enemy, attackRange)) { ... }
 ///
-///   // Создание 2D вектора из 3D
+///   // РЎРѕР·РґР°РЅРёРµ 2D РІРµРєС‚РѕСЂР° РёР· 3D
 ///   Vector2 flatPos = GameUtils.To2D(worldPosition);
 /// </summary>
 public static class GameUtils
@@ -27,63 +27,57 @@ public static class GameUtils
     // ========================================================================
 
     /// <summary>
-    /// Безопасное получение компонента с логированием ошибки
+    /// Р‘РµР·РѕРїР°СЃРЅРѕРµ РїРѕР»СѓС‡РµРЅРёРµ РєРѕРјРїРѕРЅРµРЅС‚Р° СЃ Р»РѕРіРёСЂРѕРІР°РЅРёРµРј РѕС€РёР±РєРё
     /// </summary>
     public static T GetComponentSafe<T>(GameObject obj, bool logError = true) where T : Component
     {
         if (obj == null)
         {
             if (logError)
-                Debug.LogError($"[GameUtils] Cannot get component {typeof(T).Name} - GameObject is null");
             return null;
         }
 
         T component = obj.GetComponent<T>();
         if (component == null && logError)
         {
-            Debug.LogError($"[GameUtils] Component {typeof(T).Name} not found on {obj.name}");
         }
 
         return component;
     }
 
     /// <summary>
-    /// Безопасное получение компонента в родителях
+    /// Р‘РµР·РѕРїР°СЃРЅРѕРµ РїРѕР»СѓС‡РµРЅРёРµ РєРѕРјРїРѕРЅРµРЅС‚Р° РІ СЂРѕРґРёС‚РµР»СЏС…
     /// </summary>
     public static T GetComponentInParentSafe<T>(GameObject obj, bool logError = true) where T : Component
     {
         if (obj == null)
         {
             if (logError)
-                Debug.LogError($"[GameUtils] Cannot get component {typeof(T).Name} - GameObject is null");
             return null;
         }
 
         T component = obj.GetComponentInParent<T>();
         if (component == null && logError)
         {
-            Debug.LogError($"[GameUtils] Component {typeof(T).Name} not found in parents of {obj.name}");
         }
 
         return component;
     }
 
     /// <summary>
-    /// Безопасное получение компонента в детях
+    /// Р‘РµР·РѕРїР°СЃРЅРѕРµ РїРѕР»СѓС‡РµРЅРёРµ РєРѕРјРїРѕРЅРµРЅС‚Р° РІ РґРµС‚СЏС…
     /// </summary>
     public static T GetComponentInChildrenSafe<T>(GameObject obj, bool logError = true) where T : Component
     {
         if (obj == null)
         {
             if (logError)
-                Debug.LogError($"[GameUtils] Cannot get component {typeof(T).Name} - GameObject is null");
             return null;
         }
 
         T component = obj.GetComponentInChildren<T>();
         if (component == null && logError)
         {
-            Debug.LogError($"[GameUtils] Component {typeof(T).Name} not found in children of {obj.name}");
         }
 
         return component;
@@ -94,8 +88,8 @@ public static class GameUtils
     // ========================================================================
 
     /// <summary>
-    /// Проверка что GameObject не уничтожен (Unity null check)
-    /// Unity уничтоженные объекты могут быть != null, но ReferenceEquals дает правду
+    /// РџСЂРѕРІРµСЂРєР° С‡С‚Рѕ GameObject РЅРµ СѓРЅРёС‡С‚РѕР¶РµРЅ (Unity null check)
+    /// Unity СѓРЅРёС‡С‚РѕР¶РµРЅРЅС‹Рµ РѕР±СЉРµРєС‚С‹ РјРѕРіСѓС‚ Р±С‹С‚СЊ != null, РЅРѕ ReferenceEquals РґР°РµС‚ РїСЂР°РІРґСѓ
     /// </summary>
     public static bool IsDestroyed(Object obj)
     {
@@ -103,7 +97,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Проверка что GameObject жив и активен
+    /// РџСЂРѕРІРµСЂРєР° С‡С‚Рѕ GameObject Р¶РёРІ Рё Р°РєС‚РёРІРµРЅ
     /// </summary>
     public static bool IsAliveAndActive(GameObject obj)
     {
@@ -115,7 +109,7 @@ public static class GameUtils
     // ========================================================================
 
     /// <summary>
-    /// Конвертация 3D позиции в 2D (XZ плоскость)
+    /// РљРѕРЅРІРµСЂС‚Р°С†РёСЏ 3D РїРѕР·РёС†РёРё РІ 2D (XZ РїР»РѕСЃРєРѕСЃС‚СЊ)
     /// </summary>
     public static Vector2 To2D(Vector3 position)
     {
@@ -123,7 +117,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Конвертация 2D позиции в 3D (XZ плоскость, Y = 0)
+    /// РљРѕРЅРІРµСЂС‚Р°С†РёСЏ 2D РїРѕР·РёС†РёРё РІ 3D (XZ РїР»РѕСЃРєРѕСЃС‚СЊ, Y = 0)
     /// </summary>
     public static Vector3 To3D(Vector2 position, float y = 0f)
     {
@@ -131,7 +125,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Плоская дистанция между двумя объектами (игнорирует Y)
+    /// РџР»РѕСЃРєР°СЏ РґРёСЃС‚Р°РЅС†РёСЏ РјРµР¶РґСѓ РґРІСѓРјСЏ РѕР±СЉРµРєС‚Р°РјРё (РёРіРЅРѕСЂРёСЂСѓРµС‚ Y)
     /// </summary>
     public static float FlatDistance(Vector3 a, Vector3 b)
     {
@@ -141,7 +135,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Плоская дистанция между двумя GameObject
+    /// РџР»РѕСЃРєР°СЏ РґРёСЃС‚Р°РЅС†РёСЏ РјРµР¶РґСѓ РґРІСѓРјСЏ GameObject
     /// </summary>
     public static float FlatDistance(GameObject a, GameObject b)
     {
@@ -150,7 +144,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Проверка находятся ли две позиции в пределах дистанции
+    /// РџСЂРѕРІРµСЂРєР° РЅР°С…РѕРґСЏС‚СЃСЏ Р»Рё РґРІРµ РїРѕР·РёС†РёРё РІ РїСЂРµРґРµР»Р°С… РґРёСЃС‚Р°РЅС†РёРё
     /// </summary>
     public static bool IsInRange(Vector3 a, Vector3 b, float range)
     {
@@ -158,7 +152,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Проверка находятся ли два GameObject в пределах дистанции
+    /// РџСЂРѕРІРµСЂРєР° РЅР°С…РѕРґСЏС‚СЃСЏ Р»Рё РґРІР° GameObject РІ РїСЂРµРґРµР»Р°С… РґРёСЃС‚Р°РЅС†РёРё
     /// </summary>
     public static bool IsInRange(GameObject a, GameObject b, float range)
     {
@@ -167,7 +161,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Получить направление от одной точки к другой (нормализованный вектор на XZ плоскости)
+    /// РџРѕР»СѓС‡РёС‚СЊ РЅР°РїСЂР°РІР»РµРЅРёРµ РѕС‚ РѕРґРЅРѕР№ С‚РѕС‡РєРё Рє РґСЂСѓРіРѕР№ (РЅРѕСЂРјР°Р»РёР·РѕРІР°РЅРЅС‹Р№ РІРµРєС‚РѕСЂ РЅР° XZ РїР»РѕСЃРєРѕСЃС‚Рё)
     /// </summary>
     public static Vector3 GetFlatDirection(Vector3 from, Vector3 to)
     {
@@ -181,7 +175,7 @@ public static class GameUtils
     // ========================================================================
 
     /// <summary>
-    /// Создать цвет с измененной альфой
+    /// РЎРѕР·РґР°С‚СЊ С†РІРµС‚ СЃ РёР·РјРµРЅРµРЅРЅРѕР№ Р°Р»СЊС„РѕР№
     /// </summary>
     public static Color WithAlpha(Color color, float alpha)
     {
@@ -189,7 +183,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Плавный переход между двумя цветами
+    /// РџР»Р°РІРЅС‹Р№ РїРµСЂРµС…РѕРґ РјРµР¶РґСѓ РґРІСѓРјСЏ С†РІРµС‚Р°РјРё
     /// </summary>
     public static Color LerpColor(Color from, Color to, float t)
     {
@@ -201,7 +195,7 @@ public static class GameUtils
     // ========================================================================
 
     /// <summary>
-    /// Безопасное уничтожение GameObject
+    /// Р‘РµР·РѕРїР°СЃРЅРѕРµ СѓРЅРёС‡С‚РѕР¶РµРЅРёРµ GameObject
     /// </summary>
     public static void SafeDestroy(GameObject obj)
     {
@@ -212,7 +206,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Безопасное немедленное уничтожение GameObject
+    /// Р‘РµР·РѕРїР°СЃРЅРѕРµ РЅРµРјРµРґР»РµРЅРЅРѕРµ СѓРЅРёС‡С‚РѕР¶РµРЅРёРµ GameObject
     /// </summary>
     public static void SafeDestroyImmediate(GameObject obj)
     {
@@ -223,7 +217,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Безопасная установка активности GameObject
+    /// Р‘РµР·РѕРїР°СЃРЅР°СЏ СѓСЃС‚Р°РЅРѕРІРєР° Р°РєС‚РёРІРЅРѕСЃС‚Рё GameObject
     /// </summary>
     public static void SafeSetActive(GameObject obj, bool active)
     {
@@ -234,7 +228,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Найти все дочерние GameObject с определенным тегом
+    /// РќР°Р№С‚Рё РІСЃРµ РґРѕС‡РµСЂРЅРёРµ GameObject СЃ РѕРїСЂРµРґРµР»РµРЅРЅС‹Рј С‚РµРіРѕРј
     /// </summary>
     public static List<GameObject> FindChildrenWithTag(GameObject parent, string tag)
     {
@@ -249,7 +243,7 @@ public static class GameUtils
                 result.Add(child.gameObject);
             }
 
-            // Рекурсивный поиск в детях
+            // Р РµРєСѓСЂСЃРёРІРЅС‹Р№ РїРѕРёСЃРє РІ РґРµС‚СЏС…
             result.AddRange(FindChildrenWithTag(child.gameObject, tag));
         }
 
@@ -261,7 +255,7 @@ public static class GameUtils
     // ========================================================================
 
     /// <summary>
-    /// Ограничить значение в пределах min-max
+    /// РћРіСЂР°РЅРёС‡РёС‚СЊ Р·РЅР°С‡РµРЅРёРµ РІ РїСЂРµРґРµР»Р°С… min-max
     /// </summary>
     public static float Clamp(float value, float min, float max)
     {
@@ -269,7 +263,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Нормализовать значение в диапазоне 0-1
+    /// РќРѕСЂРјР°Р»РёР·РѕРІР°С‚СЊ Р·РЅР°С‡РµРЅРёРµ РІ РґРёР°РїР°Р·РѕРЅРµ 0-1
     /// </summary>
     public static float Normalize(float value, float min, float max)
     {
@@ -278,7 +272,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Проверка примерного равенства чисел
+    /// РџСЂРѕРІРµСЂРєР° РїСЂРёРјРµСЂРЅРѕРіРѕ СЂР°РІРµРЅСЃС‚РІР° С‡РёСЃРµР»
     /// </summary>
     public static bool Approximately(float a, float b, float epsilon = 0.001f)
     {
@@ -290,7 +284,7 @@ public static class GameUtils
     // ========================================================================
 
     /// <summary>
-    /// Проверить находится ли GameObject на определенном слое
+    /// РџСЂРѕРІРµСЂРёС‚СЊ РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё GameObject РЅР° РѕРїСЂРµРґРµР»РµРЅРЅРѕРј СЃР»РѕРµ
     /// </summary>
     public static bool IsOnLayer(GameObject obj, int layer)
     {
@@ -299,7 +293,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Проверить входит ли GameObject в LayerMask
+    /// РџСЂРѕРІРµСЂРёС‚СЊ РІС…РѕРґРёС‚ Р»Рё GameObject РІ LayerMask
     /// </summary>
     public static bool IsInLayerMask(GameObject obj, LayerMask layerMask)
     {
@@ -312,7 +306,7 @@ public static class GameUtils
     // ========================================================================
 
     /// <summary>
-    /// Проверить прошло ли достаточно времени с последнего действия
+    /// РџСЂРѕРІРµСЂРёС‚СЊ РїСЂРѕС€Р»Рѕ Р»Рё РґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РІСЂРµРјРµРЅРё СЃ РїРѕСЃР»РµРґРЅРµРіРѕ РґРµР№СЃС‚РІРёСЏ
     /// </summary>
     public static bool HasElapsed(float lastTime, float interval)
     {
@@ -320,7 +314,7 @@ public static class GameUtils
     }
 
     /// <summary>
-    /// Получить процент прогресса между двумя временными метками
+    /// РџРѕР»СѓС‡РёС‚СЊ РїСЂРѕС†РµРЅС‚ РїСЂРѕРіСЂРµСЃСЃР° РјРµР¶РґСѓ РґРІСѓРјСЏ РІСЂРµРјРµРЅРЅС‹РјРё РјРµС‚РєР°РјРё
     /// </summary>
     public static float GetTimeProgress(float startTime, float duration)
     {

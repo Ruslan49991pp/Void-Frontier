@@ -1,39 +1,39 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// UI компонент для отображения одного ресурса
-/// Показывает иконку ресурса и его количество
+/// UI РєРѕРјРїРѕРЅРµРЅС‚ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РѕРґРЅРѕРіРѕ СЂРµСЃСѓСЂСЃР°
+/// РџРѕРєР°Р·С‹РІР°РµС‚ РёРєРѕРЅРєСѓ СЂРµСЃСѓСЂСЃР° Рё РµРіРѕ РєРѕР»РёС‡РµСЃС‚РІРѕ
 /// </summary>
 public class ResourceSlotUI : MonoBehaviour
 {
     [Header("UI References")]
-    [Tooltip("Компонент Image для отображения иконки ресурса")]
+    [Tooltip("РљРѕРјРїРѕРЅРµРЅС‚ Image РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РёРєРѕРЅРєРё СЂРµСЃСѓСЂСЃР°")]
     public Image iconImage;
 
-    [Tooltip("Текст для отображения количества (TextMeshPro)")]
+    [Tooltip("РўРµРєСЃС‚ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РєРѕР»РёС‡РµСЃС‚РІР° (TextMeshPro)")]
     public TextMeshProUGUI quantityText;
 
-    [Tooltip("Фоновое изображение слота")]
+    [Tooltip("Р¤РѕРЅРѕРІРѕРµ РёР·РѕР±СЂР°Р¶РµРЅРёРµ СЃР»РѕС‚Р°")]
     public Image backgroundImage;
 
     [Header("Settings")]
-    [Tooltip("Размер иконки (используется только для программного создания)")]
+    [Tooltip("Р Р°Р·РјРµСЂ РёРєРѕРЅРєРё (РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ С‚РѕР»СЊРєРѕ РґР»СЏ РїСЂРѕРіСЂР°РјРјРЅРѕРіРѕ СЃРѕР·РґР°РЅРёСЏ)")]
     public Vector2 iconSize = new Vector2(50, 50);
 
-    // Данные ресурса
+    // Р”Р°РЅРЅС‹Рµ СЂРµСЃСѓСЂСЃР°
     private ResourceData resourceData;
     private int currentQuantity;
 
     void Awake()
     {
-        // Автоматически находим компоненты из префаба Res_Slot
-        // Префаб имеет детей: "Ico", "Text (TMP)", "Backgound"
+        // РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РЅР°С…РѕРґРёРј РєРѕРјРїРѕРЅРµРЅС‚С‹ РёР· РїСЂРµС„Р°Р±Р° Res_Slot
+        // РџСЂРµС„Р°Р± РёРјРµРµС‚ РґРµС‚РµР№: "Ico", "Text (TMP)", "Backgound"
 
         if (iconImage == null)
         {
-            // Ищем child с именем "Ico"
+            // РС‰РµРј child СЃ РёРјРµРЅРµРј "Ico"
             Transform iconTransform = transform.Find("Ico");
             if (iconTransform != null)
             {
@@ -42,13 +42,12 @@ public class ResourceSlotUI : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning($"[ResourceSlotUI] 'Ico' child not found in {gameObject.name}");
             }
         }
 
         if (quantityText == null)
         {
-            // Ищем child с именем "Text (TMP)"
+            // РС‰РµРј child СЃ РёРјРµРЅРµРј "Text (TMP)"
             Transform textTransform = transform.Find("Text (TMP)");
             if (textTransform != null)
             {
@@ -57,13 +56,12 @@ public class ResourceSlotUI : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning($"[ResourceSlotUI] 'Text (TMP)' child not found in {gameObject.name}");
             }
         }
 
         if (backgroundImage == null)
         {
-            // Ищем child с именем "Backgound"
+            // РС‰РµРј child СЃ РёРјРµРЅРµРј "Backgound"
             Transform backgroundTransform = transform.Find("Backgound");
             if (backgroundTransform != null)
             {
@@ -72,7 +70,7 @@ public class ResourceSlotUI : MonoBehaviour
             }
             else
             {
-                // Фолбэк: пытаемся найти Image на корневом объекте
+                // Р¤РѕР»Р±СЌРє: РїС‹С‚Р°РµРјСЃСЏ РЅР°Р№С‚Рё Image РЅР° РєРѕСЂРЅРµРІРѕРј РѕР±СЉРµРєС‚Рµ
                 backgroundImage = GetComponent<Image>();
                 if (backgroundImage != null)
                 {
@@ -83,7 +81,7 @@ public class ResourceSlotUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Инициализировать слот ресурса
+    /// РРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°С‚СЊ СЃР»РѕС‚ СЂРµСЃСѓСЂСЃР°
     /// </summary>
     public void Initialize(ResourceData resource)
     {
@@ -91,38 +89,36 @@ public class ResourceSlotUI : MonoBehaviour
 
         if (resourceData == null)
         {
-            Debug.LogWarning("[ResourceSlotUI] Trying to initialize with null resource data");
             return;
         }
 
-        // ФОЛБЭК: Создаем UI элементы программно, только если префаб их не содержит
+        // Р¤РћР›Р‘Р­Рљ: РЎРѕР·РґР°РµРј UI СЌР»РµРјРµРЅС‚С‹ РїСЂРѕРіСЂР°РјРјРЅРѕ, С‚РѕР»СЊРєРѕ РµСЃР»Рё РїСЂРµС„Р°Р± РёС… РЅРµ СЃРѕРґРµСЂР¶РёС‚
         if (iconImage == null || quantityText == null)
         {
-            Debug.LogWarning($"[ResourceSlotUI] Some UI components not found in prefab, creating programmatically as fallback");
             CreateUIElements();
         }
 
-        // Устанавливаем иконку (не меняем цвет - используем настройки из префаба)
+        // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РёРєРѕРЅРєСѓ (РЅРµ РјРµРЅСЏРµРј С†РІРµС‚ - РёСЃРїРѕР»СЊР·СѓРµРј РЅР°СЃС‚СЂРѕР№РєРё РёР· РїСЂРµС„Р°Р±Р°)
         if (iconImage != null && resourceData.icon != null)
         {
             iconImage.sprite = resourceData.icon;
         }
 
-        // НЕ меняем цвет фона - используем настройки из префаба
+        // РќР• РјРµРЅСЏРµРј С†РІРµС‚ С„РѕРЅР° - РёСЃРїРѕР»СЊР·СѓРµРј РЅР°СЃС‚СЂРѕР№РєРё РёР· РїСЂРµС„Р°Р±Р°
 
-        // Инициализируем количество
+        // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РєРѕР»РёС‡РµСЃС‚РІРѕ
         UpdateQuantity(0);
 
-        // Добавляем Tooltip (опционально)
+        // Р”РѕР±Р°РІР»СЏРµРј Tooltip (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ)
         AddTooltip();
     }
 
     /// <summary>
-    /// Создать UI элементы программно
+    /// РЎРѕР·РґР°С‚СЊ UI СЌР»РµРјРµРЅС‚С‹ РїСЂРѕРіСЂР°РјРјРЅРѕ
     /// </summary>
     void CreateUIElements()
     {
-        // Настраиваем корневой объект
+        // РќР°СЃС‚СЂР°РёРІР°РµРј РєРѕСЂРЅРµРІРѕР№ РѕР±СЉРµРєС‚
         RectTransform rootRect = GetComponent<RectTransform>();
         if (rootRect == null)
         {
@@ -130,15 +126,15 @@ public class ResourceSlotUI : MonoBehaviour
         }
         rootRect.sizeDelta = iconSize;
 
-        // Добавляем фоновое изображение
+        // Р”РѕР±Р°РІР»СЏРµРј С„РѕРЅРѕРІРѕРµ РёР·РѕР±СЂР°Р¶РµРЅРёРµ
         if (backgroundImage == null)
         {
             backgroundImage = gameObject.AddComponent<Image>();
-            // Используем нейтральный полупрозрачный серый цвет по умолчанию
+            // РСЃРїРѕР»СЊР·СѓРµРј РЅРµР№С‚СЂР°Р»СЊРЅС‹Р№ РїРѕР»СѓРїСЂРѕР·СЂР°С‡РЅС‹Р№ СЃРµСЂС‹Р№ С†РІРµС‚ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
             backgroundImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
         }
 
-        // Создаем иконку
+        // РЎРѕР·РґР°РµРј РёРєРѕРЅРєСѓ
         if (iconImage == null)
         {
             GameObject iconObj = new GameObject("Icon");
@@ -152,7 +148,7 @@ public class ResourceSlotUI : MonoBehaviour
             iconRect.offsetMax = Vector2.zero;
         }
 
-        // Создаем текст количества (TextMeshPro)
+        // РЎРѕР·РґР°РµРј С‚РµРєСЃС‚ РєРѕР»РёС‡РµСЃС‚РІР° (TextMeshPro)
         if (quantityText == null)
         {
             GameObject textObj = new GameObject("QuantityText");
@@ -164,10 +160,10 @@ public class ResourceSlotUI : MonoBehaviour
             quantityText.color = Color.white;
             quantityText.alignment = TextAlignmentOptions.BottomRight;
 
-            // Включаем автоматический размер
+            // Р’РєР»СЋС‡Р°РµРј Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёР№ СЂР°Р·РјРµСЂ
             quantityText.enableAutoSizing = false;
 
-            // Включаем Outline для лучшей читаемости
+            // Р’РєР»СЋС‡Р°РµРј Outline РґР»СЏ Р»СѓС‡С€РµР№ С‡РёС‚Р°РµРјРѕСЃС‚Рё
             quantityText.outlineWidth = 0.2f;
             quantityText.outlineColor = Color.black;
 
@@ -180,7 +176,7 @@ public class ResourceSlotUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновить количество ресурса
+    /// РћР±РЅРѕРІРёС‚СЊ РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµСЃСѓСЂСЃР°
     /// </summary>
     public void UpdateQuantity(int quantity)
     {
@@ -188,8 +184,8 @@ public class ResourceSlotUI : MonoBehaviour
 
         if (quantityText != null)
         {
-            // Просто обновляем текст, не меняя стиль из префаба
-            // Форматируем количество для компактного отображения
+            // РџСЂРѕСЃС‚Рѕ РѕР±РЅРѕРІР»СЏРµРј С‚РµРєСЃС‚, РЅРµ РјРµРЅСЏСЏ СЃС‚РёР»СЊ РёР· РїСЂРµС„Р°Р±Р°
+            // Р¤РѕСЂРјР°С‚РёСЂСѓРµРј РєРѕР»РёС‡РµСЃС‚РІРѕ РґР»СЏ РєРѕРјРїР°РєС‚РЅРѕРіРѕ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ
             if (quantity >= 1000000)
             {
                 quantityText.text = $"{quantity / 1000000f:F1}M";
@@ -203,12 +199,12 @@ public class ResourceSlotUI : MonoBehaviour
                 quantityText.text = quantity.ToString();
             }
 
-            // НЕ меняем цвет, шрифт и другие параметры - используем настройки из префаба
+            // РќР• РјРµРЅСЏРµРј С†РІРµС‚, С€СЂРёС„С‚ Рё РґСЂСѓРіРёРµ РїР°СЂР°РјРµС‚СЂС‹ - РёСЃРїРѕР»СЊР·СѓРµРј РЅР°СЃС‚СЂРѕР№РєРё РёР· РїСЂРµС„Р°Р±Р°
         }
     }
 
     /// <summary>
-    /// Получить текущее количество
+    /// РџРѕР»СѓС‡РёС‚СЊ С‚РµРєСѓС‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ
     /// </summary>
     public int GetQuantity()
     {
@@ -216,7 +212,7 @@ public class ResourceSlotUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить данные ресурса
+    /// РџРѕР»СѓС‡РёС‚СЊ РґР°РЅРЅС‹Рµ СЂРµСЃСѓСЂСЃР°
     /// </summary>
     public ResourceData GetResourceData()
     {
@@ -224,36 +220,36 @@ public class ResourceSlotUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Добавить Tooltip для отображения информации о ресурсе
+    /// Р”РѕР±Р°РІРёС‚СЊ Tooltip РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РёРЅС„РѕСЂРјР°С†РёРё Рѕ СЂРµСЃСѓСЂСЃРµ
     /// </summary>
     void AddTooltip()
     {
         if (resourceData == null)
             return;
 
-        // Пытаемся найти систему Tooltip
+        // РџС‹С‚Р°РµРјСЃСЏ РЅР°Р№С‚Рё СЃРёСЃС‚РµРјСѓ Tooltip
         TooltipSystem tooltipSystem = FindObjectOfType<TooltipSystem>();
         if (tooltipSystem != null)
         {
-            // Можно добавить поддержку Tooltip в будущем
-            // Пока оставляем заглушку
+            // РњРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ РїРѕРґРґРµСЂР¶РєСѓ Tooltip РІ Р±СѓРґСѓС‰РµРј
+            // РџРѕРєР° РѕСЃС‚Р°РІР»СЏРµРј Р·Р°РіР»СѓС€РєСѓ
         }
     }
 
     /// <summary>
-    /// Обработчик наведения мыши (для будущего Tooltip)
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє РЅР°РІРµРґРµРЅРёСЏ РјС‹С€Рё (РґР»СЏ Р±СѓРґСѓС‰РµРіРѕ Tooltip)
     /// </summary>
     public void OnPointerEnter()
     {
-        // НЕ меняем внешний вид - используем настройки из префаба
-        // Можно добавить показ Tooltip в будущем
+        // РќР• РјРµРЅСЏРµРј РІРЅРµС€РЅРёР№ РІРёРґ - РёСЃРїРѕР»СЊР·СѓРµРј РЅР°СЃС‚СЂРѕР№РєРё РёР· РїСЂРµС„Р°Р±Р°
+        // РњРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ РїРѕРєР°Р· Tooltip РІ Р±СѓРґСѓС‰РµРј
     }
 
     /// <summary>
-    /// Обработчик ухода мыши
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє СѓС…РѕРґР° РјС‹С€Рё
     /// </summary>
     public void OnPointerExit()
     {
-        // НЕ меняем внешний вид - используем настройки из префаба
+        // РќР• РјРµРЅСЏРµРј РІРЅРµС€РЅРёР№ РІРёРґ - РёСЃРїРѕР»СЊР·СѓРµРј РЅР°СЃС‚СЂРѕР№РєРё РёР· РїСЂРµС„Р°Р±Р°
     }
 }

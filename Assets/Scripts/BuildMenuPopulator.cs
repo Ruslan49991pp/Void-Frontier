@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 #if UNITY_EDITOR
@@ -6,26 +6,26 @@ using UnityEditor;
 #endif
 
 /// <summary>
-/// Размещает 2 префаба в ShipBuildMenuPanel: BuildSlot и Del_BuildSlot
-/// Добавляет кнопку AddBuild для подтверждения постройки
-/// ВАЖНО: Этот скрипт должен быть прикреплен ТОЛЬКО к ShipBuildMenuPanel!
-/// Для RoomBuildMenuPanel используется отдельная логика с другими кнопками.
+/// Р Р°Р·РјРµС‰Р°РµС‚ 2 РїСЂРµС„Р°Р±Р° РІ ShipBuildMenuPanel: BuildSlot Рё Del_BuildSlot
+/// Р”РѕР±Р°РІР»СЏРµС‚ РєРЅРѕРїРєСѓ AddBuild РґР»СЏ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РїРѕСЃС‚СЂРѕР№РєРё
+/// Р’РђР–РќРћ: Р­С‚РѕС‚ СЃРєСЂРёРїС‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїСЂРёРєСЂРµРїР»РµРЅ РўРћР›Р¬РљРћ Рє ShipBuildMenuPanel!
+/// Р”Р»СЏ RoomBuildMenuPanel РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РѕС‚РґРµР»СЊРЅР°СЏ Р»РѕРіРёРєР° СЃ РґСЂСѓРіРёРјРё РєРЅРѕРїРєР°РјРё.
 /// </summary>
 public class BuildMenuPopulator : MonoBehaviour
 {
     [Header("Prefabs")]
-    [Tooltip("Префаб BuildSlot")]
+    [Tooltip("РџСЂРµС„Р°Р± BuildSlot")]
     public GameObject buildSlotPrefab;
 
-    [Tooltip("Префаб Del_BuildSlot")]
+    [Tooltip("РџСЂРµС„Р°Р± Del_BuildSlot")]
     public GameObject delBuildSlotPrefab;
 
     [Header("References")]
-    [Tooltip("RoomDragBuilder компонент")]
+    [Tooltip("RoomDragBuilder РєРѕРјРїРѕРЅРµРЅС‚")]
     public RoomDragBuilder roomDragBuilder;
 
     [Header("UI")]
-    [Tooltip("Кнопка AddBuild для подтверждения постройки")]
+    [Tooltip("РљРЅРѕРїРєР° AddBuild РґР»СЏ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РїРѕСЃС‚СЂРѕР№РєРё")]
     public Button addBuildButton;
 
     private GameObject buildSlotInstance;
@@ -49,14 +49,12 @@ public class BuildMenuPopulator : MonoBehaviour
     {
         if (gameObject.name != "ShipBuildMenuPanel")
         {
-            Debug.LogWarning($"[BuildMenuPopulator] This script should ONLY be attached to ShipBuildMenuPanel! Currently attached to: {gameObject.name}. Skipping initialization.");
             return;
         }
 
         Transform contentTransform = transform.Find("ObjectsGrid/Viewport/Content");
         if (contentTransform == null)
         {
-            Debug.LogError("[BuildMenuPopulator] Content not found at ObjectsGrid/Viewport/Content!");
             return;
         }
 
@@ -74,13 +72,11 @@ public class BuildMenuPopulator : MonoBehaviour
 
         if (buildSlotPrefab == null)
         {
-            Debug.LogError("[BuildMenuPopulator] BuildSlot prefab not assigned and could not be found!");
             return;
         }
 
         if (delBuildSlotPrefab == null)
         {
-            Debug.LogError("[BuildMenuPopulator] Del_BuildSlot prefab not assigned and could not be found!");
             return;
         }
 
@@ -94,7 +90,6 @@ public class BuildMenuPopulator : MonoBehaviour
         }
         else
         {
-            Debug.LogError("[BuildMenuPopulator] BuildSlot prefab does not have a Button component anywhere in hierarchy!");
         }
 
         delBuildSlotInstance = Instantiate(delBuildSlotPrefab, contentTransform);
@@ -107,7 +102,6 @@ public class BuildMenuPopulator : MonoBehaviour
         }
         else
         {
-            Debug.LogError("[BuildMenuPopulator] Del_BuildSlot prefab does not have a Button component anywhere in hierarchy!");
         }
 
         SetupAddBuildButton();
@@ -134,7 +128,6 @@ public class BuildMenuPopulator : MonoBehaviour
 
             if (addBuildButton == null)
             {
-                Debug.LogWarning("[BuildMenuPopulator] AddBuild button not found in Canvas_MainUI");
             }
         }
 
@@ -162,7 +155,6 @@ public class BuildMenuPopulator : MonoBehaviour
     {
         if (roomDragBuilder == null)
         {
-            Debug.LogError("[BuildMenuPopulator] RoomDragBuilder is null!");
             return;
         }
 
@@ -171,8 +163,8 @@ public class BuildMenuPopulator : MonoBehaviour
 
     void OnAddBuildClicked()
     {
-        // Теперь вызываем ConfirmBuild() вместо FinalizeBuild()
-        // ConfirmBuild() применяет материал M_Add_Build_Ghost и запускает систему строительства персонажами
+        // РўРµРїРµСЂСЊ РІС‹Р·С‹РІР°РµРј ConfirmBuild() РІРјРµСЃС‚Рѕ FinalizeBuild()
+        // ConfirmBuild() РїСЂРёРјРµРЅСЏРµС‚ РјР°С‚РµСЂРёР°Р» M_Add_Build_Ghost Рё Р·Р°РїСѓСЃРєР°РµС‚ СЃРёСЃС‚РµРјСѓ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° РїРµСЂСЃРѕРЅР°Р¶Р°РјРё
         roomDragBuilder.ConfirmBuild();
     }
 
@@ -180,7 +172,6 @@ public class BuildMenuPopulator : MonoBehaviour
     {
         if (roomDragBuilder == null)
         {
-            Debug.LogError("[BuildMenuPopulator] RoomDragBuilder is null!");
             return;
         }
 
@@ -233,7 +224,6 @@ public class BuildMenuPopulator : MonoBehaviour
             }
         }
 
-        Debug.LogWarning($"[BuildMenuPopulator] Prefab '{prefabName}' not found in '{searchPath}'");
         return null;
     }
     #endif

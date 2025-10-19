@@ -1,28 +1,28 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 
 /// <summary>
-/// Компонент для отображения информации о выделенном объекте (стена, комната, модуль) в панели ObjectSelect
+/// РљРѕРјРїРѕРЅРµРЅС‚ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РёРЅС„РѕСЂРјР°С†РёРё Рѕ РІС‹РґРµР»РµРЅРЅРѕРј РѕР±СЉРµРєС‚Рµ (СЃС‚РµРЅР°, РєРѕРјРЅР°С‚Р°, РјРѕРґСѓР»СЊ) РІ РїР°РЅРµР»Рё ObjectSelect
 /// </summary>
 public class ObjectSelectDisplay : MonoBehaviour
 {
     [Header("UI References")]
-    public GameObject objectSelectPanel; // Главная панель ObjectSelect
-    public TMP_Text textObjectInfo; // TextObjectInfo для отображения информации
+    public GameObject objectSelectPanel; // Р“Р»Р°РІРЅР°СЏ РїР°РЅРµР»СЊ ObjectSelect
+    public TMP_Text textObjectInfo; // TextObjectInfo РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РёРЅС„РѕСЂРјР°С†РёРё
 
-    // Текущий выделенный объект
+    // РўРµРєСѓС‰РёР№ РІС‹РґРµР»РµРЅРЅС‹Р№ РѕР±СЉРµРєС‚
     private GameObject currentObject;
     private SelectionManager selectionManager;
 
     void Awake()
     {
-        // Автоматически находим UI элементы если не назначены
+        // РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё РЅР°С…РѕРґРёРј UI СЌР»РµРјРµРЅС‚С‹ РµСЃР»Рё РЅРµ РЅР°Р·РЅР°С‡РµРЅС‹
         if (objectSelectPanel == null)
         {
             objectSelectPanel = gameObject;
         }
 
-        // Пытаемся найти TextObjectInfo если не назначен
+        // РџС‹С‚Р°РµРјСЃСЏ РЅР°Р№С‚Рё TextObjectInfo РµСЃР»Рё РЅРµ РЅР°Р·РЅР°С‡РµРЅ
         if (textObjectInfo == null)
         {
             Transform textTransform = FindTransformRecursive(transform, "TextObjectInfo");
@@ -32,32 +32,32 @@ public class ObjectSelectDisplay : MonoBehaviour
             }
         }
 
-        // НЕ скрываем панель здесь, иначе OnEnable() не вызовется
-        // Только очищаем текст
+        // РќР• СЃРєСЂС‹РІР°РµРј РїР°РЅРµР»СЊ Р·РґРµСЃСЊ, РёРЅР°С‡Рµ OnEnable() РЅРµ РІС‹Р·РѕРІРµС‚СЃСЏ
+        // РўРѕР»СЊРєРѕ РѕС‡РёС‰Р°РµРј С‚РµРєСЃС‚
         if (textObjectInfo != null)
         {
             textObjectInfo.text = "";
         }
     }
 
-    private bool isSubscribed = false; // Флаг подписки на события
+    private bool isSubscribed = false; // Р¤Р»Р°Рі РїРѕРґРїРёСЃРєРё РЅР° СЃРѕР±С‹С‚РёСЏ
 
     void Start()
     {
-        // Находим SelectionManager в сцене если еще не нашли
+        // РќР°С…РѕРґРёРј SelectionManager РІ СЃС†РµРЅРµ РµСЃР»Рё РµС‰Рµ РЅРµ РЅР°С€Р»Рё
         if (selectionManager == null)
         {
             selectionManager = FindObjectOfType<SelectionManager>();
         }
 
-        // Подписываемся на события выделения ОДИН РАЗ
+        // РџРѕРґРїРёСЃС‹РІР°РµРјСЃСЏ РЅР° СЃРѕР±С‹С‚РёСЏ РІС‹РґРµР»РµРЅРёСЏ РћР”РРќ Р РђР—
         if (selectionManager != null && !isSubscribed)
         {
             selectionManager.OnSelectionChanged += OnSelectionChanged;
             isSubscribed = true;
         }
 
-        // Скрываем панель после инициализации
+        // РЎРєСЂС‹РІР°РµРј РїР°РЅРµР»СЊ РїРѕСЃР»Рµ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
         if (objectSelectPanel != null)
         {
             objectSelectPanel.SetActive(false);
@@ -66,7 +66,7 @@ public class ObjectSelectDisplay : MonoBehaviour
 
     void OnDestroy()
     {
-        // Отписываемся от событий только при уничтожении компонента
+        // РћС‚РїРёСЃС‹РІР°РµРјСЃСЏ РѕС‚ СЃРѕР±С‹С‚РёР№ С‚РѕР»СЊРєРѕ РїСЂРё СѓРЅРёС‡С‚РѕР¶РµРЅРёРё РєРѕРјРїРѕРЅРµРЅС‚Р°
         if (selectionManager != null && isSubscribed)
         {
             selectionManager.OnSelectionChanged -= OnSelectionChanged;
@@ -75,40 +75,40 @@ public class ObjectSelectDisplay : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработчик изменения выделения
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє РёР·РјРµРЅРµРЅРёСЏ РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     void OnSelectionChanged(System.Collections.Generic.List<GameObject> selectedObjects)
     {
-        // Сбрасываем текущий объект
+        // РЎР±СЂР°СЃС‹РІР°РµРј С‚РµРєСѓС‰РёР№ РѕР±СЉРµРєС‚
         currentObject = null;
 
-        // Проверяем, выделен ли один объект
+        // РџСЂРѕРІРµСЂСЏРµРј, РІС‹РґРµР»РµРЅ Р»Рё РѕРґРёРЅ РѕР±СЉРµРєС‚
         if (selectedObjects.Count == 1)
         {
             GameObject selectedObject = selectedObjects[0];
 
-            // КРИТИЧЕСКИ ВАЖНО: Проверяем что объект не был уничтожен
+            // РљР РРўРР§Р•РЎРљР Р’РђР–РќРћ: РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РѕР±СЉРµРєС‚ РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
             if (ReferenceEquals(selectedObject, null) || selectedObject == null)
             {
                 HidePanel();
                 return;
             }
 
-            // Проверяем, НЕ является ли это персонажем или врагом
+            // РџСЂРѕРІРµСЂСЏРµРј, РќР• СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚Рѕ РїРµСЂСЃРѕРЅР°Р¶РµРј РёР»Рё РІСЂР°РіРѕРј
             Character character = selectedObject.GetComponent<Character>();
             if (character != null)
             {
-                // Это персонаж или враг - не показываем панель объектов
+                // Р­С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ РёР»Рё РІСЂР°Рі - РЅРµ РїРѕРєР°Р·С‹РІР°РµРј РїР°РЅРµР»СЊ РѕР±СЉРµРєС‚РѕРІ
                 HidePanel();
                 return;
             }
 
-            // Проверяем наличие LocationObjectInfo, RoomInfo или Item
+            // РџСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ LocationObjectInfo, RoomInfo РёР»Рё Item
             LocationObjectInfo locationInfo = selectedObject.GetComponent<LocationObjectInfo>();
             RoomInfo roomInfo = selectedObject.GetComponent<RoomInfo>();
             Item item = null;
 
-            // ЗАЩИТА: Безопасно получаем Item компонент
+            // Р—РђР©РРўРђ: Р‘РµР·РѕРїР°СЃРЅРѕ РїРѕР»СѓС‡Р°РµРј Item РєРѕРјРїРѕРЅРµРЅС‚
             try
             {
                 item = selectedObject.GetComponent<Item>();
@@ -119,11 +119,10 @@ public class ObjectSelectDisplay : MonoBehaviour
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[ObjectSelectDisplay] [OnSelectionChanged] Exception getting Item component: {ex.Message}");
                 item = null;
             }
 
-            // Если есть информация об объекте - показываем панель
+            // Р•СЃР»Рё РµСЃС‚СЊ РёРЅС„РѕСЂРјР°С†РёСЏ РѕР± РѕР±СЉРµРєС‚Рµ - РїРѕРєР°Р·С‹РІР°РµРј РїР°РЅРµР»СЊ
             if (locationInfo != null || roomInfo != null || item != null)
             {
                 currentObject = selectedObject;
@@ -133,12 +132,12 @@ public class ObjectSelectDisplay : MonoBehaviour
             }
         }
 
-        // Если ничего не выделено или выделено несколько объектов - скрываем панель
+        // Р•СЃР»Рё РЅРёС‡РµРіРѕ РЅРµ РІС‹РґРµР»РµРЅРѕ РёР»Рё РІС‹РґРµР»РµРЅРѕ РЅРµСЃРєРѕР»СЊРєРѕ РѕР±СЉРµРєС‚РѕРІ - СЃРєСЂС‹РІР°РµРј РїР°РЅРµР»СЊ
         HidePanel();
     }
 
     /// <summary>
-    /// Обновить всю информацию об объекте
+    /// РћР±РЅРѕРІРёС‚СЊ РІСЃСЋ РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± РѕР±СЉРµРєС‚Рµ
     /// </summary>
     void UpdateObjectInfo()
     {
@@ -147,7 +146,7 @@ public class ObjectSelectDisplay : MonoBehaviour
             return;
         }
 
-        // КРИТИЧЕСКИ ВАЖНО: Проверяем что currentObject не был уничтожен
+        // РљР РРўРР§Р•РЎРљР Р’РђР–РќРћ: РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ currentObject РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
         if (ReferenceEquals(currentObject, null))
         {
             HidePanel();
@@ -158,7 +157,7 @@ public class ObjectSelectDisplay : MonoBehaviour
 
         try
         {
-            // Проверяем RoomInfo
+            // РџСЂРѕРІРµСЂСЏРµРј RoomInfo
             RoomInfo roomInfo = currentObject.GetComponent<RoomInfo>();
             if (roomInfo != null)
             {
@@ -166,12 +165,12 @@ public class ObjectSelectDisplay : MonoBehaviour
             }
             else
             {
-                // Проверяем Item
+                // РџСЂРѕРІРµСЂСЏРµРј Item
                 Item item = null;
                 try
                 {
                     item = currentObject.GetComponent<Item>();
-                    // Дополнительная проверка что Item не уничтожен
+                    // Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР° С‡С‚Рѕ Item РЅРµ СѓРЅРёС‡С‚РѕР¶РµРЅ
                     if (item != null && ReferenceEquals(item, null))
                     {
                         item = null;
@@ -179,13 +178,12 @@ public class ObjectSelectDisplay : MonoBehaviour
                 }
                 catch (System.Exception ex)
                 {
-                    Debug.LogError($"[ObjectSelectDisplay] [UpdateObjectInfo] Exception getting Item component: {ex.Message}");
                     item = null;
                 }
 
                 if (item != null && !ReferenceEquals(item, null))
                 {
-                    // ЗАЩИТА: Безопасно получаем itemData с дополнительной проверкой
+                    // Р—РђР©РРўРђ: Р‘РµР·РѕРїР°СЃРЅРѕ РїРѕР»СѓС‡Р°РµРј itemData СЃ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕР№ РїСЂРѕРІРµСЂРєРѕР№
                     ItemData itemData = null;
                     try
                     {
@@ -193,7 +191,6 @@ public class ObjectSelectDisplay : MonoBehaviour
                     }
                     catch (System.Exception ex)
                     {
-                        Debug.LogError($"[ObjectSelectDisplay] [UpdateObjectInfo] Exception accessing item.itemData: {ex.Message}");
                         itemData = null;
                     }
 
@@ -204,7 +201,7 @@ public class ObjectSelectDisplay : MonoBehaviour
                 }
                 else
                 {
-                    // Проверяем LocationObjectInfo
+                    // РџСЂРѕРІРµСЂСЏРµРј LocationObjectInfo
                     LocationObjectInfo locationInfo = currentObject.GetComponent<LocationObjectInfo>();
                     if (locationInfo != null)
                     {
@@ -213,46 +210,44 @@ public class ObjectSelectDisplay : MonoBehaviour
                 }
             }
 
-            // Выводим информацию в TextObjectInfo
+            // Р’С‹РІРѕРґРёРј РёРЅС„РѕСЂРјР°С†РёСЋ РІ TextObjectInfo
             textObjectInfo.text = infoText;
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[ObjectSelectDisplay] [UpdateObjectInfo] Exception: {ex.Message}");
-            Debug.LogError($"[ObjectSelectDisplay] Stack trace: {ex.StackTrace}");
             HidePanel();
         }
     }
 
     /// <summary>
-    /// Получить текст информации о комнате
+    /// РџРѕР»СѓС‡РёС‚СЊ С‚РµРєСЃС‚ РёРЅС„РѕСЂРјР°С†РёРё Рѕ РєРѕРјРЅР°С‚Рµ
     /// </summary>
     string GetRoomInfoText(RoomInfo roomInfo)
     {
         string text = "";
 
-        // Имя комнаты
+        // РРјСЏ РєРѕРјРЅР°С‚С‹
         if (!string.IsNullOrEmpty(roomInfo.roomName))
         {
             text += $"Room: {roomInfo.roomName}\n";
         }
 
-        // Тип комнаты
+        // РўРёРї РєРѕРјРЅР°С‚С‹
         if (!string.IsNullOrEmpty(roomInfo.roomType))
         {
             text += $"Type: {roomInfo.roomType}\n";
         }
 
-        // Размер
+        // Р Р°Р·РјРµСЂ
         text += $"Size: {roomInfo.roomSize.x}x{roomInfo.roomSize.y}\n";
 
-        // Позиция
+        // РџРѕР·РёС†РёСЏ
         text += $"Position: ({roomInfo.gridPosition.x}, {roomInfo.gridPosition.y})\n";
 
-        // Здоровье стен
+        // Р—РґРѕСЂРѕРІСЊРµ СЃС‚РµРЅ
         text += $"Wall Health: {roomInfo.currentWallHealth:F0}/{roomInfo.maxWallHealth:F0}";
 
-        // Главный объект
+        // Р“Р»Р°РІРЅС‹Р№ РѕР±СЉРµРєС‚
         if (roomInfo.mainObject != null)
         {
             text += $"\n\nMain Object: {roomInfo.mainObject.objectName}";
@@ -266,28 +261,28 @@ public class ObjectSelectDisplay : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить текст информации об объекте локации
+    /// РџРѕР»СѓС‡РёС‚СЊ С‚РµРєСЃС‚ РёРЅС„РѕСЂРјР°С†РёРё РѕР± РѕР±СЉРµРєС‚Рµ Р»РѕРєР°С†РёРё
     /// </summary>
     string GetLocationInfoText(LocationObjectInfo locationInfo)
     {
         string text = "";
 
-        // Имя объекта
+        // РРјСЏ РѕР±СЉРµРєС‚Р°
         if (!string.IsNullOrEmpty(locationInfo.objectName))
         {
             text += $"{locationInfo.objectName}\n";
         }
 
-        // Тип объекта
+        // РўРёРї РѕР±СЉРµРєС‚Р°
         if (!string.IsNullOrEmpty(locationInfo.objectType))
         {
             text += $"Type: {locationInfo.objectType}\n";
         }
 
-        // Здоровье
+        // Р—РґРѕСЂРѕРІСЊРµ
         text += $"Health: {locationInfo.health:F0} HP";
 
-        // Металл для астероидов
+        // РњРµС‚Р°Р»Р» РґР»СЏ Р°СЃС‚РµСЂРѕРёРґРѕРІ
         if (locationInfo.IsOfType("Asteroid") && locationInfo.maxMetalAmount > 0)
         {
             text += $"\nMetal: {locationInfo.metalAmount}/{locationInfo.maxMetalAmount}";
@@ -302,7 +297,7 @@ public class ObjectSelectDisplay : MonoBehaviour
             }
         }
 
-        // Дополнительные свойства
+        // Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ СЃРІРѕР№СЃС‚РІР°
         if (locationInfo.isDestructible)
         {
             text += "\nDestructible";
@@ -317,20 +312,19 @@ public class ObjectSelectDisplay : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить текст информации о предмете
+    /// РџРѕР»СѓС‡РёС‚СЊ С‚РµРєСЃС‚ РёРЅС„РѕСЂРјР°С†РёРё Рѕ РїСЂРµРґРјРµС‚Рµ
     /// </summary>
     string GetItemInfoText(Item item)
     {
         string text = "";
 
-        // ЗАЩИТА: Проверяем что item не был уничтожен
+        // Р—РђР©РРўРђ: РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ item РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
         if (item == null || ReferenceEquals(item, null))
         {
-            Debug.LogError($"[ObjectSelectDisplay] [GetItemInfoText] Item is null or destroyed");
             return "Item no longer exists";
         }
 
-        // ЗАЩИТА: Безопасно получаем itemData
+        // Р—РђР©РРўРђ: Р‘РµР·РѕРїР°СЃРЅРѕ РїРѕР»СѓС‡Р°РµРј itemData
         ItemData itemData = null;
         try
         {
@@ -338,53 +332,51 @@ public class ObjectSelectDisplay : MonoBehaviour
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[ObjectSelectDisplay] [GetItemInfoText] Exception accessing item.itemData: {ex.Message}");
             return "Error reading item data";
         }
 
         if (itemData == null)
         {
-            Debug.LogError($"[ObjectSelectDisplay] [GetItemInfoText] itemData is null");
             return "Item data not found";
         }
 
-        // Имя предмета
+        // РРјСЏ РїСЂРµРґРјРµС‚Р°
         if (!string.IsNullOrEmpty(itemData.itemName))
         {
             text += $"ITEM: {itemData.itemName}\n";
         }
 
-        // Тип и редкость
+        // РўРёРї Рё СЂРµРґРєРѕСЃС‚СЊ
         text += $"Type: {itemData.itemType}\n";
         text += $"Rarity: {itemData.rarity}\n";
 
-        // Описание
+        // РћРїРёСЃР°РЅРёРµ
         if (!string.IsNullOrEmpty(itemData.description))
         {
             text += $"\n{itemData.description}\n";
         }
 
-        // Характеристики оружия
+        // РҐР°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё РѕСЂСѓР¶РёСЏ
         if (itemData.damage > 0)
             text += $"\nDamage: {itemData.damage}";
 
-        // Характеристики брони
+        // РҐР°СЂР°РєС‚РµСЂРёСЃС‚РёРєРё Р±СЂРѕРЅРё
         if (itemData.armor > 0)
             text += $"\nArmor: {itemData.armor}";
 
-        // Лечение
+        // Р›РµС‡РµРЅРёРµ
         if (itemData.healing > 0)
             text += $"\nHealing: {itemData.healing}";
 
-        // Слот экипировки
+        // РЎР»РѕС‚ СЌРєРёРїРёСЂРѕРІРєРё
         if (itemData.equipmentSlot != EquipmentSlot.None)
             text += $"\nSlot: {itemData.GetEquipmentSlotName()}";
 
-        // Вес и ценность
+        // Р’РµСЃ Рё С†РµРЅРЅРѕСЃС‚СЊ
         text += $"\nWeight: {itemData.weight}";
         text += $"\nValue: {itemData.value}";
 
-        // Стек
+        // РЎС‚РµРє
         if (itemData.maxStackSize > 1)
             text += $"\nMax Stack: {itemData.maxStackSize}";
 
@@ -392,7 +384,7 @@ public class ObjectSelectDisplay : MonoBehaviour
     }
 
     /// <summary>
-    /// Показать панель
+    /// РџРѕРєР°Р·Р°С‚СЊ РїР°РЅРµР»СЊ
     /// </summary>
     void ShowPanel()
     {
@@ -403,14 +395,14 @@ public class ObjectSelectDisplay : MonoBehaviour
     }
 
     /// <summary>
-    /// Скрыть панель
+    /// РЎРєСЂС‹С‚СЊ РїР°РЅРµР»СЊ
     /// </summary>
     void HidePanel()
     {
-        // Очищаем ссылку на объект
+        // РћС‡РёС‰Р°РµРј СЃСЃС‹Р»РєСѓ РЅР° РѕР±СЉРµРєС‚
         currentObject = null;
 
-        // Скрываем панель
+        // РЎРєСЂС‹РІР°РµРј РїР°РЅРµР»СЊ
         if (objectSelectPanel != null)
         {
             objectSelectPanel.SetActive(false);
@@ -418,7 +410,7 @@ public class ObjectSelectDisplay : MonoBehaviour
     }
 
     /// <summary>
-    /// Рекурсивный поиск Transform по имени
+    /// Р РµРєСѓСЂСЃРёРІРЅС‹Р№ РїРѕРёСЃРє Transform РїРѕ РёРјРµРЅРё
     /// </summary>
     Transform FindTransformRecursive(Transform parent, string name)
     {

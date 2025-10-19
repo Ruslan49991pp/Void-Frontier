@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,7 +12,7 @@ public class SelectionManager : MonoBehaviour
     public float selectionIndicatorHeight = 2f;
 
     [Header("Item Pickup Settings")]
-    [Tooltip("Включить подбор предметов при клике ПКМ на ресурс")]
+    [Tooltip("Р’РєР»СЋС‡РёС‚СЊ РїРѕРґР±РѕСЂ РїСЂРµРґРјРµС‚РѕРІ РїСЂРё РєР»РёРєРµ РџРљРњ РЅР° СЂРµСЃСѓСЂСЃ")]
     public bool enableRightClickPickup = true;
 
     [Header("Hover Highlight")]
@@ -27,39 +27,39 @@ public class SelectionManager : MonoBehaviour
     public Text selectionInfoText;
     public Canvas uiCanvas;
     
-    // Внутренние переменные
+    // Р’РЅСѓС‚СЂРµРЅРЅРёРµ РїРµСЂРµРјРµРЅРЅС‹Рµ
     private List<GameObject> selectedObjects = new List<GameObject>();
     private Dictionary<GameObject, GameObject> selectionIndicators = new Dictionary<GameObject, GameObject>();
     
-    // Переменные для box selection и кликов
+    // РџРµСЂРµРјРµРЅРЅС‹Рµ РґР»СЏ box selection Рё РєР»РёРєРѕРІ
     private bool isBoxSelecting = false;
     private bool isMousePressed = false;
     private Vector3 boxStartPosition;
     private Vector3 boxEndPosition;
     private Vector3 mouseDownPosition;
-    private float clickThreshold = 5f; // Пикселей для определения клика vs рамки
+    private float clickThreshold = 5f; // РџРёРєСЃРµР»РµР№ РґР»СЏ РѕРїСЂРµРґРµР»РµРЅРёСЏ РєР»РёРєР° vs СЂР°РјРєРё
 
-    // UI для рамки выделения
+    // UI РґР»СЏ СЂР°РјРєРё РІС‹РґРµР»РµРЅРёСЏ
     private GameObject selectionBoxUI;
     private Image selectionBoxImage;
     
-    // События
+    // РЎРѕР±С‹С‚РёСЏ
     public System.Action<List<GameObject>> OnSelectionChanged;
 
-    // Флаг для предотвращения обработки клика другими системами
+    // Р¤Р»Р°Рі РґР»СЏ РїСЂРµРґРѕС‚РІСЂР°С‰РµРЅРёСЏ РѕР±СЂР°Р±РѕС‚РєРё РєР»РёРєР° РґСЂСѓРіРёРјРё СЃРёСЃС‚РµРјР°РјРё
     private bool rightClickHandledThisFrame = false;
 
-    // Hover система
+    // Hover СЃРёСЃС‚РµРјР°
     private GameObject currentHoveredObject = null;
     private Dictionary<MeshRenderer, Material> originalMaterials = new Dictionary<MeshRenderer, Material>();
     private Dictionary<MeshRenderer, Material> hoverMaterials = new Dictionary<MeshRenderer, Material>();
     private List<MeshRenderer> currentHighlightedRenderers = new List<MeshRenderer>();
 
-    // ARCHITECTURE: Кэшированные ссылки на менеджеры через ServiceLocator
+    // ARCHITECTURE: РљСЌС€РёСЂРѕРІР°РЅРЅС‹Рµ СЃСЃС‹Р»РєРё РЅР° РјРµРЅРµРґР¶РµСЂС‹ С‡РµСЂРµР· ServiceLocator
     private GridManager gridManager;
     private MiningManager miningManager;
 
-    // Публичные свойства
+    // РџСѓР±Р»РёС‡РЅС‹Рµ СЃРІРѕР№СЃС‚РІР°
     public bool IsBoxSelecting => isBoxSelecting;
     public bool RightClickHandledThisFrame => rightClickHandledThisFrame;
     
@@ -68,33 +68,32 @@ public class SelectionManager : MonoBehaviour
         if (playerCamera == null)
             playerCamera = Camera.main;
 
-        // ARCHITECTURE: Получаем менеджеры через ServiceLocator вместо FindObjectOfType
-        // Это намного быстрее и более надежно
+        // ARCHITECTURE: РџРѕР»СѓС‡Р°РµРј РјРµРЅРµРґР¶РµСЂС‹ С‡РµСЂРµР· ServiceLocator РІРјРµСЃС‚Рѕ FindObjectOfType
+        // Р­С‚Рѕ РЅР°РјРЅРѕРіРѕ Р±С‹СЃС‚СЂРµРµ Рё Р±РѕР»РµРµ РЅР°РґРµР¶РЅРѕ
         if (ServiceLocator.IsInitialized)
         {
             gridManager = ServiceLocator.Get<GridManager>();
-            // MiningManager создается динамически, поэтому может отсутствовать
+            // MiningManager СЃРѕР·РґР°РµС‚СЃСЏ РґРёРЅР°РјРёС‡РµСЃРєРё, РїРѕСЌС‚РѕРјСѓ РјРѕР¶РµС‚ РѕС‚СЃСѓС‚СЃС‚РІРѕРІР°С‚СЊ
             ServiceLocator.TryGet<MiningManager>(out miningManager);
         }
         else
         {
-            Debug.LogWarning("[SelectionManager] ServiceLocator not initialized, falling back to FindObjectOfType");
             gridManager = FindObjectOfType<GridManager>();
         }
 
         InitializeUI();
         CreateSelectionIndicatorPrefab();
 
-        // Отложенная диагностика (даем время объектам создаться)
+        // РћС‚Р»РѕР¶РµРЅРЅР°СЏ РґРёР°РіРЅРѕСЃС‚РёРєР° (РґР°РµРј РІСЂРµРјСЏ РѕР±СЉРµРєС‚Р°Рј СЃРѕР·РґР°С‚СЊСЃСЏ)
         Invoke("DiagnoseSelectableObjects", 1f);
     }
     
     void Update()
     {
-        // Сбрасываем флаг в начале каждого кадра
+        // РЎР±СЂР°СЃС‹РІР°РµРј С„Р»Р°Рі РІ РЅР°С‡Р°Р»Рµ РєР°Р¶РґРѕРіРѕ РєР°РґСЂР°
         rightClickHandledThisFrame = false;
 
-        // Блокируем ввод если открыт инвентарь или меню паузы
+        // Р‘Р»РѕРєРёСЂСѓРµРј РІРІРѕРґ РµСЃР»Рё РѕС‚РєСЂС‹С‚ РёРЅРІРµРЅС‚Р°СЂСЊ РёР»Рё РјРµРЅСЋ РїР°СѓР·С‹
         if (!InventoryUI.IsAnyInventoryOpen && !IsGamePaused())
         {
             HandleMouseInput();
@@ -106,7 +105,7 @@ public class SelectionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить находится ли игра на паузе
+    /// РџСЂРѕРІРµСЂРёС‚СЊ РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё РёРіСЂР° РЅР° РїР°СѓР·Рµ
     /// </summary>
     bool IsGamePaused()
     {
@@ -114,7 +113,7 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Инициализация UI элементов
+    /// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ UI СЌР»РµРјРµРЅС‚РѕРІ
     /// </summary>
     void InitializeUI()
     {
@@ -130,9 +129,9 @@ public class SelectionManager : MonoBehaviour
             canvasGO.AddComponent<GraphicRaycaster>();
         }
         
-        // Убрали панель информации о выделении сверху слева - теперь будет только снизу
+        // РЈР±СЂР°Р»Рё РїР°РЅРµР»СЊ РёРЅС„РѕСЂРјР°С†РёРё Рѕ РІС‹РґРµР»РµРЅРёРё СЃРІРµСЂС…Сѓ СЃР»РµРІР° - С‚РµРїРµСЂСЊ Р±СѓРґРµС‚ С‚РѕР»СЊРєРѕ СЃРЅРёР·Сѓ
 
-        // Создаем UI элемент для рамки выделения
+        // РЎРѕР·РґР°РµРј UI СЌР»РµРјРµРЅС‚ РґР»СЏ СЂР°РјРєРё РІС‹РґРµР»РµРЅРёСЏ
         GameObject boxGO = new GameObject("SelectionBox");
         boxGO.transform.SetParent(uiCanvas.transform, false);
 
@@ -149,7 +148,7 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Создание префаба индикатора выделения если его нет
+    /// РЎРѕР·РґР°РЅРёРµ РїСЂРµС„Р°Р±Р° РёРЅРґРёРєР°С‚РѕСЂР° РІС‹РґРµР»РµРЅРёСЏ РµСЃР»Рё РµРіРѕ РЅРµС‚
     /// </summary>
     void CreateSelectionIndicatorPrefab()
     {
@@ -159,10 +158,10 @@ public class SelectionManager : MonoBehaviour
             prefab.name = "SelectionIndicator";
             prefab.transform.localScale = Vector3.one * 0.6f;
             
-            // Убираем коллайдер
+            // РЈР±РёСЂР°РµРј РєРѕР»Р»Р°Р№РґРµСЂ
             DestroyImmediate(prefab.GetComponent<Collider>());
             
-            // Настраиваем материал
+            // РќР°СЃС‚СЂР°РёРІР°РµРј РјР°С‚РµСЂРёР°Р»
             Renderer renderer = prefab.GetComponent<Renderer>();
             Material material = new Material(Shader.Find("Standard"));
             material.color = selectionIndicatorColor;
@@ -182,11 +181,11 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Обработка ввода мыши
+    /// РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РјС‹С€Рё
     /// </summary>
     void HandleMouseInput()
     {
-        // Нажатие ЛКМ - запоминаем позицию
+        // РќР°Р¶Р°С‚РёРµ Р›РљРњ - Р·Р°РїРѕРјРёРЅР°РµРј РїРѕР·РёС†РёСЋ
         if (Input.GetMouseButtonDown(0))
         {
 
@@ -195,16 +194,16 @@ public class SelectionManager : MonoBehaviour
             boxStartPosition = Input.mousePosition;
         }
 
-        // Движение мыши при зажатой ЛКМ
+        // Р”РІРёР¶РµРЅРёРµ РјС‹С€Рё РїСЂРё Р·Р°Р¶Р°С‚РѕР№ Р›РљРњ
         if (isMousePressed && Input.GetMouseButton(0))
         {
             boxEndPosition = Input.mousePosition;
             float distance = Vector3.Distance(mouseDownPosition, Input.mousePosition);
 
-            // Начинаем box selection только если мышь двинулась достаточно далеко
+            // РќР°С‡РёРЅР°РµРј box selection С‚РѕР»СЊРєРѕ РµСЃР»Рё РјС‹С€СЊ РґРІРёРЅСѓР»Р°СЃСЊ РґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РґР°Р»РµРєРѕ
             if (distance > clickThreshold && !isBoxSelecting)
             {
-                // Проверяем, есть ли под курсором юниты (персонажи)
+                // РџСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё РїРѕРґ РєСѓСЂСЃРѕСЂРѕРј СЋРЅРёС‚С‹ (РїРµСЂСЃРѕРЅР°Р¶Рё)
                 if (HasCharactersInArea())
                 {
                     isBoxSelecting = true;
@@ -213,30 +212,30 @@ public class SelectionManager : MonoBehaviour
             }
         }
 
-        // Отпускание ЛКМ
+        // РћС‚РїСѓСЃРєР°РЅРёРµ Р›РљРњ
         if (Input.GetMouseButtonUp(0) && isMousePressed)
         {
-            // Проверяем, был ли клик по UI элементу
+            // РџСЂРѕРІРµСЂСЏРµРј, Р±С‹Р» Р»Рё РєР»РёРє РїРѕ UI СЌР»РµРјРµРЅС‚Сѓ
             bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
                                    UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
             if (isBoxSelecting)
             {
 
-                // Выполняем box selection только для юнитов
+                // Р’С‹РїРѕР»РЅСЏРµРј box selection С‚РѕР»СЊРєРѕ РґР»СЏ СЋРЅРёС‚РѕРІ
                 PerformBoxSelection();
                 isBoxSelecting = false;
                 selectionBoxUI.SetActive(false);
             }
             else if (!isPointerOverUI)
             {
-                // Обычное клик-выделение - только если НЕ кликнули по UI
+                // РћР±С‹С‡РЅРѕРµ РєР»РёРє-РІС‹РґРµР»РµРЅРёРµ - С‚РѕР»СЊРєРѕ РµСЃР»Рё РќР• РєР»РёРєРЅСѓР»Рё РїРѕ UI
                 PerformClickSelection(mouseDownPosition);
             }
             isMousePressed = false;
         }
 
-        // ПКМ - взаимодействие с предметами (подбор ресурсов)
+        // РџРљРњ - РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёРµ СЃ РїСЂРµРґРјРµС‚Р°РјРё (РїРѕРґР±РѕСЂ СЂРµСЃСѓСЂСЃРѕРІ)
         if (Input.GetMouseButtonDown(1))
         {
             bool isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
@@ -250,17 +249,17 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Проверка наличия юнитов (персонажей) в области
+    /// РџСЂРѕРІРµСЂРєР° РЅР°Р»РёС‡РёСЏ СЋРЅРёС‚РѕРІ (РїРµСЂСЃРѕРЅР°Р¶РµР№) РІ РѕР±Р»Р°СЃС‚Рё
     /// </summary>
     bool HasCharactersInArea()
     {
-        // Простое определение - возвращаем true если в сцене есть Character'ы
+        // РџСЂРѕСЃС‚РѕРµ РѕРїСЂРµРґРµР»РµРЅРёРµ - РІРѕР·РІСЂР°С‰Р°РµРј true РµСЃР»Рё РІ СЃС†РµРЅРµ РµСЃС‚СЊ Character'С‹
         Character[] characters = FindObjectsOfType<Character>();
         return characters.Length > 0;
     }
 
     /// <summary>
-    /// Обновление визуальной рамки выделения
+    /// РћР±РЅРѕРІР»РµРЅРёРµ РІРёР·СѓР°Р»СЊРЅРѕР№ СЂР°РјРєРё РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     void UpdateSelectionBox()
     {
@@ -278,7 +277,7 @@ public class SelectionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Выполнение box selection только для юнитов
+    /// Р’С‹РїРѕР»РЅРµРЅРёРµ box selection С‚РѕР»СЊРєРѕ РґР»СЏ СЋРЅРёС‚РѕРІ
     /// </summary>
     void PerformBoxSelection()
     {
@@ -290,12 +289,12 @@ public class SelectionManager : MonoBehaviour
 
         List<GameObject> newSelections = new List<GameObject>();
 
-        // Находим только Character'ов в области
+        // РќР°С…РѕРґРёРј С‚РѕР»СЊРєРѕ Character'РѕРІ РІ РѕР±Р»Р°СЃС‚Рё
         Character[] allCharacters = FindObjectsOfType<Character>();
 
         foreach (Character character in allCharacters)
         {
-            // Рамкой можно выделять только союзников
+            // Р Р°РјРєРѕР№ РјРѕР¶РЅРѕ РІС‹РґРµР»СЏС‚СЊ С‚РѕР»СЊРєРѕ СЃРѕСЋР·РЅРёРєРѕРІ
             if (!character.IsPlayerCharacter())
             {
                 continue;
@@ -314,17 +313,17 @@ public class SelectionManager : MonoBehaviour
             }
         }
 
-        // Логика выделения
+        // Р›РѕРіРёРєР° РІС‹РґРµР»РµРЅРёСЏ
         if (newSelections.Count > 0)
         {
-            // Есть юниты в рамке
+            // Р•СЃС‚СЊ СЋРЅРёС‚С‹ РІ СЂР°РјРєРµ
             if (!Input.GetKey(KeyCode.LeftControl))
             {
-                // Если Ctrl не зажат, заменяем выделение
+                // Р•СЃР»Рё Ctrl РЅРµ Р·Р°Р¶Р°С‚, Р·Р°РјРµРЅСЏРµРј РІС‹РґРµР»РµРЅРёРµ
                 ClearSelection();
             }
 
-            // Добавляем новых юнитов
+            // Р”РѕР±Р°РІР»СЏРµРј РЅРѕРІС‹С… СЋРЅРёС‚РѕРІ
             foreach (GameObject obj in newSelections)
             {
                 if (!selectedObjects.Contains(obj))
@@ -335,7 +334,7 @@ public class SelectionManager : MonoBehaviour
         }
         else
         {
-            // В рамку ничего не попало
+            // Р’ СЂР°РјРєСѓ РЅРёС‡РµРіРѕ РЅРµ РїРѕРїР°Р»Рѕ
             if (!Input.GetKey(KeyCode.LeftControl))
             {
                 ClearSelection();
@@ -346,23 +345,23 @@ public class SelectionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Выполнение выделения по клику (для зданий и модулей)
+    /// Р’С‹РїРѕР»РЅРµРЅРёРµ РІС‹РґРµР»РµРЅРёСЏ РїРѕ РєР»РёРєСѓ (РґР»СЏ Р·РґР°РЅРёР№ Рё РјРѕРґСѓР»РµР№)
     /// </summary>
     void PerformClickSelection(Vector3 mousePosition)
     {
         Ray ray = playerCamera.ScreenPointToRay(mousePosition);
 
-        // Используем RaycastAll чтобы получить все объекты на луче, включая триггеры
+        // РСЃРїРѕР»СЊР·СѓРµРј RaycastAll С‡С‚РѕР±С‹ РїРѕР»СѓС‡РёС‚СЊ РІСЃРµ РѕР±СЉРµРєС‚С‹ РЅР° Р»СѓС‡Рµ, РІРєР»СЋС‡Р°СЏ С‚СЂРёРіРіРµСЂС‹
         RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask, QueryTriggerInteraction.Collide);
 
         if (hits.Length > 0)
         {
-            // Ищем первый подходящий объект для выделения
+            // РС‰РµРј РїРµСЂРІС‹Р№ РїРѕРґС…РѕРґСЏС‰РёР№ РѕР±СЉРµРєС‚ РґР»СЏ РІС‹РґРµР»РµРЅРёСЏ
             foreach (RaycastHit rayHit in hits)
             {
                 GameObject hitObject = rayHit.collider.gameObject;
 
-                // Исключаем системные объекты из выделения
+                // РСЃРєР»СЋС‡Р°РµРј СЃРёСЃС‚РµРјРЅС‹Рµ РѕР±СЉРµРєС‚С‹ РёР· РІС‹РґРµР»РµРЅРёСЏ
                 if (hitObject.name.Contains("Bounds") || hitObject.name.Contains("Grid") ||
                     hitObject.name.Contains("Location") && !hitObject.name.Contains("Test") ||
                     hitObject.name.Contains("Plane"))
@@ -370,13 +369,13 @@ public class SelectionManager : MonoBehaviour
                     continue;
                 }
 
-                // Проверяем, является ли это персонажом
+                // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚Рѕ РїРµСЂСЃРѕРЅР°Р¶РѕРј
                 Character character = hitObject.GetComponent<Character>();
                 GameObject characterObject = hitObject;
 
                 if (character == null)
                 {
-                    // Ищем компонент Character в родительских объектах
+                    // РС‰РµРј РєРѕРјРїРѕРЅРµРЅС‚ Character РІ СЂРѕРґРёС‚РµР»СЊСЃРєРёС… РѕР±СЉРµРєС‚Р°С…
                     character = hitObject.GetComponentInParent<Character>();
                     if (character != null)
                     {
@@ -387,12 +386,12 @@ public class SelectionManager : MonoBehaviour
                 if (character != null)
                 {
 
-                    // Для персонажей поддерживаем Ctrl+клик для множественного выделения только у союзников
-                    // Врагов можно выделять только по одному для просмотра информации
+                    // Р”Р»СЏ РїРµСЂСЃРѕРЅР°Р¶РµР№ РїРѕРґРґРµСЂР¶РёРІР°РµРј Ctrl+РєР»РёРє РґР»СЏ РјРЅРѕР¶РµСЃС‚РІРµРЅРЅРѕРіРѕ РІС‹РґРµР»РµРЅРёСЏ С‚РѕР»СЊРєРѕ Сѓ СЃРѕСЋР·РЅРёРєРѕРІ
+                    // Р’СЂР°РіРѕРІ РјРѕР¶РЅРѕ РІС‹РґРµР»СЏС‚СЊ С‚РѕР»СЊРєРѕ РїРѕ РѕРґРЅРѕРјСѓ РґР»СЏ РїСЂРѕСЃРјРѕС‚СЂР° РёРЅС„РѕСЂРјР°С†РёРё
                     if (character.IsPlayerCharacter())
                     {
 
-                        // Союзников можно выделять группами
+                        // РЎРѕСЋР·РЅРёРєРѕРІ РјРѕР¶РЅРѕ РІС‹РґРµР»СЏС‚СЊ РіСЂСѓРїРїР°РјРё
                         if (!Input.GetKey(KeyCode.LeftControl))
                         {
                             ClearSelection();
@@ -400,7 +399,7 @@ public class SelectionManager : MonoBehaviour
                     }
                     else
                     {
-                        // Врагов всегда выделяем по одному (очищаем предыдущее выделение)
+                        // Р’СЂР°РіРѕРІ РІСЃРµРіРґР° РІС‹РґРµР»СЏРµРј РїРѕ РѕРґРЅРѕРјСѓ (РѕС‡РёС‰Р°РµРј РїСЂРµРґС‹РґСѓС‰РµРµ РІС‹РґРµР»РµРЅРёРµ)
                         ClearSelection();
                     }
 
@@ -409,11 +408,11 @@ public class SelectionManager : MonoBehaviour
                     return;
                 }
 
-                // Проверяем, является ли это предметом инвентаря
+                // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚Рѕ РїСЂРµРґРјРµС‚РѕРј РёРЅРІРµРЅС‚Р°СЂСЏ
                 Item item = hitObject.GetComponent<Item>();
                 if (item != null)
                 {
-                    // Предметы выделяем по одному
+                    // РџСЂРµРґРјРµС‚С‹ РІС‹РґРµР»СЏРµРј РїРѕ РѕРґРЅРѕРјСѓ
                     ClearSelection();
                     ToggleSelection(hitObject);
                     return;
@@ -424,16 +423,16 @@ public class SelectionManager : MonoBehaviour
                 {
                     GameObject targetObject = hitObject;
 
-                    // Проверяем, является ли это полом комнаты
+                    // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚Рѕ РїРѕР»РѕРј РєРѕРјРЅР°С‚С‹
                     RoomInfo roomInfo = hitObject.GetComponentInParent<RoomInfo>();
                     if (roomInfo != null)
                     {
-                        // Если это пол комнаты, выделяем родительскую комнату
+                        // Р•СЃР»Рё СЌС‚Рѕ РїРѕР» РєРѕРјРЅР°С‚С‹, РІС‹РґРµР»СЏРµРј СЂРѕРґРёС‚РµР»СЊСЃРєСѓСЋ РєРѕРјРЅР°С‚Сѓ
                         targetObject = roomInfo.gameObject;
                     }
 
-                    // Найден подходящий объект для выделения
-                    // Для зданий/модулей всегда выделяем только один объект
+                    // РќР°Р№РґРµРЅ РїРѕРґС…РѕРґСЏС‰РёР№ РѕР±СЉРµРєС‚ РґР»СЏ РІС‹РґРµР»РµРЅРёСЏ
+                    // Р”Р»СЏ Р·РґР°РЅРёР№/РјРѕРґСѓР»РµР№ РІСЃРµРіРґР° РІС‹РґРµР»СЏРµРј С‚РѕР»СЊРєРѕ РѕРґРёРЅ РѕР±СЉРµРєС‚
                     ClearSelection();
                     ToggleSelection(targetObject);
                     return;
@@ -441,18 +440,18 @@ public class SelectionManager : MonoBehaviour
             }
         }
 
-        // Если мы дошли до этого места, значит не найдено подходящих объектов
-        // Попробуем исправить компоненты комнат если их не было найдено
+        // Р•СЃР»Рё РјС‹ РґРѕС€Р»Рё РґРѕ СЌС‚РѕРіРѕ РјРµСЃС‚Р°, Р·РЅР°С‡РёС‚ РЅРµ РЅР°Р№РґРµРЅРѕ РїРѕРґС…РѕРґСЏС‰РёС… РѕР±СЉРµРєС‚РѕРІ
+        // РџРѕРїСЂРѕР±СѓРµРј РёСЃРїСЂР°РІРёС‚СЊ РєРѕРјРїРѕРЅРµРЅС‚С‹ РєРѕРјРЅР°С‚ РµСЃР»Рё РёС… РЅРµ Р±С‹Р»Рѕ РЅР°Р№РґРµРЅРѕ
         CheckAndFixRoomComponents();
 
-        // Это считается кликом в пустое место - всегда очищаем выделение
+        // Р­С‚Рѕ СЃС‡РёС‚Р°РµС‚СЃСЏ РєР»РёРєРѕРј РІ РїСѓСЃС‚РѕРµ РјРµСЃС‚Рѕ - РІСЃРµРіРґР° РѕС‡РёС‰Р°РµРј РІС‹РґРµР»РµРЅРёРµ
         ClearSelection();
     }
     
     
     
     /// <summary>
-    /// Переключение выделения объекта
+    /// РџРµСЂРµРєР»СЋС‡РµРЅРёРµ РІС‹РґРµР»РµРЅРёСЏ РѕР±СЉРµРєС‚Р°
     /// </summary>
     public void ToggleSelection(GameObject obj)
     {
@@ -471,19 +470,19 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Добавление объекта к выделению
+    /// Р”РѕР±Р°РІР»РµРЅРёРµ РѕР±СЉРµРєС‚Р° Рє РІС‹РґРµР»РµРЅРёСЋ
     /// </summary>
     public void AddToSelection(GameObject obj)
     {
         if (!selectedObjects.Contains(obj))
         {
-            // Убираем hover подсветку если объект был подсвечен
+            // РЈР±РёСЂР°РµРј hover РїРѕРґСЃРІРµС‚РєСѓ РµСЃР»Рё РѕР±СЉРµРєС‚ Р±С‹Р» РїРѕРґСЃРІРµС‡РµРЅ
             if (currentHoveredObject == obj)
             {
                 EndHover(obj);
             }
 
-            // Очищаем любые сохраненные hover материалы для этого объекта
+            // РћС‡РёС‰Р°РµРј Р»СЋР±С‹Рµ СЃРѕС…СЂР°РЅРµРЅРЅС‹Рµ hover РјР°С‚РµСЂРёР°Р»С‹ РґР»СЏ СЌС‚РѕРіРѕ РѕР±СЉРµРєС‚Р°
             ClearHoverMaterialsForObject(obj);
 
             selectedObjects.Add(obj);
@@ -495,18 +494,18 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Удаление объекта из выделения
+    /// РЈРґР°Р»РµРЅРёРµ РѕР±СЉРµРєС‚Р° РёР· РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     public void RemoveFromSelection(GameObject obj)
     {
         if (selectedObjects.Remove(obj))
         {
             RemoveSelectionIndicator(obj);
-            if (obj != null) // Проверяем перед обращением к объекту
+            if (obj != null) // РџСЂРѕРІРµСЂСЏРµРј РїРµСЂРµРґ РѕР±СЂР°С‰РµРЅРёРµРј Рє РѕР±СЉРµРєС‚Сѓ
             {
                 SetObjectSelectionState(obj, false);
 
-                // Если курсор находится над этим объектом, применяем hover подсветку
+                // Р•СЃР»Рё РєСѓСЂСЃРѕСЂ РЅР°С…РѕРґРёС‚СЃСЏ РЅР°Рґ СЌС‚РёРј РѕР±СЉРµРєС‚РѕРј, РїСЂРёРјРµРЅСЏРµРј hover РїРѕРґСЃРІРµС‚РєСѓ
                 if (currentHoveredObject == obj)
                 {
                     StartHover(obj);
@@ -518,21 +517,21 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Очистка всего выделения
+    /// РћС‡РёСЃС‚РєР° РІСЃРµРіРѕ РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     public void ClearSelection()
     {
-        // Создаем копию списка для безопасной итерации
+        // РЎРѕР·РґР°РµРј РєРѕРїРёСЋ СЃРїРёСЃРєР° РґР»СЏ Р±РµР·РѕРїР°СЃРЅРѕР№ РёС‚РµСЂР°С†РёРё
         var objectsToProcess = new List<GameObject>(selectedObjects);
 
         foreach (GameObject obj in objectsToProcess)
         {
-            if (obj != null) // Проверяем, что объект не был уничтожен
+            if (obj != null) // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РѕР±СЉРµРєС‚ РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
             {
                 RemoveSelectionIndicator(obj);
                 SetObjectSelectionState(obj, false);
 
-                // Если курсор находится над этим объектом, применяем hover подсветку
+                // Р•СЃР»Рё РєСѓСЂСЃРѕСЂ РЅР°С…РѕРґРёС‚СЃСЏ РЅР°Рґ СЌС‚РёРј РѕР±СЉРµРєС‚РѕРј, РїСЂРёРјРµРЅСЏРµРј hover РїРѕРґСЃРІРµС‚РєСѓ
                 if (currentHoveredObject == obj)
                 {
                     StartHover(obj);
@@ -540,7 +539,7 @@ public class SelectionManager : MonoBehaviour
             }
             else
             {
-                // Удаляем null-ссылки из словаря индикаторов
+                // РЈРґР°Р»СЏРµРј null-СЃСЃС‹Р»РєРё РёР· СЃР»РѕРІР°СЂСЏ РёРЅРґРёРєР°С‚РѕСЂРѕРІ
                 if (selectionIndicators.ContainsKey(obj))
                 {
                     selectionIndicators.Remove(obj);
@@ -554,7 +553,7 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Создание визуального индикатора выделения
+    /// РЎРѕР·РґР°РЅРёРµ РІРёР·СѓР°Р»СЊРЅРѕРіРѕ РёРЅРґРёРєР°С‚РѕСЂР° РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     void CreateSelectionIndicator(GameObject targetObject)
     {
@@ -564,7 +563,7 @@ public class SelectionManager : MonoBehaviour
         GameObject indicator = Instantiate(selectionIndicatorPrefab);
         indicator.SetActive(true);
         
-        // Позиционируем над объектом
+        // РџРѕР·РёС†РёРѕРЅРёСЂСѓРµРј РЅР°Рґ РѕР±СЉРµРєС‚РѕРј
         Bounds bounds = GetObjectBounds(targetObject);
         Vector3 position = bounds.center + Vector3.up * (bounds.size.y * 0.5f + selectionIndicatorHeight);
         indicator.transform.position = position;
@@ -573,7 +572,7 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Удаление визуального индикатора выделения
+    /// РЈРґР°Р»РµРЅРёРµ РІРёР·СѓР°Р»СЊРЅРѕРіРѕ РёРЅРґРёРєР°С‚РѕСЂР° РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     void RemoveSelectionIndicator(GameObject targetObject)
     {
@@ -595,11 +594,11 @@ public class SelectionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновление позиций индикаторов выделения
+    /// РћР±РЅРѕРІР»РµРЅРёРµ РїРѕР·РёС†РёР№ РёРЅРґРёРєР°С‚РѕСЂРѕРІ РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     void UpdateSelectionIndicatorPositions()
     {
-        // Создаем список уничтоженных объектов для удаления из словаря
+        // РЎРѕР·РґР°РµРј СЃРїРёСЃРѕРє СѓРЅРёС‡С‚РѕР¶РµРЅРЅС‹С… РѕР±СЉРµРєС‚РѕРІ РґР»СЏ СѓРґР°Р»РµРЅРёСЏ РёР· СЃР»РѕРІР°СЂСЏ
         List<GameObject> destroyedObjects = new List<GameObject>();
 
         try
@@ -609,15 +608,15 @@ public class SelectionManager : MonoBehaviour
                 GameObject targetObject = kvp.Key;
                 GameObject indicator = kvp.Value;
 
-                // КРИТИЧЕСКИ ВАЖНО: Проверяем что объект не был уничтожен
-                // Unity уничтоженные объекты != null, но ReferenceEquals(obj, null) == true
+                // РљР РРўРР§Р•РЎРљР Р’РђР–РќРћ: РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РѕР±СЉРµРєС‚ РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
+                // Unity СѓРЅРёС‡С‚РѕР¶РµРЅРЅС‹Рµ РѕР±СЉРµРєС‚С‹ != null, РЅРѕ ReferenceEquals(obj, null) == true
                 bool isDestroyed = ReferenceEquals(targetObject, null);
 
                 if (isDestroyed)
                 {
                     destroyedObjects.Add(targetObject);
 
-                    // Удаляем индикатор если он существует
+                    // РЈРґР°Р»СЏРµРј РёРЅРґРёРєР°С‚РѕСЂ РµСЃР»Рё РѕРЅ СЃСѓС‰РµСЃС‚РІСѓРµС‚
                     if (indicator != null)
                     {
                         DestroyImmediate(indicator);
@@ -627,7 +626,7 @@ public class SelectionManager : MonoBehaviour
 
                 if (targetObject != null && indicator != null)
                 {
-                    // Обновляем позицию индикатора над движущимся объектом
+                    // РћР±РЅРѕРІР»СЏРµРј РїРѕР·РёС†РёСЋ РёРЅРґРёРєР°С‚РѕСЂР° РЅР°Рґ РґРІРёР¶СѓС‰РёРјСЃСЏ РѕР±СЉРµРєС‚РѕРј
                     Bounds bounds = GetObjectBounds(targetObject);
                     Vector3 newPosition = bounds.center + Vector3.up * (bounds.size.y * 0.5f + selectionIndicatorHeight);
                     indicator.transform.position = newPosition;
@@ -640,11 +639,9 @@ public class SelectionManager : MonoBehaviour
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[SelectionManager] [UpdateSelectionIndicatorPositions] Exception while updating indicators: {ex.Message}");
-            Debug.LogError($"[SelectionManager] Stack trace: {ex.StackTrace}");
         }
 
-        // Удаляем уничтоженные объекты из словаря
+        // РЈРґР°Р»СЏРµРј СѓРЅРёС‡С‚РѕР¶РµРЅРЅС‹Рµ РѕР±СЉРµРєС‚С‹ РёР· СЃР»РѕРІР°СЂСЏ
         foreach (GameObject destroyedObj in destroyedObjects)
         {
             if (selectionIndicators.ContainsKey(destroyedObj))
@@ -655,7 +652,7 @@ public class SelectionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Получение границ объекта
+    /// РџРѕР»СѓС‡РµРЅРёРµ РіСЂР°РЅРёС† РѕР±СЉРµРєС‚Р°
     /// </summary>
     Bounds GetObjectBounds(GameObject obj)
     {
@@ -675,17 +672,17 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Установка состояния выделения для объекта
+    /// РЈСЃС‚Р°РЅРѕРІРєР° СЃРѕСЃС‚РѕСЏРЅРёСЏ РІС‹РґРµР»РµРЅРёСЏ РґР»СЏ РѕР±СЉРµРєС‚Р°
     /// </summary>
     void SetObjectSelectionState(GameObject obj, bool selected)
     {
-        // Проверяем, что объект не был уничтожен
+        // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РѕР±СЉРµРєС‚ РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
         if (obj == null)
         {
             return;
         }
 
-        // Обновляем состояние персонажа если это персонаж
+        // РћР±РЅРѕРІР»СЏРµРј СЃРѕСЃС‚РѕСЏРЅРёРµ РїРµСЂСЃРѕРЅР°Р¶Р° РµСЃР»Рё СЌС‚Рѕ РїРµСЂСЃРѕРЅР°Р¶
         Character character = obj.GetComponent<Character>();
         if (character != null)
         {
@@ -693,7 +690,7 @@ public class SelectionManager : MonoBehaviour
             return;
         }
         
-        // Логирование для остальных объектов
+        // Р›РѕРіРёСЂРѕРІР°РЅРёРµ РґР»СЏ РѕСЃС‚Р°Р»СЊРЅС‹С… РѕР±СЉРµРєС‚РѕРІ
         LocationObjectInfo objectInfo = obj.GetComponent<LocationObjectInfo>();
         if (objectInfo != null)
         {
@@ -701,19 +698,19 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Обновление информации о выделении в UI - теперь только для GameUI
+    /// РћР±РЅРѕРІР»РµРЅРёРµ РёРЅС„РѕСЂРјР°С†РёРё Рѕ РІС‹РґРµР»РµРЅРёРё РІ UI - С‚РµРїРµСЂСЊ С‚РѕР»СЊРєРѕ РґР»СЏ GameUI
     /// </summary>
     void UpdateSelectionInfo()
     {
-        // Очищаем список от уничтоженных объектов
+        // РћС‡РёС‰Р°РµРј СЃРїРёСЃРѕРє РѕС‚ СѓРЅРёС‡С‚РѕР¶РµРЅРЅС‹С… РѕР±СЉРµРєС‚РѕРІ
         selectedObjects.RemoveAll(obj => obj == null);
 
-        // Информация о выделении теперь отображается только в нижней панели GameUI
-        // Здесь больше ничего не делаем
+        // РРЅС„РѕСЂРјР°С†РёСЏ Рѕ РІС‹РґРµР»РµРЅРёРё С‚РµРїРµСЂСЊ РѕС‚РѕР±СЂР°Р¶Р°РµС‚СЃСЏ С‚РѕР»СЊРєРѕ РІ РЅРёР¶РЅРµР№ РїР°РЅРµР»Рё GameUI
+        // Р—РґРµСЃСЊ Р±РѕР»СЊС€Рµ РЅРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј
     }
     
     /// <summary>
-    /// Получение списка выделенных объектов
+    /// РџРѕР»СѓС‡РµРЅРёРµ СЃРїРёСЃРєР° РІС‹РґРµР»РµРЅРЅС‹С… РѕР±СЉРµРєС‚РѕРІ
     /// </summary>
     public List<GameObject> GetSelectedObjects()
     {
@@ -721,7 +718,7 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Проверка, выделен ли объект
+    /// РџСЂРѕРІРµСЂРєР°, РІС‹РґРµР»РµРЅ Р»Рё РѕР±СЉРµРєС‚
     /// </summary>
     public bool IsSelected(GameObject obj)
     {
@@ -729,13 +726,13 @@ public class SelectionManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Диагностика всех объектов с коллайдерами в сцене
+    /// Р”РёР°РіРЅРѕСЃС‚РёРєР° РІСЃРµС… РѕР±СЉРµРєС‚РѕРІ СЃ РєРѕР»Р»Р°Р№РґРµСЂР°РјРё РІ СЃС†РµРЅРµ
     /// </summary>
     void DiagnoseSelectableObjects()
     {
 
 
-        // Проверяем персонажей
+        // РџСЂРѕРІРµСЂСЏРµРј РїРµСЂСЃРѕРЅР°Р¶РµР№
         Character[] allCharacters = FindObjectsOfType<Character>();
 
 
@@ -761,7 +758,7 @@ public class SelectionManager : MonoBehaviour
             Collider collider = obj.GetComponent<Collider>();
             if (collider != null)
             {
-                // Проверяем, попадает ли в LayerMask
+                // РџСЂРѕРІРµСЂСЏРµРј, РїРѕРїР°РґР°РµС‚ Р»Рё РІ LayerMask
                 bool inMask = (selectableLayerMask & (1 << obj.layer)) != 0;
             }
             else
@@ -770,38 +767,38 @@ public class SelectionManager : MonoBehaviour
             }
         }
 
-        // Проверяем комнаты без LocationObjectInfo и добавляем их
+        // РџСЂРѕРІРµСЂСЏРµРј РєРѕРјРЅР°С‚С‹ Р±РµР· LocationObjectInfo Рё РґРѕР±Р°РІР»СЏРµРј РёС…
         CheckAndFixRoomComponents();
 
 
     }
 
     /// <summary>
-    /// Проверить и исправить компоненты комнат
+    /// РџСЂРѕРІРµСЂРёС‚СЊ Рё РёСЃРїСЂР°РІРёС‚СЊ РєРѕРјРїРѕРЅРµРЅС‚С‹ РєРѕРјРЅР°С‚
     /// </summary>
     void CheckAndFixRoomComponents()
     {
-        // Ищем все объекты с RoomInfo
+        // РС‰РµРј РІСЃРµ РѕР±СЉРµРєС‚С‹ СЃ RoomInfo
         RoomInfo[] allRooms = FindObjectsOfType<RoomInfo>();
 
         foreach (RoomInfo roomInfo in allRooms)
         {
             GameObject roomObj = roomInfo.gameObject;
 
-            // Проверяем, есть ли у комнаты пол с компонентами выделения
+            // РџСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё Сѓ РєРѕРјРЅР°С‚С‹ РїРѕР» СЃ РєРѕРјРїРѕРЅРµРЅС‚Р°РјРё РІС‹РґРµР»РµРЅРёСЏ
             Transform floorTransform = roomObj.transform.Find("Floor");
             Transform selectionFloorTransform = roomObj.transform.Find("SelectionFloor");
 
-            // Для больших комнат - проверяем обычный пол
+            // Р”Р»СЏ Р±РѕР»СЊС€РёС… РєРѕРјРЅР°С‚ - РїСЂРѕРІРµСЂСЏРµРј РѕР±С‹С‡РЅС‹Р№ РїРѕР»
             if (floorTransform != null)
             {
                 GameObject floor = floorTransform.gameObject;
 
-                // Проверяем наличие LocationObjectInfo на полу
+                // РџСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ LocationObjectInfo РЅР° РїРѕР»Сѓ
                 LocationObjectInfo locationInfo = floor.GetComponent<LocationObjectInfo>();
                 if (locationInfo == null)
                 {
-                    // Добавляем недостающий компонент к полу
+                    // Р”РѕР±Р°РІР»СЏРµРј РЅРµРґРѕСЃС‚Р°СЋС‰РёР№ РєРѕРјРїРѕРЅРµРЅС‚ Рє РїРѕР»Сѓ
                     locationInfo = floor.AddComponent<LocationObjectInfo>();
                     locationInfo.objectName = roomInfo.roomName;
                     locationInfo.objectType = roomInfo.roomType;
@@ -809,20 +806,20 @@ public class SelectionManager : MonoBehaviour
                     locationInfo.isDestructible = true;
                 }
 
-                // Проверяем наличие коллайдера на полу
+                // РџСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ РєРѕР»Р»Р°Р№РґРµСЂР° РЅР° РїРѕР»Сѓ
                 BoxCollider floorCollider = floor.GetComponent<BoxCollider>();
                 if (floorCollider == null)
                 {
                     floorCollider = floor.AddComponent<BoxCollider>();
-                    floorCollider.isTrigger = false; // Не триггер для raycast
+                    floorCollider.isTrigger = false; // РќРµ С‚СЂРёРіРіРµСЂ РґР»СЏ raycast
                 }
             }
-            // Для маленьких комнат - проверяем SelectionFloor
+            // Р”Р»СЏ РјР°Р»РµРЅСЊРєРёС… РєРѕРјРЅР°С‚ - РїСЂРѕРІРµСЂСЏРµРј SelectionFloor
             else if (selectionFloorTransform != null)
             {
                 GameObject selectionFloor = selectionFloorTransform.gameObject;
 
-                // Проверяем наличие LocationObjectInfo
+                // РџСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ LocationObjectInfo
                 LocationObjectInfo locationInfo = selectionFloor.GetComponent<LocationObjectInfo>();
                 if (locationInfo == null)
                 {
@@ -833,7 +830,7 @@ public class SelectionManager : MonoBehaviour
                     locationInfo.isDestructible = true;
                 }
 
-                // Проверяем наличие коллайдера
+                // РџСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ РєРѕР»Р»Р°Р№РґРµСЂР°
                 BoxCollider selectionCollider = selectionFloor.GetComponent<BoxCollider>();
                 if (selectionCollider == null)
                 {
@@ -845,11 +842,11 @@ public class SelectionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработка подсветки объектов при hover
+    /// РћР±СЂР°Р±РѕС‚РєР° РїРѕРґСЃРІРµС‚РєРё РѕР±СЉРµРєС‚РѕРІ РїСЂРё hover
     /// </summary>
     void HandleHover()
     {
-        if (isBoxSelecting) return; // Не обрабатываем hover во время выделения рамкой
+        if (isBoxSelecting) return; // РќРµ РѕР±СЂР°Р±Р°С‚С‹РІР°РµРј hover РІРѕ РІСЂРµРјСЏ РІС‹РґРµР»РµРЅРёСЏ СЂР°РјРєРѕР№
 
         try
         {
@@ -858,18 +855,18 @@ public class SelectionManager : MonoBehaviour
 
             GameObject hoveredObject = null;
 
-            // Ищем объект для подсветки
+            // РС‰РµРј РѕР±СЉРµРєС‚ РґР»СЏ РїРѕРґСЃРІРµС‚РєРё
             foreach (RaycastHit hit in hits)
             {
                 GameObject hitObject = hit.collider.gameObject;
 
-                // ЗАЩИТА: Проверяем что объект не был уничтожен
+                // Р—РђР©РРўРђ: РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РѕР±СЉРµРєС‚ РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
                 if (ReferenceEquals(hitObject, null) || hitObject == null)
                 {
                     continue;
                 }
 
-                // Исключаем системные объекты
+                // РСЃРєР»СЋС‡Р°РµРј СЃРёСЃС‚РµРјРЅС‹Рµ РѕР±СЉРµРєС‚С‹
                 if (hitObject.name.Contains("Bounds") || hitObject.name.Contains("Grid") ||
                     hitObject.name.Contains("Location") && !hitObject.name.Contains("Test") ||
                     hitObject.name.Contains("Plane"))
@@ -877,15 +874,15 @@ public class SelectionManager : MonoBehaviour
                     continue;
                 }
 
-                // Ищем корневой объект для подсветки (префаб)
+                // РС‰РµРј РєРѕСЂРЅРµРІРѕР№ РѕР±СЉРµРєС‚ РґР»СЏ РїРѕРґСЃРІРµС‚РєРё (РїСЂРµС„Р°Р±)
                 GameObject rootObject = FindHoverableRoot(hitObject);
                 if (rootObject != null && !ReferenceEquals(rootObject, null))
                 {
-                    // Проверяем, является ли это полом комнаты
+                    // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚Рѕ РїРѕР»РѕРј РєРѕРјРЅР°С‚С‹
                     RoomInfo roomInfo = rootObject.GetComponentInParent<RoomInfo>();
                     if (roomInfo != null)
                     {
-                        // Если это пол комнаты, подсвечиваем родительскую комнату
+                        // Р•СЃР»Рё СЌС‚Рѕ РїРѕР» РєРѕРјРЅР°С‚С‹, РїРѕРґСЃРІРµС‡РёРІР°РµРј СЂРѕРґРёС‚РµР»СЊСЃРєСѓСЋ РєРѕРјРЅР°С‚Сѓ
                         hoveredObject = roomInfo.gameObject;
                     }
                     else
@@ -896,22 +893,22 @@ public class SelectionManager : MonoBehaviour
                 }
             }
 
-            // Проверяем что currentHoveredObject не был уничтожен
+            // РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ currentHoveredObject РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
             if (!ReferenceEquals(currentHoveredObject, null) && currentHoveredObject == null)
             {
                 currentHoveredObject = null;
             }
 
-            // Обновляем подсветку
+            // РћР±РЅРѕРІР»СЏРµРј РїРѕРґСЃРІРµС‚РєСѓ
             if (hoveredObject != currentHoveredObject)
             {
-                // Убираем подсветку с предыдущего объекта
+                // РЈР±РёСЂР°РµРј РїРѕРґСЃРІРµС‚РєСѓ СЃ РїСЂРµРґС‹РґСѓС‰РµРіРѕ РѕР±СЉРµРєС‚Р°
                 if (currentHoveredObject != null && !ReferenceEquals(currentHoveredObject, null))
                 {
                     EndHover(currentHoveredObject);
                 }
 
-                // Добавляем подсветку новому объекту, только если он НЕ выделен
+                // Р”РѕР±Р°РІР»СЏРµРј РїРѕРґСЃРІРµС‚РєСѓ РЅРѕРІРѕРјСѓ РѕР±СЉРµРєС‚Сѓ, С‚РѕР»СЊРєРѕ РµСЃР»Рё РѕРЅ РќР• РІС‹РґРµР»РµРЅ
                 if (hoveredObject != null && !ReferenceEquals(hoveredObject, null) && !IsSelected(hoveredObject))
                 {
                     StartHover(hoveredObject);
@@ -922,23 +919,21 @@ public class SelectionManager : MonoBehaviour
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[SelectionManager] [HandleHover] Exception: {ex.Message}");
-            Debug.LogError($"[SelectionManager] Stack trace: {ex.StackTrace}");
         }
     }
 
     /// <summary>
-    /// Найти корневой объект для подсветки (префаб)
+    /// РќР°Р№С‚Рё РєРѕСЂРЅРµРІРѕР№ РѕР±СЉРµРєС‚ РґР»СЏ РїРѕРґСЃРІРµС‚РєРё (РїСЂРµС„Р°Р±)
     /// </summary>
     GameObject FindHoverableRoot(GameObject hitObject)
     {
-        // Проверяем, может ли сам объект быть подсвечен
+        // РџСЂРѕРІРµСЂСЏРµРј, РјРѕР¶РµС‚ Р»Рё СЃР°Рј РѕР±СЉРµРєС‚ Р±С‹С‚СЊ РїРѕРґСЃРІРµС‡РµРЅ
         if (CanObjectBeHighlighted(hitObject))
         {
             return hitObject;
         }
 
-        // Ищем в родительских объектах
+        // РС‰РµРј РІ СЂРѕРґРёС‚РµР»СЊСЃРєРёС… РѕР±СЉРµРєС‚Р°С…
         Transform current = hitObject.transform.parent;
         while (current != null)
         {
@@ -953,27 +948,27 @@ public class SelectionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, может ли объект быть подсвечен
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РјРѕР¶РµС‚ Р»Рё РѕР±СЉРµРєС‚ Р±С‹С‚СЊ РїРѕРґСЃРІРµС‡РµРЅ
     /// </summary>
     bool CanObjectBeHighlighted(GameObject obj)
     {
-        // Проверяем наличие MeshRenderer в объекте или его детях
+        // РџСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ MeshRenderer РІ РѕР±СЉРµРєС‚Рµ РёР»Рё РµРіРѕ РґРµС‚СЏС…
         MeshRenderer[] renderers = obj.GetComponentsInChildren<MeshRenderer>();
         if (renderers.Length == 0) return false;
 
-        // ПЕРСОНАЖИ НЕ УЧАСТВУЮТ В HOVER СИСТЕМЕ - у них своя система цветов
+        // РџР•Р РЎРћРќРђР–Р РќР• РЈР§РђРЎРўР’РЈР®Рў Р’ HOVER РЎРРЎРўР•РњР• - Сѓ РЅРёС… СЃРІРѕСЏ СЃРёСЃС‚РµРјР° С†РІРµС‚РѕРІ
         if (obj.GetComponent<Character>() != null)
         {
             return false;
         }
 
-        // Специальная логика для SM_Cockpit - он должен подсвечиваться целиком
+        // РЎРїРµС†РёР°Р»СЊРЅР°СЏ Р»РѕРіРёРєР° РґР»СЏ SM_Cockpit - РѕРЅ РґРѕР»Р¶РµРЅ РїРѕРґСЃРІРµС‡РёРІР°С‚СЊСЃСЏ С†РµР»РёРєРѕРј
         if (obj.name == "SM_Cockpit")
         {
             return true;
         }
 
-        // Для других объектов - проверяем наличие LocationObjectInfo
+        // Р”Р»СЏ РґСЂСѓРіРёС… РѕР±СЉРµРєС‚РѕРІ - РїСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ LocationObjectInfo
         if (obj.GetComponent<LocationObjectInfo>() != null)
         {
             return true;
@@ -983,28 +978,28 @@ public class SelectionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Начать подсветку объекта и всех его дочерних MeshRenderer'ов
-    /// PERFORMANCE FIX: Переиспользуем материалы вместо создания/уничтожения
+    /// РќР°С‡Р°С‚СЊ РїРѕРґСЃРІРµС‚РєСѓ РѕР±СЉРµРєС‚Р° Рё РІСЃРµС… РµРіРѕ РґРѕС‡РµСЂРЅРёС… MeshRenderer'РѕРІ
+    /// PERFORMANCE FIX: РџРµСЂРµРёСЃРїРѕР»СЊР·СѓРµРј РјР°С‚РµСЂРёР°Р»С‹ РІРјРµСЃС‚Рѕ СЃРѕР·РґР°РЅРёСЏ/СѓРЅРёС‡С‚РѕР¶РµРЅРёСЏ
     /// </summary>
     void StartHover(GameObject obj)
     {
-        // Проверяем, что объект не выделен (дополнительная проверка)
+        // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РѕР±СЉРµРєС‚ РЅРµ РІС‹РґРµР»РµРЅ (РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР°)
         if (IsSelected(obj)) return;
 
-        // Получаем все MeshRenderer в объекте и его детях
+        // РџРѕР»СѓС‡Р°РµРј РІСЃРµ MeshRenderer РІ РѕР±СЉРµРєС‚Рµ Рё РµРіРѕ РґРµС‚СЏС…
         MeshRenderer[] renderers = obj.GetComponentsInChildren<MeshRenderer>();
 
         foreach (MeshRenderer renderer in renderers)
         {
             if (renderer == null) continue;
 
-            // Сохраняем оригинальный материал если еще не сохранили
+            // РЎРѕС…СЂР°РЅСЏРµРј РѕСЂРёРіРёРЅР°Р»СЊРЅС‹Р№ РјР°С‚РµСЂРёР°Р» РµСЃР»Рё РµС‰Рµ РЅРµ СЃРѕС…СЂР°РЅРёР»Рё
             if (!originalMaterials.ContainsKey(renderer))
             {
                 originalMaterials[renderer] = renderer.material;
             }
 
-            // PERFORMANCE: Создаем hover материал только один раз и переиспользуем
+            // PERFORMANCE: РЎРѕР·РґР°РµРј hover РјР°С‚РµСЂРёР°Р» С‚РѕР»СЊРєРѕ РѕРґРёРЅ СЂР°Р· Рё РїРµСЂРµРёСЃРїРѕР»СЊР·СѓРµРј
             if (!hoverMaterials.ContainsKey(renderer))
             {
                 Material hoverMat = new Material(originalMaterials[renderer]);
@@ -1018,11 +1013,11 @@ public class SelectionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Завершить подсветку объекта и всех его дочерних MeshRenderer'ов
+    /// Р—Р°РІРµСЂС€РёС‚СЊ РїРѕРґСЃРІРµС‚РєСѓ РѕР±СЉРµРєС‚Р° Рё РІСЃРµС… РµРіРѕ РґРѕС‡РµСЂРЅРёС… MeshRenderer'РѕРІ
     /// </summary>
     void EndHover(GameObject obj)
     {
-        // Восстанавливаем материалы всех подсвеченных рендереров
+        // Р’РѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РјР°С‚РµСЂРёР°Р»С‹ РІСЃРµС… РїРѕРґСЃРІРµС‡РµРЅРЅС‹С… СЂРµРЅРґРµСЂРµСЂРѕРІ
         foreach (MeshRenderer renderer in currentHighlightedRenderers)
         {
             if (renderer != null && originalMaterials.ContainsKey(renderer))
@@ -1035,9 +1030,9 @@ public class SelectionManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Очистить hover материалы для конкретного объекта
-    /// PERFORMANCE FIX: НЕ уничтожаем материалы, только восстанавливаем оригинальный
-    /// Hover материалы остаются в кэше для переиспользования
+    /// РћС‡РёСЃС‚РёС‚СЊ hover РјР°С‚РµСЂРёР°Р»С‹ РґР»СЏ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ РѕР±СЉРµРєС‚Р°
+    /// PERFORMANCE FIX: РќР• СѓРЅРёС‡С‚РѕР¶Р°РµРј РјР°С‚РµСЂРёР°Р»С‹, С‚РѕР»СЊРєРѕ РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РѕСЂРёРіРёРЅР°Р»СЊРЅС‹Р№
+    /// Hover РјР°С‚РµСЂРёР°Р»С‹ РѕСЃС‚Р°СЋС‚СЃСЏ РІ РєСЌС€Рµ РґР»СЏ РїРµСЂРµРёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ
     /// </summary>
     void ClearHoverMaterialsForObject(GameObject obj)
     {
@@ -1047,33 +1042,33 @@ public class SelectionManager : MonoBehaviour
         {
             if (renderer == null) continue;
 
-            // Восстанавливаем оригинальный материал
+            // Р’РѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РѕСЂРёРіРёРЅР°Р»СЊРЅС‹Р№ РјР°С‚РµСЂРёР°Р»
             if (originalMaterials.ContainsKey(renderer))
             {
                 renderer.material = originalMaterials[renderer];
             }
 
-            // PERFORMANCE: НЕ удаляем записи из словарей - оставляем для переиспользования
-            // Материалы будут уничтожены только в OnDestroy()
+            // PERFORMANCE: РќР• СѓРґР°Р»СЏРµРј Р·Р°РїРёСЃРё РёР· СЃР»РѕРІР°СЂРµР№ - РѕСЃС‚Р°РІР»СЏРµРј РґР»СЏ РїРµСЂРµРёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ
+            // РњР°С‚РµСЂРёР°Р»С‹ Р±СѓРґСѓС‚ СѓРЅРёС‡С‚РѕР¶РµРЅС‹ С‚РѕР»СЊРєРѕ РІ OnDestroy()
 
-            // Убираем из списка подсвеченных
+            // РЈР±РёСЂР°РµРј РёР· СЃРїРёСЃРєР° РїРѕРґСЃРІРµС‡РµРЅРЅС‹С…
             currentHighlightedRenderers.Remove(renderer);
         }
     }
 
 
     /// <summary>
-    /// Обработка ПКМ - взаимодействие с предметами и объектами
+    /// РћР±СЂР°Р±РѕС‚РєР° РџРљРњ - РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёРµ СЃ РїСЂРµРґРјРµС‚Р°РјРё Рё РѕР±СЉРµРєС‚Р°РјРё
     /// </summary>
     void HandleRightClick()
     {
-        // Проверяем, есть ли выделенные персонажи
+        // РџСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё РІС‹РґРµР»РµРЅРЅС‹Рµ РїРµСЂСЃРѕРЅР°Р¶Рё
         if (selectedObjects.Count == 0)
         {
             return;
         }
 
-        // Получаем ВСЕХ выделенных персонажей игрока
+        // РџРѕР»СѓС‡Р°РµРј Р’РЎР•РҐ РІС‹РґРµР»РµРЅРЅС‹С… РїРµСЂСЃРѕРЅР°Р¶РµР№ РёРіСЂРѕРєР°
         List<Character> selectedCharacters = new List<Character>();
         foreach (GameObject obj in selectedObjects)
         {
@@ -1089,10 +1084,10 @@ public class SelectionManager : MonoBehaviour
             return;
         }
 
-        // Первый персонаж (для совместимости со старым кодом подбора предметов)
+        // РџРµСЂРІС‹Р№ РїРµСЂСЃРѕРЅР°Р¶ (РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё СЃРѕ СЃС‚Р°СЂС‹Рј РєРѕРґРѕРј РїРѕРґР±РѕСЂР° РїСЂРµРґРјРµС‚РѕРІ)
         Character selectedCharacter = selectedCharacters[0];
 
-        // Raycast для поиска объекта под курсором
+        // Raycast РґР»СЏ РїРѕРёСЃРєР° РѕР±СЉРµРєС‚Р° РїРѕРґ РєСѓСЂСЃРѕСЂРѕРј
         Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity, selectableLayerMask, QueryTriggerInteraction.Collide);
 
@@ -1100,23 +1095,23 @@ public class SelectionManager : MonoBehaviour
         {
             GameObject hitObject = hit.collider.gameObject;
 
-            // Проверяем, является ли это астероидом для добычи
+            // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚Рѕ Р°СЃС‚РµСЂРѕРёРґРѕРј РґР»СЏ РґРѕР±С‹С‡Рё
             LocationObjectInfo locationInfo = hitObject.GetComponent<LocationObjectInfo>();
             if (locationInfo != null && locationInfo.IsOfType("Asteroid"))
             {
                 if (locationInfo.metalAmount > 0)
                 {
-                    // ARCHITECTURE: Используем кэшированную ссылку или создаем новый MiningManager
+                    // ARCHITECTURE: РСЃРїРѕР»СЊР·СѓРµРј РєСЌС€РёСЂРѕРІР°РЅРЅСѓСЋ СЃСЃС‹Р»РєСѓ РёР»Рё СЃРѕР·РґР°РµРј РЅРѕРІС‹Р№ MiningManager
                     if (miningManager == null)
                     {
-                        // Пытаемся получить через ServiceLocator
+                        // РџС‹С‚Р°РµРјСЃСЏ РїРѕР»СѓС‡РёС‚СЊ С‡РµСЂРµР· ServiceLocator
                         if (!ServiceLocator.TryGet<MiningManager>(out miningManager))
                         {
-                            // Создаем новый если не найден
+                            // РЎРѕР·РґР°РµРј РЅРѕРІС‹Р№ РµСЃР»Рё РЅРµ РЅР°Р№РґРµРЅ
                             GameObject miningManagerObj = new GameObject("MiningManager");
                             miningManager = miningManagerObj.AddComponent<MiningManager>();
 
-                            // Регистрируем в ServiceLocator для будущего использования
+                            // Р РµРіРёСЃС‚СЂРёСЂСѓРµРј РІ ServiceLocator РґР»СЏ Р±СѓРґСѓС‰РµРіРѕ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ
                             if (ServiceLocator.IsInitialized)
                             {
                                 ServiceLocator.Register<MiningManager>(miningManager);
@@ -1124,13 +1119,13 @@ public class SelectionManager : MonoBehaviour
                         }
                     }
 
-                    // Начинаем добычу для ВСЕХ выделенных персонажей
+                    // РќР°С‡РёРЅР°РµРј РґРѕР±С‹С‡Сѓ РґР»СЏ Р’РЎР•РҐ РІС‹РґРµР»РµРЅРЅС‹С… РїРµСЂСЃРѕРЅР°Р¶РµР№
                     foreach (Character character in selectedCharacters)
                     {
                         miningManager.StartMining(character, hitObject);
                     }
 
-                    // ВАЖНО: Устанавливаем флаг чтобы другие системы не обрабатывали этот клик
+                    // Р’РђР–РќРћ: РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј С„Р»Р°Рі С‡С‚РѕР±С‹ РґСЂСѓРіРёРµ СЃРёСЃС‚РµРјС‹ РЅРµ РѕР±СЂР°Р±Р°С‚С‹РІР°Р»Рё СЌС‚РѕС‚ РєР»РёРє
                     rightClickHandledThisFrame = true;
                     return;
                 }
@@ -1140,71 +1135,117 @@ public class SelectionManager : MonoBehaviour
                 }
             }
 
-            // Проверяем, является ли это предметом
+            // РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЌС‚Рѕ РїСЂРµРґРјРµС‚РѕРј
             Item item = hitObject.GetComponent<Item>();
             if (item != null && !ReferenceEquals(item, null))
             {
-                // Проверяем, включен ли подбор по ПКМ
+                // РџСЂРѕРІРµСЂСЏРµРј, РІРєР»СЋС‡РµРЅ Р»Рё РїРѕРґР±РѕСЂ РїРѕ РџРљРњ
                 if (!enableRightClickPickup)
                 {
-                    continue; // Пропускаем этот предмет и продолжаем поиск других объектов
+                    continue; // РџСЂРѕРїСѓСЃРєР°РµРј СЌС‚РѕС‚ РїСЂРµРґРјРµС‚ Рё РїСЂРѕРґРѕР»Р¶Р°РµРј РїРѕРёСЃРє РґСЂСѓРіРёС… РѕР±СЉРµРєС‚РѕРІ
                 }
 
                 if (item.canBePickedUp)
                 {
-                    // Отправляем персонажа к предмету
+                    // РћС‚РїСЂР°РІР»СЏРµРј РїРµСЂСЃРѕРЅР°Р¶Р° Рє РїСЂРµРґРјРµС‚Сѓ
                     CharacterMovement movement = selectedCharacter.GetComponent<CharacterMovement>();
                     if (movement != null)
                     {
                         Vector3 itemPosition = item.transform.position;
                         float distance = Vector3.Distance(selectedCharacter.transform.position, itemPosition);
 
-                        // Если персонаж уже рядом - подбираем сразу
+                        // Р•СЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ СѓР¶Рµ СЂСЏРґРѕРј - РїРѕРґР±РёСЂР°РµРј СЃСЂР°Р·Сѓ
                         if (distance <= item.pickupRange)
                         {
                             PickupItem(selectedCharacter, item);
                         }
                         else
                         {
-                            // Отправляем персонажа к предмету
+                            // РћС‚РїСЂР°РІР»СЏРµРј РїРµСЂСЃРѕРЅР°Р¶Р° Рє РїСЂРµРґРјРµС‚Сѓ
                             movement.MoveTo(itemPosition);
 
-                            // Запускаем корутину для подбора предмета после движения
+                            // Р—Р°РїСѓСЃРєР°РµРј РєРѕСЂСѓС‚РёРЅСѓ РґР»СЏ РїРѕРґР±РѕСЂР° РїСЂРµРґРјРµС‚Р° РїРѕСЃР»Рµ РґРІРёР¶РµРЅРёСЏ
                             StartCoroutine(WaitForMovementAndPickup(movement, selectedCharacter, item));
                         }
                     }
                     else
                     {
-                        Debug.LogWarning($"[SelectionManager] Character {selectedCharacter.GetFullName()} has no CharacterMovement component");
                     }
 
-                    // ВАЖНО: Устанавливаем флаг чтобы другие системы не обрабатывали этот клик
+                    // Р’РђР–РќРћ: РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј С„Р»Р°Рі С‡С‚РѕР±С‹ РґСЂСѓРіРёРµ СЃРёСЃС‚РµРјС‹ РЅРµ РѕР±СЂР°Р±Р°С‚С‹РІР°Р»Рё СЌС‚РѕС‚ РєР»РёРє
                     rightClickHandledThisFrame = true;
                     return;
+                }
+            }
+        }
+
+        // ============================================================================
+        // РљРћРњРђРќР”Рђ Р”Р’РР–Р•РќРРЇ: Р•СЃР»Рё РЅРёС‡РµРіРѕ РёРЅС‚РµСЂРµСЃРЅРѕРіРѕ РїРѕРґ РєСѓСЂСЃРѕСЂРѕРј РЅРµС‚ - РѕС‚РїСЂР°РІР»СЏРµРј РєРѕРјР°РЅРґСѓ РґРІРёР¶РµРЅРёСЏ
+        // ============================================================================
+        if (gridManager != null)
+        {
+            // Р”РµР»Р°РµРј raycast РІ РїР»РѕСЃРєРѕСЃС‚СЊ Y=0 (СѓСЂРѕРІРµРЅСЊ Р·РµРјР»Рё)
+            Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
+            Ray groundRay = playerCamera.ScreenPointToRay(Input.mousePosition);
+
+            float rayDistance;
+            if (groundPlane.Raycast(groundRay, out rayDistance))
+            {
+                Vector3 targetWorldPosition = groundRay.GetPoint(rayDistance);
+                Vector2Int targetGridPosition = gridManager.WorldToGrid(targetWorldPosition);
+
+                // РџСЂРѕРІРµСЂСЏРµРј РІР°Р»РёРґРЅРѕСЃС‚СЊ РїРѕР·РёС†РёРё
+                if (gridManager.IsValidGridPosition(targetGridPosition))
+                {
+                    // Р’РђР–РќРћ: РћС‚РїСЂР°РІР»СЏРµРј РєРѕРјР°РЅРґСѓ РґРІРёР¶РµРЅРёСЏ Р’РЎР•Рњ РІС‹РґРµР»РµРЅРЅС‹Рј РїРµСЂСЃРѕРЅР°Р¶Р°Рј
+                    // FIX: Track used positions for group movement
+                    List<Vector2Int> usedPositions = new List<Vector2Int>();
+
+                    for (int i = 0; i < selectedCharacters.Count; i++)
+                    {
+                        Character character = selectedCharacters[i];
+                        CharacterMovement movement = character.GetComponent<CharacterMovement>();
+                        CharacterAI characterAI = character.GetComponent<CharacterAI>();
+
+                        if (movement != null && characterAI != null)
+                        {
+                            characterAI.OnPlayerInitiatedMovement();
+
+                            // FIX: First character goes to target, others find free positions nearby
+                            Vector2Int assignedGridPos = (i == 0) ? targetGridPosition : FindNearbyFreePosition(targetGridPosition, usedPositions);
+                            usedPositions.Add(assignedGridPos);
+
+                            Vector3 assignedWorldPos = gridManager.GridToWorld(assignedGridPos);
+                            movement.MoveTo(assignedWorldPos);
+                        }
+                    }
+
+                    // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј С„Р»Р°Рі С‡С‚Рѕ РєР»РёРє РѕР±СЂР°Р±РѕС‚Р°РЅ
+                    rightClickHandledThisFrame = true;
                 }
             }
         }
     }
 
     /// <summary>
-    /// Корутина ожидания завершения движения и подбора предмета
+    /// РљРѕСЂСѓС‚РёРЅР° РѕР¶РёРґР°РЅРёСЏ Р·Р°РІРµСЂС€РµРЅРёСЏ РґРІРёР¶РµРЅРёСЏ Рё РїРѕРґР±РѕСЂР° РїСЂРµРґРјРµС‚Р°
     /// </summary>
     System.Collections.IEnumerator WaitForMovementAndPickup(CharacterMovement movement, Character character, Item item)
     {
-        // Даем персонажу время начать движение (CharacterMovement использует StartMovementAfterDelay)
+        // Р”Р°РµРј РїРµСЂСЃРѕРЅР°Р¶Сѓ РІСЂРµРјСЏ РЅР°С‡Р°С‚СЊ РґРІРёР¶РµРЅРёРµ (CharacterMovement РёСЃРїРѕР»СЊР·СѓРµС‚ StartMovementAfterDelay)
         yield return null;
         yield return null;
 
-        // ЗАЩИТА: Проверяем что item не был уничтожен
+        // Р—РђР©РРўРђ: РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ item РЅРµ Р±С‹Р» СѓРЅРёС‡С‚РѕР¶РµРЅ
         if (ReferenceEquals(item, null) || item == null || item.gameObject == null)
         {
             yield break;
         }
 
-        // Ждем пока персонаж движется
+        // Р–РґРµРј РїРѕРєР° РїРµСЂСЃРѕРЅР°Р¶ РґРІРёР¶РµС‚СЃСЏ
         while (movement != null && movement.IsMoving())
         {
-            // ЗАЩИТА: Проверяем каждый кадр что item еще существует
+            // Р—РђР©РРўРђ: РџСЂРѕРІРµСЂСЏРµРј РєР°Р¶РґС‹Р№ РєР°РґСЂ С‡С‚Рѕ item РµС‰Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
             if (ReferenceEquals(item, null) || item == null || item.gameObject == null)
             {
                 yield break;
@@ -1212,45 +1253,43 @@ public class SelectionManager : MonoBehaviour
             yield return null;
         }
 
-        // Проверяем что персонаж и предмет все еще существуют
+        // РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ Рё РїСЂРµРґРјРµС‚ РІСЃРµ РµС‰Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‚
         if (character != null && !ReferenceEquals(item, null) && item != null && item.gameObject != null)
         {
-            // Проверяем дистанцию после движения
+            // РџСЂРѕРІРµСЂСЏРµРј РґРёСЃС‚Р°РЅС†РёСЋ РїРѕСЃР»Рµ РґРІРёР¶РµРЅРёСЏ
             float finalDistance = Vector3.Distance(character.transform.position, item.transform.position);
 
             if (finalDistance <= item.pickupRange)
             {
                 PickupItem(character, item);
-                // ВАЖНО: Останавливаем корутину после подбора, т.к. предмет будет уничтожен
+                // Р’РђР–РќРћ: РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј РєРѕСЂСѓС‚РёРЅСѓ РїРѕСЃР»Рµ РїРѕРґР±РѕСЂР°, С‚.Рє. РїСЂРµРґРјРµС‚ Р±СѓРґРµС‚ СѓРЅРёС‡С‚РѕР¶РµРЅ
                 yield break;
             }
             else
             {
-                Debug.LogWarning($"[SelectionManager] {character.GetFullName()} reached destination but still too far from item");
             }
         }
         else
         {
-            Debug.LogWarning($"[SelectionManager] Character or item no longer exists after movement");
         }
     }
 
     /// <summary>
-    /// Подобрать предмет персонажем
+    /// РџРѕРґРѕР±СЂР°С‚СЊ РїСЂРµРґРјРµС‚ РїРµСЂСЃРѕРЅР°Р¶РµРј
     /// </summary>
     void PickupItem(Character character, Item item)
     {
         if (character == null || item == null)
             return;
 
-        // ВАЖНО: Снимаем выделение с предмета ПЕРЕД подбором
-        // чтобы UpdateSelectionIndicatorPositions() не пытался обратиться к уничтоженному объекту
+        // Р’РђР–РќРћ: РЎРЅРёРјР°РµРј РІС‹РґРµР»РµРЅРёРµ СЃ РїСЂРµРґРјРµС‚Р° РџР•Р Р•Р” РїРѕРґР±РѕСЂРѕРј
+        // С‡С‚РѕР±С‹ UpdateSelectionIndicatorPositions() РЅРµ РїС‹С‚Р°Р»СЃСЏ РѕР±СЂР°С‚РёС‚СЊСЃСЏ Рє СѓРЅРёС‡С‚РѕР¶РµРЅРЅРѕРјСѓ РѕР±СЉРµРєС‚Сѓ
         if (IsSelected(item.gameObject))
         {
             RemoveFromSelection(item.gameObject);
         }
 
-        // ARCHITECTURE: Освобождаем клетку в GridManager используя кэшированную ссылку
+        // ARCHITECTURE: РћСЃРІРѕР±РѕР¶РґР°РµРј РєР»РµС‚РєСѓ РІ GridManager РёСЃРїРѕР»СЊР·СѓСЏ РєСЌС€РёСЂРѕРІР°РЅРЅСѓСЋ СЃСЃС‹Р»РєСѓ
         if (gridManager != null)
         {
             Vector2Int gridPos = gridManager.WorldToGrid(item.transform.position);
@@ -1258,10 +1297,9 @@ public class SelectionManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[SelectionManager] GridManager not available for freeing cell");
         }
 
-        // Подбираем предмет (ВАЖНО: после этого item будет уничтожен!)
+        // РџРѕРґР±РёСЂР°РµРј РїСЂРµРґРјРµС‚ (Р’РђР–РќРћ: РїРѕСЃР»Рµ СЌС‚РѕРіРѕ item Р±СѓРґРµС‚ СѓРЅРёС‡С‚РѕР¶РµРЅ!)
         item.PickUp(character);
     }
 
@@ -1269,7 +1307,7 @@ public class SelectionManager : MonoBehaviour
     {
         try
         {
-            // Безопасная очистка выделения при уничтожении (без уведомления UI)
+            // Р‘РµР·РѕРїР°СЃРЅР°СЏ РѕС‡РёСЃС‚РєР° РІС‹РґРµР»РµРЅРёСЏ РїСЂРё СѓРЅРёС‡С‚РѕР¶РµРЅРёРё (Р±РµР· СѓРІРµРґРѕРјР»РµРЅРёСЏ UI)
             if (selectedObjects != null)
             {
                 foreach (var obj in selectedObjects)
@@ -1282,13 +1320,13 @@ public class SelectionManager : MonoBehaviour
                 selectedObjects.Clear();
             }
 
-            // Очистка hover состояния
+            // РћС‡РёСЃС‚РєР° hover СЃРѕСЃС‚РѕСЏРЅРёСЏ
             if (currentHoveredObject != null)
             {
                 EndHover(currentHoveredObject);
             }
 
-            // Уничтожение созданных hover материалов
+            // РЈРЅРёС‡С‚РѕР¶РµРЅРёРµ СЃРѕР·РґР°РЅРЅС‹С… hover РјР°С‚РµСЂРёР°Р»РѕРІ
             foreach (var material in hoverMaterials.Values)
             {
                 if (material != null)
@@ -1302,7 +1340,7 @@ public class SelectionManager : MonoBehaviour
             // Error handled silently during cleanup
         }
 
-        // Принудительная очистка словарей
+        // РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅР°СЏ РѕС‡РёСЃС‚РєР° СЃР»РѕРІР°СЂРµР№
         if (selectionIndicators != null)
         {
             selectionIndicators.Clear();
@@ -1323,10 +1361,57 @@ public class SelectionManager : MonoBehaviour
             currentHighlightedRenderers.Clear();
         }
 
-        // Очистка списка выделенных объектов
+        // РћС‡РёСЃС‚РєР° СЃРїРёСЃРєР° РІС‹РґРµР»РµРЅРЅС‹С… РѕР±СЉРµРєС‚РѕРІ
         if (selectedObjects != null)
         {
             selectedObjects.Clear();
         }
+    }
+
+    /// <summary>
+    /// FIX: Find nearby free position for group movement
+    /// </summary>
+    Vector2Int FindNearbyFreePosition(Vector2Int targetPos, List<Vector2Int> usedPositions)
+    {
+        // Check target cell first
+        if (!usedPositions.Contains(targetPos))
+        {
+            var cell = gridManager.GetCell(targetPos);
+            if (cell == null || !cell.isOccupied)
+            {
+                return targetPos;
+            }
+        }
+
+        // Search for free cells in radius
+        for (int radius = 1; radius <= 5; radius++)
+        {
+            for (int x = -radius; x <= radius; x++)
+            {
+                for (int y = -radius; y <= radius; y++)
+                {
+                    // Check only cells on current radius border
+                    if (Mathf.Abs(x) != radius && Mathf.Abs(y) != radius)
+                        continue;
+
+                    Vector2Int checkPos = new Vector2Int(targetPos.x + x, targetPos.y + y);
+
+                    if (usedPositions.Contains(checkPos))
+                        continue;
+
+                    if (gridManager.IsValidGridPosition(checkPos))
+                    {
+                        var checkCell = gridManager.GetCell(checkPos);
+                        if (checkCell == null || !checkCell.isOccupied)
+                        {
+                            return checkPos;
+                        }
+                    }
+                }
+            }
+        }
+
+        // If no free cell found, return initial target
+        return targetPos;
     }
 }

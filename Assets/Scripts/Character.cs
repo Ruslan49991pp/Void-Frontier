@@ -1,10 +1,10 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public enum Faction
 {
-    Player,    // Дружественные юниты игрока
-    Enemy,     // Враждебные юниты
-    Neutral    // Нейтральные юниты
+    Player,    // Р”СЂСѓР¶РµСЃС‚РІРµРЅРЅС‹Рµ СЋРЅРёС‚С‹ РёРіСЂРѕРєР°
+    Enemy,     // Р’СЂР°Р¶РґРµР±РЅС‹Рµ СЋРЅРёС‚С‹
+    Neutral    // РќРµР№С‚СЂР°Р»СЊРЅС‹Рµ СЋРЅРёС‚С‹
 }
 
 [System.Serializable]
@@ -33,13 +33,18 @@ public class Character : MonoBehaviour
     private bool isDead = false;
     private bool isSearchable = false;
     private bool hasBeenSearched = false;
-    public Color selectedColor = new Color(1f, 0.5f, 0f, 1f); // Оранжевый цвет
+    public Color selectedColor = new Color(1f, 0.5f, 0f, 1f); // РћСЂР°РЅР¶РµРІС‹Р№ С†РІРµС‚
     public Color hoverColor = Color.cyan;
+
+    [Header("Counter-Attack")]
+    private Character lastAttacker = null; // РџРѕСЃР»РµРґРЅРёР№ Р°С‚Р°РєСѓСЋС‰РёР№ РґР»СЏ СЃРёСЃС‚РµРјС‹ РєРѕРЅС‚СЂР°С‚Р°РєРё
+    private float lastAttackTime = 0f;     // Р’СЂРµРјСЏ РїРѕСЃР»РµРґРЅРµР№ Р°С‚Р°РєРё
+    public float counterAttackTimeout = 10f;  // Р’СЂРµРјСЏ РїРѕСЃР»Рµ РєРѕС‚РѕСЂРѕРіРѕ Р·Р°Р±С‹РІР°РµРј РѕР± Р°С‚Р°РєСѓСЋС‰РµРј
     
     [Header("Stats")]
     public float moveSpeed = GameConstants.Character.DEFAULT_MOVE_SPEED;
     
-    // Статическая система генерации имен с отслеживанием использованных комбинаций
+    // РЎС‚Р°С‚РёС‡РµСЃРєР°СЏ СЃРёСЃС‚РµРјР° РіРµРЅРµСЂР°С†РёРё РёРјРµРЅ СЃ РѕС‚СЃР»РµР¶РёРІР°РЅРёРµРј РёСЃРїРѕР»СЊР·РѕРІР°РЅРЅС‹С… РєРѕРјР±РёРЅР°С†РёР№
     private static readonly string[] FirstNames = {
         "James", "John", "Robert", "Michael", "William", "David", "Richard", "Joseph", "Thomas", "Christopher",
         "Charles", "Daniel", "Matthew", "Anthony", "Mark", "Donald", "Steven", "Paul", "Andrew", "Joshua",
@@ -70,34 +75,33 @@ public class Character : MonoBehaviour
         "Geologist", "Biologist", "Technician", "Specialist", "Officer", "Researcher", "Analyst"
     };
     
-    // Статическая система для отслеживания использованных имен
+    // РЎС‚Р°С‚РёС‡РµСЃРєР°СЏ СЃРёСЃС‚РµРјР° РґР»СЏ РѕС‚СЃР»РµР¶РёРІР°РЅРёСЏ РёСЃРїРѕР»СЊР·РѕРІР°РЅРЅС‹С… РёРјРµРЅ
     private static System.Collections.Generic.HashSet<string> usedNames = new System.Collections.Generic.HashSet<string>();
     private static System.Random staticRandom = new System.Random(System.DateTime.Now.Millisecond);
     
-    // Внутренние переменные
+    // Р’РЅСѓС‚СЂРµРЅРЅРёРµ РїРµСЂРµРјРµРЅРЅС‹Рµ
     private bool isSelected = false;
-    private bool isHovered = false;
     private Material characterMaterial;
     private Camera mainCamera;
     private CharacterAI characterAI;
     private Inventory characterInventory;
 
-    // Кешированные ссылки на системы через ServiceLocator (для оптимизации)
+    // РљРµС€РёСЂРѕРІР°РЅРЅС‹Рµ СЃСЃС‹Р»РєРё РЅР° СЃРёСЃС‚РµРјС‹ С‡РµСЂРµР· ServiceLocator (РґР»СЏ РѕРїС‚РёРјРёР·Р°С†РёРё)
     private CombatSystem cachedCombatSystem;
     private InventoryUI cachedInventoryUI;
 
-    // DEPRECATED: Старое статическое событие - заменено на EventBus
-    // Оставлено для обратной совместимости, будет удалено в будущем
+    // DEPRECATED: РЎС‚Р°СЂРѕРµ СЃС‚Р°С‚РёС‡РµСЃРєРѕРµ СЃРѕР±С‹С‚РёРµ - Р·Р°РјРµРЅРµРЅРѕ РЅР° EventBus
+    // РћСЃС‚Р°РІР»РµРЅРѕ РґР»СЏ РѕР±СЂР°С‚РЅРѕР№ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё, Р±СѓРґРµС‚ СѓРґР°Р»РµРЅРѕ РІ Р±СѓРґСѓС‰РµРј
     [System.Obsolete("Use EventBus.Subscribe<CharacterSpawnedEvent>() instead")]
     public static event System.Action<Character> OnPlayerCharacterSpawned;
 
     void Awake()
     {
-        // Находим renderer если не назначен
+        // РќР°С…РѕРґРёРј renderer РµСЃР»Рё РЅРµ РЅР°Р·РЅР°С‡РµРЅ
         if (characterRenderer == null)
             characterRenderer = GetComponent<Renderer>();
 
-        // Создаем собственный материал для изменения цвета
+        // РЎРѕР·РґР°РµРј СЃРѕР±СЃС‚РІРµРЅРЅС‹Р№ РјР°С‚РµСЂРёР°Р» РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ С†РІРµС‚Р°
         if (characterRenderer != null)
         {
             characterMaterial = new Material(characterRenderer.material);
@@ -105,56 +109,56 @@ public class Character : MonoBehaviour
             SetColor(defaultColor);
         }
 
-        // Находим главную камеру
+        // РќР°С…РѕРґРёРј РіР»Р°РІРЅСѓСЋ РєР°РјРµСЂСѓ
         mainCamera = Camera.main;
 
-        // Добавляем LocationObjectInfo для интеграции с системой выделения
+        // Р”РѕР±Р°РІР»СЏРµРј LocationObjectInfo РґР»СЏ РёРЅС‚РµРіСЂР°С†РёРё СЃ СЃРёСЃС‚РµРјРѕР№ РІС‹РґРµР»РµРЅРёСЏ
         var objectInfo = GetComponent<LocationObjectInfo>();
         if (objectInfo == null)
         {
             objectInfo = gameObject.AddComponent<LocationObjectInfo>();
         }
 
-        // ВСЕГДА генерируем новые данные персонажа для каждого экземпляра
-        // Это предотвращает дублирование данных из префаба
+        // Р’РЎР•Р“Р”Рђ РіРµРЅРµСЂРёСЂСѓРµРј РЅРѕРІС‹Рµ РґР°РЅРЅС‹Рµ РїРµСЂСЃРѕРЅР°Р¶Р° РґР»СЏ РєР°Р¶РґРѕРіРѕ СЌРєР·РµРјРїР»СЏСЂР°
+        // Р­С‚Рѕ РїСЂРµРґРѕС‚РІСЂР°С‰Р°РµС‚ РґСѓР±Р»РёСЂРѕРІР°РЅРёРµ РґР°РЅРЅС‹С… РёР· РїСЂРµС„Р°Р±Р°
         GenerateRandomCharacter();
 
-        // Настраиваем LocationObjectInfo
+        // РќР°СЃС‚СЂР°РёРІР°РµРј LocationObjectInfo
         objectInfo.objectType = "Character";
         objectInfo.objectName = GetFullName();
         objectInfo.health = characterData.health;
 
-        // Добавляем компонент ИИ
+        // Р”РѕР±Р°РІР»СЏРµРј РєРѕРјРїРѕРЅРµРЅС‚ РР
         characterAI = GetComponent<CharacterAI>();
         if (characterAI == null)
         {
             characterAI = gameObject.AddComponent<CharacterAI>();
         }
 
-        // Добавляем компонент инвентаря
+        // Р”РѕР±Р°РІР»СЏРµРј РєРѕРјРїРѕРЅРµРЅС‚ РёРЅРІРµРЅС‚Р°СЂСЏ
         characterInventory = GetComponent<Inventory>();
         if (characterInventory == null)
         {
             characterInventory = gameObject.AddComponent<Inventory>();
         }
 
-        // Добавляем систему оружия
+        // Р”РѕР±Р°РІР»СЏРµРј СЃРёСЃС‚РµРјСѓ РѕСЂСѓР¶РёСЏ
         WeaponSystem weaponSystem = GetComponent<WeaponSystem>();
         if (weaponSystem == null)
         {
             weaponSystem = gameObject.AddComponent<WeaponSystem>();
         }
 
-        // Ждем следующий кадр для правильной инициализации инвентаря
+        // Р–РґРµРј СЃР»РµРґСѓСЋС‰РёР№ РєР°РґСЂ РґР»СЏ РїСЂР°РІРёР»СЊРЅРѕР№ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё РёРЅРІРµРЅС‚Р°СЂСЏ
         StartCoroutine(DelayedInventorySetup());
     }
 
     void Start()
     {
-        // ARCHITECTURE: Публикуем событие спавна персонажа через EventBus
+        // ARCHITECTURE: РџСѓР±Р»РёРєСѓРµРј СЃРѕР±С‹С‚РёРµ СЃРїР°РІРЅР° РїРµСЂСЃРѕРЅР°Р¶Р° С‡РµСЂРµР· EventBus
         EventBus.Publish(new CharacterSpawnedEvent(this));
 
-        // DEPRECATED: Поддержка старого API для обратной совместимости
+        // DEPRECATED: РџРѕРґРґРµСЂР¶РєР° СЃС‚Р°СЂРѕРіРѕ API РґР»СЏ РѕР±СЂР°С‚РЅРѕР№ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё
         #pragma warning disable CS0618 // Type or member is obsolete
         if (IsPlayerCharacter() && OnPlayerCharacterSpawned != null)
         {
@@ -165,15 +169,15 @@ public class Character : MonoBehaviour
 
     void Update()
     {
-        // PERFORMANCE FIX: Hover теперь обрабатывается централизованно через SelectionManager
-        // Убрали CheckMouseHover() который вызывался для КАЖДОГО персонажа каждый кадр
-        // Это экономит сотни raycast в секунду (10 персонажей = 600 raycast/сек)
-        // Теперь SelectionManager делает один raycast на все объекты
+        // PERFORMANCE FIX: Hover С‚РµРїРµСЂСЊ РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚СЃСЏ С†РµРЅС‚СЂР°Р»РёР·РѕРІР°РЅРЅРѕ С‡РµСЂРµР· SelectionManager
+        // РЈР±СЂР°Р»Рё CheckMouseHover() РєРѕС‚РѕСЂС‹Р№ РІС‹Р·С‹РІР°Р»СЃСЏ РґР»СЏ РљРђР–Р”РћР“Рћ РїРµСЂСЃРѕРЅР°Р¶Р° РєР°Р¶РґС‹Р№ РєР°РґСЂ
+        // Р­С‚Рѕ СЌРєРѕРЅРѕРјРёС‚ СЃРѕС‚РЅРё raycast РІ СЃРµРєСѓРЅРґСѓ (10 РїРµСЂСЃРѕРЅР°Р¶РµР№ = 600 raycast/СЃРµРє)
+        // РўРµРїРµСЂСЊ SelectionManager РґРµР»Р°РµС‚ РѕРґРёРЅ raycast РЅР° РІСЃРµ РѕР±СЉРµРєС‚С‹
     }
 
     /// <summary>
-    /// Получить CombatSystem через ServiceLocator с кешированием
-    /// PERFORMANCE: Замена FindObjectOfType (O(n)) на ServiceLocator (O(1))
+    /// РџРѕР»СѓС‡РёС‚СЊ CombatSystem С‡РµСЂРµР· ServiceLocator СЃ РєРµС€РёСЂРѕРІР°РЅРёРµРј
+    /// PERFORMANCE: Р—Р°РјРµРЅР° FindObjectOfType (O(n)) РЅР° ServiceLocator (O(1))
     /// </summary>
     CombatSystem GetCombatSystem()
     {
@@ -185,8 +189,8 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить InventoryUI через ServiceLocator с кешированием
-    /// PERFORMANCE: Замена FindObjectOfType (O(n)) на ServiceLocator (O(1))
+    /// РџРѕР»СѓС‡РёС‚СЊ InventoryUI С‡РµСЂРµР· ServiceLocator СЃ РєРµС€РёСЂРѕРІР°РЅРёРµРј
+    /// PERFORMANCE: Р—Р°РјРµРЅР° FindObjectOfType (O(n)) РЅР° ServiceLocator (O(1))
     /// </summary>
     InventoryUI GetInventoryUI()
     {
@@ -198,13 +202,13 @@ public class Character : MonoBehaviour
     }
     
     /// <summary>
-    /// Генерация случайного персонажа с уникальным именем
+    /// Р“РµРЅРµСЂР°С†РёСЏ СЃР»СѓС‡Р°Р№РЅРѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р° СЃ СѓРЅРёРєР°Р»СЊРЅС‹Рј РёРјРµРЅРµРј
     /// </summary>
     public void GenerateRandomCharacter()
     {
         characterData = new CharacterData();
         
-        // Генерируем уникальное имя
+        // Р“РµРЅРµСЂРёСЂСѓРµРј СѓРЅРёРєР°Р»СЊРЅРѕРµ РёРјСЏ
         GenerateUniqueName();
         
         characterData.level = staticRandom.Next(1, 6);
@@ -212,13 +216,13 @@ public class Character : MonoBehaviour
         characterData.health = characterData.maxHealth;
         characterData.profession = Professions[staticRandom.Next(0, Professions.Length)];
         
-        // Генерируем краткую биографию
+        // Р“РµРЅРµСЂРёСЂСѓРµРј РєСЂР°С‚РєСѓСЋ Р±РёРѕРіСЂР°С„РёСЋ
         characterData.bio = $"Level {characterData.level} {characterData.profession} with extensive experience in space operations.";
         
     }
     
     /// <summary>
-    /// Генерация уникального имени для персонажа
+    /// Р“РµРЅРµСЂР°С†РёСЏ СѓРЅРёРєР°Р»СЊРЅРѕРіРѕ РёРјРµРЅРё РґР»СЏ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     void GenerateUniqueName()
     {
@@ -231,7 +235,7 @@ public class Character : MonoBehaviour
             string lastName = LastNames[staticRandom.Next(0, LastNames.Length)];
             string fullName = $"{firstName} {lastName}";
             
-            // Проверяем уникальность имени
+            // РџСЂРѕРІРµСЂСЏРµРј СѓРЅРёРєР°Р»СЊРЅРѕСЃС‚СЊ РёРјРµРЅРё
             if (!usedNames.Contains(fullName))
             {
                 characterData.firstName = firstName;
@@ -244,7 +248,7 @@ public class Character : MonoBehaviour
         }
         while (attempts < maxAttempts);
         
-        // Если не удалось сгенерировать уникальное имя, добавляем номер
+        // Р•СЃР»Рё РЅРµ СѓРґР°Р»РѕСЃСЊ СЃРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ СѓРЅРёРєР°Р»СЊРЅРѕРµ РёРјСЏ, РґРѕР±Р°РІР»СЏРµРј РЅРѕРјРµСЂ
         string baseName = $"{FirstNames[staticRandom.Next(0, FirstNames.Length)]} {LastNames[staticRandom.Next(0, LastNames.Length)]}";
         int counter = 1;
         string uniqueName;
@@ -263,17 +267,17 @@ public class Character : MonoBehaviour
     }
     
     /// <summary>
-    /// Очистить список использованных имен (для отладки)
+    /// РћС‡РёСЃС‚РёС‚СЊ СЃРїРёСЃРѕРє РёСЃРїРѕР»СЊР·РѕРІР°РЅРЅС‹С… РёРјРµРЅ (РґР»СЏ РѕС‚Р»Р°РґРєРё)
     /// </summary>
     public static void ClearUsedNames()
     {
         usedNames.Clear();
-        // Пересоздаем Random с новым seed для лучшей случайности
+        // РџРµСЂРµСЃРѕР·РґР°РµРј Random СЃ РЅРѕРІС‹Рј seed РґР»СЏ Р»СѓС‡С€РµР№ СЃР»СѓС‡Р°Р№РЅРѕСЃС‚Рё
         staticRandom = new System.Random(System.DateTime.Now.Millisecond + UnityEngine.Random.Range(0, GameConstants.Character.RANDOM_SEED_RANGE));
     }
     
     /// <summary>
-    /// Получить статистику использованных имен
+    /// РџРѕР»СѓС‡РёС‚СЊ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РёСЃРїРѕР»СЊР·РѕРІР°РЅРЅС‹С… РёРјРµРЅ
     /// </summary>
     public static void LogNameStatistics()
     {
@@ -287,7 +291,7 @@ public class Character : MonoBehaviour
     }
     
     /// <summary>
-    /// Получить полное имя персонажа
+    /// РџРѕР»СѓС‡РёС‚СЊ РїРѕР»РЅРѕРµ РёРјСЏ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     public string GetFullName()
     {
@@ -296,7 +300,7 @@ public class Character : MonoBehaviour
     }
     
     /// <summary>
-    /// Получить информацию о персонаже для UI
+    /// РџРѕР»СѓС‡РёС‚СЊ РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РїРµСЂСЃРѕРЅР°Р¶Рµ РґР»СЏ UI
     /// </summary>
     public string GetCharacterInfo()
     {
@@ -309,7 +313,7 @@ public class Character : MonoBehaviour
     }
     
     /// <summary>
-    /// Установить состояние выделения
+    /// РЈСЃС‚Р°РЅРѕРІРёС‚СЊ СЃРѕСЃС‚РѕСЏРЅРёРµ РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     public void SetSelected(bool selected)
     {
@@ -319,27 +323,26 @@ public class Character : MonoBehaviour
 
         if (selected)
         {
-            // При выделении убираем hover и устанавливаем цвет в зависимости от фракции
-            isHovered = false;
+            // РџСЂРё РІС‹РґРµР»РµРЅРёРё СѓСЃС‚Р°РЅР°РІР»РёРІР°РµРј С†РІРµС‚ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ С„СЂР°РєС†РёРё
             if (IsPlayerCharacter())
             {
-                SetColor(selectedColor); // Оранжевый для союзников
+                SetColor(selectedColor); // РћСЂР°РЅР¶РµРІС‹Р№ РґР»СЏ СЃРѕСЋР·РЅРёРєРѕРІ
             }
             else
             {
-                SetColor(Color.red); // Красный для врагов (только для просмотра информации)
+                SetColor(Color.red); // РљСЂР°СЃРЅС‹Р№ РґР»СЏ РІСЂР°РіРѕРІ (С‚РѕР»СЊРєРѕ РґР»СЏ РїСЂРѕСЃРјРѕС‚СЂР° РёРЅС„РѕСЂРјР°С†РёРё)
             }
         }
         else
         {
-            // При снятии выделения возвращаем цвет по умолчанию
-            // Hover будет обработан в Update()
+            // РџСЂРё СЃРЅСЏС‚РёРё РІС‹РґРµР»РµРЅРёСЏ РІРѕР·РІСЂР°С‰Р°РµРј С†РІРµС‚ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
+            // Hover Р±СѓРґРµС‚ РѕР±СЂР°Р±РѕС‚Р°РЅ РІ Update()
             SetColor(defaultColor);
         }
     }
     
     /// <summary>
-    /// Изменить цвет персонажа
+    /// РР·РјРµРЅРёС‚СЊ С†РІРµС‚ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     void SetColor(Color color)
     {
@@ -349,7 +352,7 @@ public class Character : MonoBehaviour
         }
         else
         {
-            // Пытаемся восстановить материал
+            // РџС‹С‚Р°РµРјСЃСЏ РІРѕСЃСЃС‚Р°РЅРѕРІРёС‚СЊ РјР°С‚РµСЂРёР°Р»
             if (characterRenderer != null)
             {
                 characterMaterial = new Material(characterRenderer.material);
@@ -360,7 +363,7 @@ public class Character : MonoBehaviour
     }
     
     /// <summary>
-    /// Проверить, выделен ли персонаж
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РІС‹РґРµР»РµРЅ Р»Рё РїРµСЂСЃРѕРЅР°Р¶
     /// </summary>
     public bool IsSelected()
     {
@@ -368,22 +371,28 @@ public class Character : MonoBehaviour
     }
     
     /// <summary>
-    /// Нанести урон персонажу
+    /// РќР°РЅРµСЃС‚Рё СѓСЂРѕРЅ РїРµСЂСЃРѕРЅР°Р¶Сѓ
     /// </summary>
-    public void TakeDamage(float damage)
+    public void TakeDamage(float damage, Character attacker = null)
     {
         float oldHealth = characterData.health;
         characterData.health = Mathf.Max(0, characterData.health - damage);
         float newHealth = characterData.health;
 
-        // DEBUG: Логируем получение урона
+        // DEBUG: Р›РѕРіРёСЂСѓРµРј РїРѕР»СѓС‡РµРЅРёРµ СѓСЂРѕРЅР°
         string factionName = IsPlayerCharacter() ? "ALLY" : "ENEMY";
-        Debug.Log($"[DAMAGE] {factionName} {GetFullName()} took {damage:F1} damage! HP: {oldHealth:F1} -> {newHealth:F1} ({GetHealthPercent() * 100f:F0}%)");
 
-        // ARCHITECTURE: Публикуем событие получения урона через EventBus
+        // COUNTER-ATTACK: Р—Р°РїРѕРјРёРЅР°РµРј Р°С‚Р°РєСѓСЋС‰РµРіРѕ РґР»СЏ СЃРёСЃС‚РµРјС‹ РєРѕРЅС‚СЂР°С‚Р°РєРё
+        if (attacker != null && attacker != this && !isDead)
+        {
+            lastAttacker = attacker;
+            lastAttackTime = Time.time;
+        }
+
+        // ARCHITECTURE: РџСѓР±Р»РёРєСѓРµРј СЃРѕР±С‹С‚РёРµ РїРѕР»СѓС‡РµРЅРёСЏ СѓСЂРѕРЅР° С‡РµСЂРµР· EventBus
         EventBus.Publish(new CharacterDamagedEvent(this, damage));
 
-        // Обновляем health в LocationObjectInfo
+        // РћР±РЅРѕРІР»СЏРµРј health РІ LocationObjectInfo
         var objectInfo = GetComponent<LocationObjectInfo>();
         if (objectInfo != null)
         {
@@ -392,42 +401,41 @@ public class Character : MonoBehaviour
 
         if (characterData.health <= 0 && !isDead)
         {
-            // Выполняем смерть персонажа
-            Debug.Log($"[DEATH] {factionName} {GetFullName()} has died!");
+            // Р’С‹РїРѕР»РЅСЏРµРј СЃРјРµСЂС‚СЊ РїРµСЂСЃРѕРЅР°Р¶Р°
             Die();
         }
     }
 
     /// <summary>
-    /// Обработка смерти персонажа
+    /// РћР±СЂР°Р±РѕС‚РєР° СЃРјРµСЂС‚Рё РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     void Die()
     {
-        if (isDead) return; // Предотвращаем повторную смерть
+        if (isDead) return; // РџСЂРµРґРѕС‚РІСЂР°С‰Р°РµРј РїРѕРІС‚РѕСЂРЅСѓСЋ СЃРјРµСЂС‚СЊ
 
         isDead = true;
 
-        // ARCHITECTURE: Публикуем событие смерти персонажа через EventBus
+        // ARCHITECTURE: РџСѓР±Р»РёРєСѓРµРј СЃРѕР±С‹С‚РёРµ СЃРјРµСЂС‚Рё РїРµСЂСЃРѕРЅР°Р¶Р° С‡РµСЂРµР· EventBus
         EventBus.Publish(new CharacterDiedEvent(this));
 
-        // Поворачиваем персонажа по оси X (падение)
+        // РџРѕРІРѕСЂР°С‡РёРІР°РµРј РїРµСЂСЃРѕРЅР°Р¶Р° РїРѕ РѕСЃРё X (РїР°РґРµРЅРёРµ)
         transform.rotation = Quaternion.Euler(GameConstants.Character.DEATH_ROTATION_ANGLE, transform.rotation.eulerAngles.y, transform.rotation.eulerAngles.z);
 
-        // Отключаем все компоненты управления и движения
+        // РћС‚РєР»СЋС‡Р°РµРј РІСЃРµ РєРѕРјРїРѕРЅРµРЅС‚С‹ СѓРїСЂР°РІР»РµРЅРёСЏ Рё РґРІРёР¶РµРЅРёСЏ
         DisableCharacterControl();
 
-        // НЕ выбрасываем лут - он остается внутри для обыска
-        // DropLootOnDeath(); // Закомментировано
+        // РќР• РІС‹Р±СЂР°СЃС‹РІР°РµРј Р»СѓС‚ - РѕРЅ РѕСЃС‚Р°РµС‚СЃСЏ РІРЅСѓС‚СЂРё РґР»СЏ РѕР±С‹СЃРєР°
+        // DropLootOnDeath(); // Р—Р°РєРѕРјРјРµРЅС‚РёСЂРѕРІР°РЅРѕ
 
-        // Останавливаем боевые действия с этим персонажем
+        // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р±РѕРµРІС‹Рµ РґРµР№СЃС‚РІРёСЏ СЃ СЌС‚РёРј РїРµСЂСЃРѕРЅР°Р¶РµРј
         StopCombatInvolvement();
 
-        // Делаем персонажа доступным для обыска
+        // Р”РµР»Р°РµРј РїРµСЂСЃРѕРЅР°Р¶Р° РґРѕСЃС‚СѓРїРЅС‹Рј РґР»СЏ РѕР±С‹СЃРєР°
         MakeSearchable();
 
-        // ВАЖНО: Делаем коллайдер триггером чтобы пули проходили сквозь тело
-        // Bullet.cs использует QueryTriggerInteraction.Ignore, поэтому триггеры игнорируются
-        // SelectionManager использует QueryTriggerInteraction.Collide, поэтому труп можно кликать
+        // Р’РђР–РќРћ: Р”РµР»Р°РµРј РєРѕР»Р»Р°Р№РґРµСЂ С‚СЂРёРіРіРµСЂРѕРј С‡С‚РѕР±С‹ РїСѓР»Рё РїСЂРѕС…РѕРґРёР»Рё СЃРєРІРѕР·СЊ С‚РµР»Рѕ
+        // Bullet.cs РёСЃРїРѕР»СЊР·СѓРµС‚ QueryTriggerInteraction.Ignore, РїРѕСЌС‚РѕРјСѓ С‚СЂРёРіРіРµСЂС‹ РёРіРЅРѕСЂРёСЂСѓСЋС‚СЃСЏ
+        // SelectionManager РёСЃРїРѕР»СЊР·СѓРµС‚ QueryTriggerInteraction.Collide, РїРѕСЌС‚РѕРјСѓ С‚СЂСѓРї РјРѕР¶РЅРѕ РєР»РёРєР°С‚СЊ
         Collider characterCollider = GetComponent<Collider>();
         if (characterCollider != null)
         {
@@ -436,33 +444,33 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Отключение всех компонентов управления персонажа
+    /// РћС‚РєР»СЋС‡РµРЅРёРµ РІСЃРµС… РєРѕРјРїРѕРЅРµРЅС‚РѕРІ СѓРїСЂР°РІР»РµРЅРёСЏ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     void DisableCharacterControl()
     {
-        // Отключаем движение
+        // РћС‚РєР»СЋС‡Р°РµРј РґРІРёР¶РµРЅРёРµ
         CharacterMovement movement = GetComponent<CharacterMovement>();
         if (movement != null)
         {
-            movement.StopMovement(); // Останавливаем текущее движение
+            movement.StopMovement(); // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј С‚РµРєСѓС‰РµРµ РґРІРёР¶РµРЅРёРµ
             movement.enabled = false;
         }
 
-        // Отключаем AI
+        // РћС‚РєР»СЋС‡Р°РµРј AI
         CharacterAI ai = GetComponent<CharacterAI>();
         if (ai != null)
         {
             ai.enabled = false;
         }
 
-        // Останавливаем все боевые действия
+        // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј РІСЃРµ Р±РѕРµРІС‹Рµ РґРµР№СЃС‚РІРёСЏ
         CombatSystem combatSystem = GetCombatSystem();
         if (combatSystem != null)
         {
             combatSystem.StopCombatForCharacter(this);
         }
 
-        // НЕ отключаем коллайдер для мертвых - нужен для обыска
+        // РќР• РѕС‚РєР»СЋС‡Р°РµРј РєРѕР»Р»Р°Р№РґРµСЂ РґР»СЏ РјРµСЂС‚РІС‹С… - РЅСѓР¶РµРЅ РґР»СЏ РѕР±С‹СЃРєР°
         // Collider characterCollider = GetComponent<Collider>();
         // if (characterCollider != null)
         // {
@@ -471,14 +479,14 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Остановка всех боевых действий с участием этого персонажа
+    /// РћСЃС‚Р°РЅРѕРІРєР° РІСЃРµС… Р±РѕРµРІС‹С… РґРµР№СЃС‚РІРёР№ СЃ СѓС‡Р°СЃС‚РёРµРј СЌС‚РѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     void StopCombatInvolvement()
     {
         CombatSystem combatSystem = GetCombatSystem();
         if (combatSystem != null)
         {
-            // Останавливаем бой если этот персонаж атаковал кого-то
+            // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р±РѕР№ РµСЃР»Рё СЌС‚РѕС‚ РїРµСЂСЃРѕРЅР°Р¶ Р°С‚Р°РєРѕРІР°Р» РєРѕРіРѕ-С‚Рѕ
             if (combatSystem.IsInCombat(this))
             {
                 combatSystem.StopCombatForCharacter(this);
@@ -487,7 +495,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Делаем мертвого персонажа доступным для обыска
+    /// Р”РµР»Р°РµРј РјРµСЂС‚РІРѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р° РґРѕСЃС‚СѓРїРЅС‹Рј РґР»СЏ РѕР±С‹СЃРєР°
     /// </summary>
     void MakeSearchable()
     {
@@ -496,27 +504,27 @@ public class Character : MonoBehaviour
             isSearchable = true;
             hasBeenSearched = false;
 
-            // Можно добавить визуальный индикатор что можно обыскать
-            // Например, изменить цвет или добавить иконку
+            // РњРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ РІРёР·СѓР°Р»СЊРЅС‹Р№ РёРЅРґРёРєР°С‚РѕСЂ С‡С‚Рѕ РјРѕР¶РЅРѕ РѕР±С‹СЃРєР°С‚СЊ
+            // РќР°РїСЂРёРјРµСЂ, РёР·РјРµРЅРёС‚СЊ С†РІРµС‚ РёР»Рё РґРѕР±Р°РІРёС‚СЊ РёРєРѕРЅРєСѓ
         }
     }
 
     /// <summary>
-    /// Обыскать мертвого персонажа (вызывается извне)
+    /// РћР±С‹СЃРєР°С‚СЊ РјРµСЂС‚РІРѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р° (РІС‹Р·С‹РІР°РµС‚СЃСЏ РёР·РІРЅРµ)
     /// </summary>
     public bool SearchCorpse()
     {
         if (!isDead)
-            return false; // Можно обыскивать только мертвых
+            return false; // РњРѕР¶РЅРѕ РѕР±С‹СЃРєРёРІР°С‚СЊ С‚РѕР»СЊРєРѕ РјРµСЂС‚РІС‹С…
 
         if (!CanBeSearched())
             return false;
 
-        // Открываем инвентарь мертвого персонажа для обыска
+        // РћС‚РєСЂС‹РІР°РµРј РёРЅРІРµРЅС‚Р°СЂСЊ РјРµСЂС‚РІРѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р° РґР»СЏ РѕР±С‹СЃРєР°
         Inventory corpseInventory = GetComponent<Inventory>();
         if (corpseInventory != null)
         {
-            // Открываем инвентарь трупа
+            // РћС‚РєСЂС‹РІР°РµРј РёРЅРІРµРЅС‚Р°СЂСЊ С‚СЂСѓРїР°
             InventoryUI inventoryUI = GetInventoryUI();
             if (inventoryUI != null)
             {
@@ -525,11 +533,11 @@ public class Character : MonoBehaviour
             }
             else
             {
-                // Если нет UI, выбрасываем лут как fallback
+                // Р•СЃР»Рё РЅРµС‚ UI, РІС‹Р±СЂР°СЃС‹РІР°РµРј Р»СѓС‚ РєР°Рє fallback
                 DropLootOnDeath();
             }
 
-            // Помечаем как обысканный чтобы нельзя было обыскать повторно
+            // РџРѕРјРµС‡Р°РµРј РєР°Рє РѕР±С‹СЃРєР°РЅРЅС‹Р№ С‡С‚РѕР±С‹ РЅРµР»СЊР·СЏ Р±С‹Р»Рѕ РѕР±С‹СЃРєР°С‚СЊ РїРѕРІС‚РѕСЂРЅРѕ
             hasBeenSearched = true;
 
             return true;
@@ -539,7 +547,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, можно ли обыскать этого персонажа
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РјРѕР¶РЅРѕ Р»Рё РѕР±С‹СЃРєР°С‚СЊ СЌС‚РѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     public bool CanBeSearched()
     {
@@ -547,13 +555,13 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Восстановить здоровье
+    /// Р’РѕСЃСЃС‚Р°РЅРѕРІРёС‚СЊ Р·РґРѕСЂРѕРІСЊРµ
     /// </summary>
     public void Heal(float amount)
     {
         characterData.health = Mathf.Min(characterData.maxHealth, characterData.health + amount);
 
-        // Обновляем health в LocationObjectInfo
+        // РћР±РЅРѕРІР»СЏРµРј health РІ LocationObjectInfo
         var objectInfo = GetComponent<LocationObjectInfo>();
         if (objectInfo != null)
         {
@@ -562,7 +570,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить текущее здоровье
+    /// РџРѕР»СѓС‡РёС‚СЊ С‚РµРєСѓС‰РµРµ Р·РґРѕСЂРѕРІСЊРµ
     /// </summary>
     public float GetHealth()
     {
@@ -570,7 +578,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить максимальное здоровье
+    /// РџРѕР»СѓС‡РёС‚СЊ РјР°РєСЃРёРјР°Р»СЊРЅРѕРµ Р·РґРѕСЂРѕРІСЊРµ
     /// </summary>
     public float GetMaxHealth()
     {
@@ -578,7 +586,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить процент здоровья (0.0 - 1.0)
+    /// РџРѕР»СѓС‡РёС‚СЊ РїСЂРѕС†РµРЅС‚ Р·РґРѕСЂРѕРІСЊСЏ (0.0 - 1.0)
     /// </summary>
     public float GetHealthPercent()
     {
@@ -587,13 +595,13 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Установить здоровье (для тестирования)
+    /// РЈСЃС‚Р°РЅРѕРІРёС‚СЊ Р·РґРѕСЂРѕРІСЊРµ (РґР»СЏ С‚РµСЃС‚РёСЂРѕРІР°РЅРёСЏ)
     /// </summary>
     public void SetHealth(float health)
     {
         characterData.health = Mathf.Clamp(health, 0, characterData.maxHealth);
 
-        // Обновляем health в LocationObjectInfo
+        // РћР±РЅРѕРІР»СЏРµРј health РІ LocationObjectInfo
         var objectInfo = GetComponent<LocationObjectInfo>();
         if (objectInfo != null)
         {
@@ -602,7 +610,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить фракцию персонажа
+    /// РџРѕР»СѓС‡РёС‚СЊ С„СЂР°РєС†РёСЋ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     public Faction GetFaction()
     {
@@ -610,20 +618,20 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Установить фракцию персонажа
+    /// РЈСЃС‚Р°РЅРѕРІРёС‚СЊ С„СЂР°РєС†РёСЋ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     public void SetFaction(Faction faction)
     {
         Faction oldFaction = characterData.faction;
         characterData.faction = faction;
 
-        // Если персонаж перешел в фракцию игрока, публикуем событие спавна
+        // Р•СЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ РїРµСЂРµС€РµР» РІ С„СЂР°РєС†РёСЋ РёРіСЂРѕРєР°, РїСѓР±Р»РёРєСѓРµРј СЃРѕР±С‹С‚РёРµ СЃРїР°РІРЅР°
         if (oldFaction != Faction.Player && faction == Faction.Player)
         {
-            // ARCHITECTURE: Публикуем событие через EventBus
+            // ARCHITECTURE: РџСѓР±Р»РёРєСѓРµРј СЃРѕР±С‹С‚РёРµ С‡РµСЂРµР· EventBus
             EventBus.Publish(new CharacterSpawnedEvent(this));
 
-            // DEPRECATED: Поддержка старого API для обратной совместимости
+            // DEPRECATED: РџРѕРґРґРµСЂР¶РєР° СЃС‚Р°СЂРѕРіРѕ API РґР»СЏ РѕР±СЂР°С‚РЅРѕР№ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё
             #pragma warning disable CS0618
             if (OnPlayerCharacterSpawned != null)
             {
@@ -634,7 +642,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, мертв ли персонаж
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РјРµСЂС‚РІ Р»Рё РїРµСЂСЃРѕРЅР°Р¶
     /// </summary>
     public bool IsDead()
     {
@@ -642,7 +650,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, является ли персонаж игроком
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РїРµСЂСЃРѕРЅР°Р¶ РёРіСЂРѕРєРѕРј
     /// </summary>
     public bool IsPlayerCharacter()
     {
@@ -651,7 +659,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, является ли персонаж врагом
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РїРµСЂСЃРѕРЅР°Р¶ РІСЂР°РіРѕРј
     /// </summary>
     public bool IsEnemyCharacter()
     {
@@ -659,7 +667,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, являются ли два персонажа союзниками
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, СЏРІР»СЏСЋС‚СЃСЏ Р»Рё РґРІР° РїРµСЂСЃРѕРЅР°Р¶Р° СЃРѕСЋР·РЅРёРєР°РјРё
     /// </summary>
     public bool IsAllyWith(Character otherCharacter)
     {
@@ -668,13 +676,13 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, являются ли два персонажа врагами
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, СЏРІР»СЏСЋС‚СЃСЏ Р»Рё РґРІР° РїРµСЂСЃРѕРЅР°Р¶Р° РІСЂР°РіР°РјРё
     /// </summary>
     public bool IsEnemyWith(Character otherCharacter)
     {
         if (otherCharacter == null) return false;
 
-        // Игроки и враги - враги друг другу
+        // РРіСЂРѕРєРё Рё РІСЂР°РіРё - РІСЂР°РіРё РґСЂСѓРі РґСЂСѓРіСѓ
         if ((characterData.faction == Faction.Player && otherCharacter.characterData.faction == Faction.Enemy) ||
             (characterData.faction == Faction.Enemy && otherCharacter.characterData.faction == Faction.Player))
         {
@@ -683,14 +691,51 @@ public class Character : MonoBehaviour
 
         return false;
     }
-    
+
     /// <summary>
-    /// DEPRECATED: Проверка наведения мыши на персонажа
-    /// PERFORMANCE FIX: Этот метод больше не используется!
-    /// Hover теперь обрабатывается централизованно через SelectionManager.HandleHover()
-    /// Это экономит сотни raycast в секунду (один raycast вместо N raycast для N персонажей)
+    /// РџРѕР»СѓС‡РёС‚СЊ РїРѕСЃР»РµРґРЅРµРіРѕ Р°С‚Р°РєСѓСЋС‰РµРіРѕ РґР»СЏ СЃРёСЃС‚РµРјС‹ РєРѕРЅС‚СЂР°С‚Р°РєРё
+    /// </summary>
+    public Character GetLastAttacker()
+    {
+        // РџСЂРѕРІРµСЂСЏРµРј С‚Р°Р№РјР°СѓС‚ - РµСЃР»Рё РїСЂРѕС€Р»Рѕ РјРЅРѕРіРѕ РІСЂРµРјРµРЅРё, Р·Р°Р±С‹РІР°РµРј РѕР± Р°С‚Р°РєСѓСЋС‰РµРј
+        if (Time.time - lastAttackTime > counterAttackTimeout)
+        {
+            lastAttacker = null;
+        }
+
+        // РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ Р°С‚Р°РєСѓСЋС‰РёР№ РµС‰Рµ Р¶РёРІ
+        if (lastAttacker != null && lastAttacker.IsDead())
+        {
+            lastAttacker = null;
+        }
+
+        return lastAttacker;
+    }
+
+    /// <summary>
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РµСЃС‚СЊ Р»Рё Р°РєС‚РёРІРЅС‹Р№ Р°С‚Р°РєСѓСЋС‰РёР№ РґР»СЏ РєРѕРЅС‚СЂР°С‚Р°РєРё
+    /// </summary>
+    public bool HasActiveAttacker()
+    {
+        return GetLastAttacker() != null;
+    }
+
+    /// <summary>
+    /// РћС‡РёСЃС‚РёС‚СЊ РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± Р°С‚Р°РєСѓСЋС‰РµРј (РІС‹Р·С‹РІР°РµС‚СЃСЏ РїСЂРё РЅР°С‡Р°Р»Рµ РєРѕРЅС‚СЂР°С‚Р°РєРё)
+    /// </summary>
+    public void ClearLastAttacker()
+    {
+        lastAttacker = null;
+        lastAttackTime = 0f;
+    }
+
+    /// <summary>
+    /// DEPRECATED: РџСЂРѕРІРµСЂРєР° РЅР°РІРµРґРµРЅРёСЏ РјС‹С€Рё РЅР° РїРµСЂСЃРѕРЅР°Р¶Р°
+    /// PERFORMANCE FIX: Р­С‚РѕС‚ РјРµС‚РѕРґ Р±РѕР»СЊС€Рµ РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ!
+    /// Hover С‚РµРїРµСЂСЊ РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚СЃСЏ С†РµРЅС‚СЂР°Р»РёР·РѕРІР°РЅРЅРѕ С‡РµСЂРµР· SelectionManager.HandleHover()
+    /// Р­С‚Рѕ СЌРєРѕРЅРѕРјРёС‚ СЃРѕС‚РЅРё raycast РІ СЃРµРєСѓРЅРґСѓ (РѕРґРёРЅ raycast РІРјРµСЃС‚Рѕ N raycast РґР»СЏ N РїРµСЂСЃРѕРЅР°Р¶РµР№)
     ///
-    /// Оставлен для справки, можно удалить в будущем
+    /// РћСЃС‚Р°РІР»РµРЅ РґР»СЏ СЃРїСЂР°РІРєРё, РјРѕР¶РЅРѕ СѓРґР°Р»РёС‚СЊ РІ Р±СѓРґСѓС‰РµРј
     /// </summary>
     /*
     void CheckMouseHover()
@@ -701,7 +746,7 @@ public class Character : MonoBehaviour
 
         bool shouldHover = false;
 
-        // Используем RaycastAll чтобы проверить все объекты на луче
+        // РСЃРїРѕР»СЊР·СѓРµРј RaycastAll С‡С‚РѕР±С‹ РїСЂРѕРІРµСЂРёС‚СЊ РІСЃРµ РѕР±СЉРµРєС‚С‹ РЅР° Р»СѓС‡Рµ
         RaycastHit[] hits = Physics.RaycastAll(ray, Mathf.Infinity);
 
         foreach (RaycastHit hit in hits)
@@ -713,7 +758,7 @@ public class Character : MonoBehaviour
             }
         }
 
-        // Обновляем состояние hover
+        // РћР±РЅРѕРІР»СЏРµРј СЃРѕСЃС‚РѕСЏРЅРёРµ hover
         if (shouldHover && !isHovered)
         {
             isHovered = true;
@@ -728,20 +773,20 @@ public class Character : MonoBehaviour
     */
 
     /// <summary>
-    /// Отложенная настройка инвентаря для правильной инициализации
+    /// РћС‚Р»РѕР¶РµРЅРЅР°СЏ РЅР°СЃС‚СЂРѕР№РєР° РёРЅРІРµРЅС‚Р°СЂСЏ РґР»СЏ РїСЂР°РІРёР»СЊРЅРѕР№ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
     /// </summary>
     System.Collections.IEnumerator DelayedInventorySetup()
     {
-        // Ждем один кадр для завершения инициализации компонентов
+        // Р–РґРµРј РѕРґРёРЅ РєР°РґСЂ РґР»СЏ Р·Р°РІРµСЂС€РµРЅРёСЏ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё РєРѕРјРїРѕРЅРµРЅС‚РѕРІ
         yield return null;
 
-        // Настраиваем инвентарь в зависимости от фракции
+        // РќР°СЃС‚СЂР°РёРІР°РµРј РёРЅРІРµРЅС‚Р°СЂСЊ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ С„СЂР°РєС†РёРё
         SetupInventoryForFaction();
     }
 
     void OnDestroy()
     {
-        // Освобождаем материал
+        // РћСЃРІРѕР±РѕР¶РґР°РµРј РјР°С‚РµСЂРёР°Р»
         if (characterMaterial != null)
         {
             DestroyImmediate(characterMaterial);
@@ -749,7 +794,7 @@ public class Character : MonoBehaviour
     }
     
     /// <summary>
-    /// Настроить инвентарь в зависимости от фракции
+    /// РќР°СЃС‚СЂРѕРёС‚СЊ РёРЅРІРµРЅС‚Р°СЂСЊ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ С„СЂР°РєС†РёРё
     /// </summary>
     void SetupInventoryForFaction()
     {
@@ -758,48 +803,48 @@ public class Character : MonoBehaviour
         switch (characterData.faction)
         {
             case Faction.Player:
-                // Союзники имеют больший инвентарь
+                // РЎРѕСЋР·РЅРёРєРё РёРјРµСЋС‚ Р±РѕР»СЊС€РёР№ РёРЅРІРµРЅС‚Р°СЂСЊ
                 characterInventory.maxSlots = GameConstants.Character.PLAYER_INVENTORY_SLOTS;
                 characterInventory.maxWeight = GameConstants.Character.PLAYER_INVENTORY_MAX_WEIGHT;
-                // ОТКЛЮЧЕНО: автоподбор теперь работает только по ПКМ
+                // РћРўРљР›Р®Р§Р•РќРћ: Р°РІС‚РѕРїРѕРґР±РѕСЂ С‚РµРїРµСЂСЊ СЂР°Р±РѕС‚Р°РµС‚ С‚РѕР»СЊРєРѕ РїРѕ РџРљРњ
                 characterInventory.autoPickupEnabled = false;
                 characterInventory.autoPickupRange = GameConstants.Items.PICKUP_RANGE;
 
-                // Генерируем стартовые предметы для союзников
+                // Р“РµРЅРµСЂРёСЂСѓРµРј СЃС‚Р°СЂС‚РѕРІС‹Рµ РїСЂРµРґРјРµС‚С‹ РґР»СЏ СЃРѕСЋР·РЅРёРєРѕРІ
                 GeneratePlayerStartingItems();
                 break;
 
             case Faction.Enemy:
-                // Враги имеют ограниченный инвентарь
+                // Р’СЂР°РіРё РёРјРµСЋС‚ РѕРіСЂР°РЅРёС‡РµРЅРЅС‹Р№ РёРЅРІРµРЅС‚Р°СЂСЊ
                 characterInventory.maxSlots = GameConstants.Character.ENEMY_INVENTORY_SLOTS;
                 characterInventory.maxWeight = GameConstants.Character.ENEMY_INVENTORY_MAX_WEIGHT;
                 characterInventory.autoPickupEnabled = false;
 
-                // Генерируем случайные предметы для врагов
+                // Р“РµРЅРµСЂРёСЂСѓРµРј СЃР»СѓС‡Р°Р№РЅС‹Рµ РїСЂРµРґРјРµС‚С‹ РґР»СЏ РІСЂР°РіРѕРІ
                 GenerateEnemyLoot();
                 break;
 
             case Faction.Neutral:
-                // Нейтральные персонажи имеют средний инвентарь
+                // РќРµР№С‚СЂР°Р»СЊРЅС‹Рµ РїРµСЂСЃРѕРЅР°Р¶Рё РёРјРµСЋС‚ СЃСЂРµРґРЅРёР№ РёРЅРІРµРЅС‚Р°СЂСЊ
                 characterInventory.maxSlots = GameConstants.Character.NEUTRAL_INVENTORY_SLOTS;
                 characterInventory.maxWeight = GameConstants.Character.NEUTRAL_INVENTORY_MAX_WEIGHT;
                 characterInventory.autoPickupEnabled = false;
 
-                // Генерируем стартовые предметы для нейтральных персонажей
+                // Р“РµРЅРµСЂРёСЂСѓРµРј СЃС‚Р°СЂС‚РѕРІС‹Рµ РїСЂРµРґРјРµС‚С‹ РґР»СЏ РЅРµР№С‚СЂР°Р»СЊРЅС‹С… РїРµСЂСЃРѕРЅР°Р¶РµР№
                 GenerateNeutralStartingItems();
                 break;
         }
     }
 
     /// <summary>
-    /// Генерировать стартовые предметы для союзников
+    /// Р“РµРЅРµСЂРёСЂРѕРІР°С‚СЊ СЃС‚Р°СЂС‚РѕРІС‹Рµ РїСЂРµРґРјРµС‚С‹ РґР»СЏ СЃРѕСЋР·РЅРёРєРѕРІ
     /// </summary>
     void GeneratePlayerStartingItems()
     {
         if (characterInventory == null || characterData.faction != Faction.Player)
             return;
 
-        // Добавляем по 1 предмету каждого типа
+        // Р”РѕР±Р°РІР»СЏРµРј РїРѕ 1 РїСЂРµРґРјРµС‚Сѓ РєР°Р¶РґРѕРіРѕ С‚РёРїР°
         ItemType[] allTypes = { ItemType.Weapon, ItemType.Armor, ItemType.Tool, ItemType.Medical, ItemType.Resource, ItemType.Consumable };
 
         foreach (ItemType itemType in allTypes)
@@ -813,14 +858,14 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Генерировать стартовые предметы для нейтральных персонажей
+    /// Р“РµРЅРµСЂРёСЂРѕРІР°С‚СЊ СЃС‚Р°СЂС‚РѕРІС‹Рµ РїСЂРµРґРјРµС‚С‹ РґР»СЏ РЅРµР№С‚СЂР°Р»СЊРЅС‹С… РїРµСЂСЃРѕРЅР°Р¶РµР№
     /// </summary>
     void GenerateNeutralStartingItems()
     {
         if (characterInventory == null || characterData.faction != Faction.Neutral)
             return;
 
-        // Добавляем по 1 предмету каждого типа
+        // Р”РѕР±Р°РІР»СЏРµРј РїРѕ 1 РїСЂРµРґРјРµС‚Сѓ РєР°Р¶РґРѕРіРѕ С‚РёРїР°
         ItemType[] allTypes = { ItemType.Weapon, ItemType.Armor, ItemType.Tool, ItemType.Medical, ItemType.Resource, ItemType.Consumable };
 
         foreach (ItemType itemType in allTypes)
@@ -834,14 +879,14 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Генерировать добычу для врагов
+    /// Р“РµРЅРµСЂРёСЂРѕРІР°С‚СЊ РґРѕР±С‹С‡Сѓ РґР»СЏ РІСЂР°РіРѕРІ
     /// </summary>
     void GenerateEnemyLoot()
     {
         if (characterInventory == null || characterData.faction != Faction.Enemy)
             return;
 
-        // Добавляем по 1 предмету каждого типа
+        // Р”РѕР±Р°РІР»СЏРµРј РїРѕ 1 РїСЂРµРґРјРµС‚Сѓ РєР°Р¶РґРѕРіРѕ С‚РёРїР°
         ItemType[] allTypes = { ItemType.Weapon, ItemType.Armor, ItemType.Tool, ItemType.Medical, ItemType.Resource, ItemType.Consumable };
 
         foreach (ItemType itemType in allTypes)
@@ -855,14 +900,14 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Создать предмет определенного типа
+    /// РЎРѕР·РґР°С‚СЊ РїСЂРµРґРјРµС‚ РѕРїСЂРµРґРµР»РµРЅРЅРѕРіРѕ С‚РёРїР°
     /// </summary>
     ItemData CreateSpecificLoot(ItemType itemType)
     {
         ItemData item = new ItemData();
         item.itemType = itemType;
 
-        // Настраиваем предмет в зависимости от типа
+        // РќР°СЃС‚СЂР°РёРІР°РµРј РїСЂРµРґРјРµС‚ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ С‚РёРїР°
         switch (itemType)
         {
             case ItemType.Weapon:
@@ -903,7 +948,7 @@ public class Character : MonoBehaviour
                 break;
 
             case ItemType.Armor:
-                // Создаем случайную броню для разных слотов
+                // РЎРѕР·РґР°РµРј СЃР»СѓС‡Р°Р№РЅСѓСЋ Р±СЂРѕРЅСЋ РґР»СЏ СЂР°Р·РЅС‹С… СЃР»РѕС‚РѕРІ
                 EquipmentSlot[] armorSlots = { EquipmentSlot.Head, EquipmentSlot.Chest, EquipmentSlot.Legs, EquipmentSlot.Feet };
                 EquipmentSlot armorSlot = armorSlots[staticRandom.Next(0, armorSlots.Length)];
 
@@ -944,25 +989,25 @@ public class Character : MonoBehaviour
                 break;
         }
 
-        // Применяем иконку через фабрику
+        // РџСЂРёРјРµРЅСЏРµРј РёРєРѕРЅРєСѓ С‡РµСЂРµР· С„Р°Р±СЂРёРєСѓ
         ItemFactory.ApplyIcon(item);
 
         return item;
     }
 
     /// <summary>
-    /// Создать случайный предмет для добычи (старый метод для совместимости)
+    /// РЎРѕР·РґР°С‚СЊ СЃР»СѓС‡Р°Р№РЅС‹Р№ РїСЂРµРґРјРµС‚ РґР»СЏ РґРѕР±С‹С‡Рё (СЃС‚Р°СЂС‹Р№ РјРµС‚РѕРґ РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё)
     /// </summary>
     ItemData CreateRandomLoot()
     {
-        // Случайный тип предмета
+        // РЎР»СѓС‡Р°Р№РЅС‹Р№ С‚РёРї РїСЂРµРґРјРµС‚Р°
         ItemType[] availableTypes = { ItemType.Weapon, ItemType.Armor, ItemType.Tool, ItemType.Medical, ItemType.Resource, ItemType.Consumable };
         ItemType randomType = availableTypes[staticRandom.Next(0, availableTypes.Length)];
         return CreateSpecificLoot(randomType);
     }
 
     /// <summary>
-    /// Получить инвентарь персонажа
+    /// РџРѕР»СѓС‡РёС‚СЊ РёРЅРІРµРЅС‚Р°СЂСЊ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     public Inventory GetInventory()
     {
@@ -970,7 +1015,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Добавить предмет в инвентарь персонажа
+    /// Р”РѕР±Р°РІРёС‚СЊ РїСЂРµРґРјРµС‚ РІ РёРЅРІРµРЅС‚Р°СЂСЊ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     public bool AddItemToInventory(ItemData item, int quantity = 1)
     {
@@ -982,7 +1027,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Удалить предмет из инвентаря персонажа
+    /// РЈРґР°Р»РёС‚СЊ РїСЂРµРґРјРµС‚ РёР· РёРЅРІРµРЅС‚Р°СЂСЏ РїРµСЂСЃРѕРЅР°Р¶Р°
     /// </summary>
     public bool RemoveItemFromInventory(ItemData item, int quantity = 1)
     {
@@ -994,7 +1039,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, есть ли предмет в инвентаре
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, РµСЃС‚СЊ Р»Рё РїСЂРµРґРјРµС‚ РІ РёРЅРІРµРЅС‚Р°СЂРµ
     /// </summary>
     public bool HasItemInInventory(ItemData item, int quantity = 1)
     {
@@ -1006,7 +1051,7 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Выбросить предметы при смерти
+    /// Р’С‹Р±СЂРѕСЃРёС‚СЊ РїСЂРµРґРјРµС‚С‹ РїСЂРё СЃРјРµСЂС‚Рё
     /// </summary>
     void DropLootOnDeath()
     {
@@ -1017,7 +1062,7 @@ public class Character : MonoBehaviour
         {
             if (!slot.IsEmpty())
             {
-                // Создаем предмет в мире рядом с персонажем
+                // РЎРѕР·РґР°РµРј РїСЂРµРґРјРµС‚ РІ РјРёСЂРµ СЂСЏРґРѕРј СЃ РїРµСЂСЃРѕРЅР°Р¶РµРј
                 Vector3 dropPosition = transform.position +
                     new Vector3(
                         UnityEngine.Random.Range(-1f, 1f),
@@ -1029,12 +1074,12 @@ public class Character : MonoBehaviour
             }
         }
 
-        // Очищаем инвентарь
+        // РћС‡РёС‰Р°РµРј РёРЅРІРµРЅС‚Р°СЂСЊ
         characterInventory.ClearInventory();
     }
 
     /// <summary>
-    /// Обновленный метод получения информации о персонаже (включая инвентарь)
+    /// РћР±РЅРѕРІР»РµРЅРЅС‹Р№ РјРµС‚РѕРґ РїРѕР»СѓС‡РµРЅРёСЏ РёРЅС„РѕСЂРјР°С†РёРё Рѕ РїРµСЂСЃРѕРЅР°Р¶Рµ (РІРєР»СЋС‡Р°СЏ РёРЅРІРµРЅС‚Р°СЂСЊ)
     /// </summary>
     public string GetDetailedCharacterInfo()
     {
@@ -1061,11 +1106,11 @@ public class Character : MonoBehaviour
 
     void OnDrawGizmosSelected()
     {
-        // Показываем информацию о персонаже в Scene view
+        // РџРѕРєР°Р·С‹РІР°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РїРµСЂСЃРѕРЅР°Р¶Рµ РІ Scene view
         Gizmos.color = isSelected ? selectedColor : defaultColor;
         Gizmos.DrawWireSphere(transform.position + Vector3.up * GameConstants.Character.GIZMO_HEIGHT_OFFSET, GameConstants.Character.GIZMO_SPHERE_RADIUS);
 
-        // Показываем радиус автоподбора для союзников
+        // РџРѕРєР°Р·С‹РІР°РµРј СЂР°РґРёСѓСЃ Р°РІС‚РѕРїРѕРґР±РѕСЂР° РґР»СЏ СЃРѕСЋР·РЅРёРєРѕРІ
         if (characterInventory != null && IsPlayerCharacter() && characterInventory.autoPickupEnabled)
         {
             Gizmos.color = Color.green;

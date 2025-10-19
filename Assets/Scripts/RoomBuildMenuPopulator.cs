@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 #if UNITY_EDITOR
@@ -6,16 +6,16 @@ using UnityEditor;
 #endif
 
 /// <summary>
-/// Размещает 2 префаба в RoomBuildMenuPanel: Wall_Int_Slot и Door_Slot
-/// ВАЖНО: Этот скрипт должен быть прикреплен ТОЛЬКО к RoomBuildMenuPanel!
+/// Р Р°Р·РјРµС‰Р°РµС‚ 2 РїСЂРµС„Р°Р±Р° РІ RoomBuildMenuPanel: Wall_Int_Slot Рё Door_Slot
+/// Р’РђР–РќРћ: Р­С‚РѕС‚ СЃРєСЂРёРїС‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїСЂРёРєСЂРµРїР»РµРЅ РўРћР›Р¬РљРћ Рє RoomBuildMenuPanel!
 /// </summary>
 public class RoomBuildMenuPopulator : MonoBehaviour
 {
     [Header("Prefabs")]
-    [Tooltip("Префаб Wall_Int_Slot")]
+    [Tooltip("РџСЂРµС„Р°Р± Wall_Int_Slot")]
     public GameObject wallIntSlotPrefab;
 
-    [Tooltip("Префаб Door_Slot")]
+    [Tooltip("РџСЂРµС„Р°Р± Door_Slot")]
     public GameObject doorSlotPrefab;
 
     private GameObject wallIntSlotInstance;
@@ -25,14 +25,12 @@ public class RoomBuildMenuPopulator : MonoBehaviour
     {
         if (gameObject.name != "RoomBuildMenuPanel")
         {
-            Debug.LogWarning($"[RoomBuildMenuPopulator] This script should ONLY be attached to RoomBuildMenuPanel! Currently attached to: {gameObject.name}. Skipping initialization.");
             return;
         }
 
         Transform contentTransform = transform.Find("ObjectsGrid/Viewport/Content");
         if (contentTransform == null)
         {
-            Debug.LogError("[RoomBuildMenuPopulator] Content not found at ObjectsGrid/Viewport/Content!");
             return;
         }
 
@@ -50,13 +48,11 @@ public class RoomBuildMenuPopulator : MonoBehaviour
 
         if (wallIntSlotPrefab == null)
         {
-            Debug.LogError("[RoomBuildMenuPopulator] Wall_Int_Slot prefab not assigned and could not be found!");
             return;
         }
 
         if (doorSlotPrefab == null)
         {
-            Debug.LogError("[RoomBuildMenuPopulator] Door_Slot prefab not assigned and could not be found!");
             return;
         }
 
@@ -70,7 +66,6 @@ public class RoomBuildMenuPopulator : MonoBehaviour
         }
         else
         {
-            Debug.LogError("[RoomBuildMenuPopulator] Wall_Int_Slot prefab does not have a Button component anywhere in hierarchy!");
         }
 
         doorSlotInstance = Instantiate(doorSlotPrefab, contentTransform);
@@ -83,7 +78,6 @@ public class RoomBuildMenuPopulator : MonoBehaviour
         }
         else
         {
-            Debug.LogError("[RoomBuildMenuPopulator] Door_Slot prefab does not have a Button component anywhere in hierarchy!");
         }
     }
 
@@ -91,21 +85,20 @@ public class RoomBuildMenuPopulator : MonoBehaviour
     {
 
 
-        // Активируем режим строительства внутренних стен (новая система с drag)
+        // РђРєС‚РёРІРёСЂСѓРµРј СЂРµР¶РёРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° РІРЅСѓС‚СЂРµРЅРЅРёС… СЃС‚РµРЅ (РЅРѕРІР°СЏ СЃРёСЃС‚РµРјР° СЃ drag)
         if (InteriorWallDragBuilder.Instance != null)
         {
             InteriorWallDragBuilder.Instance.ActivateDragMode();
         }
         else
         {
-            Debug.LogError("[RoomBuildMenuPopulator] InteriorWallDragBuilder.Instance is null!");
         }
     }
 
     void OnDoorSlotClicked()
     {
 
-        // TODO: Добавить логику для установки дверей
+        // TODO: Р”РѕР±Р°РІРёС‚СЊ Р»РѕРіРёРєСѓ РґР»СЏ СѓСЃС‚Р°РЅРѕРІРєРё РґРІРµСЂРµР№
     }
 
     #if UNITY_EDITOR
@@ -124,7 +117,6 @@ public class RoomBuildMenuPopulator : MonoBehaviour
             }
         }
 
-        Debug.LogWarning($"[RoomBuildMenuPopulator] Prefab '{prefabName}' not found in '{searchPath}'");
         return null;
     }
     #endif

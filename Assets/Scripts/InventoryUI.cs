@@ -1,10 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// UI для отображения и управления инвентарем
+/// UI РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ Рё СѓРїСЂР°РІР»РµРЅРёСЏ РёРЅРІРµРЅС‚Р°СЂРµРј
 /// </summary>
 public class InventoryUI : MonoBehaviour
 {
@@ -17,7 +17,7 @@ public class InventoryUI : MonoBehaviour
     public RectTransform slotsContainer;
     public Text inventoryStatsText;
     public Text characterNameText;
-    public TMP_Text characterNameTextTMP; // TextMeshPro версия
+    public TMP_Text characterNameTextTMP; // TextMeshPro РІРµСЂСЃРёСЏ
 
     [Header("Equipment Display")]
     public Dictionary<EquipmentSlot, InventorySlotUI> equipmentSlotUIs;
@@ -28,23 +28,23 @@ public class InventoryUI : MonoBehaviour
     public int slotsPerRow = 5;
     public Vector2 slotSize = new Vector2(60, 60);
     public Vector2 slotSpacing = new Vector2(5, 5);
-    public int defaultInventorySlots = 24; // Количество слотов по умолчанию
+    public int defaultInventorySlots = 24; // РљРѕР»РёС‡РµСЃС‚РІРѕ СЃР»РѕС‚РѕРІ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
 
     [Header("Prefabs")]
-    public GameObject itemSlotPrefab; // Префаб ItemSlot
+    public GameObject itemSlotPrefab; // РџСЂРµС„Р°Р± ItemSlot
 
-    // Внутренние переменные
+    // Р’РЅСѓС‚СЂРµРЅРЅРёРµ РїРµСЂРµРјРµРЅРЅС‹Рµ
     private bool isInventoryVisible = false;
     private Inventory currentInventory;
     private List<InventorySlotUI> slotUIElements = new List<InventorySlotUI>();
     private SelectionManager selectionManager;
     private InventorySlotUI selectedSlotUI;
-    private RectTransform contentPanel; // Content панель для спавна слотов
+    private RectTransform contentPanel; // Content РїР°РЅРµР»СЊ РґР»СЏ СЃРїР°РІРЅР° СЃР»РѕС‚РѕРІ
 
-    // Статическое свойство для проверки открытого инвентаря
+    // РЎС‚Р°С‚РёС‡РµСЃРєРѕРµ СЃРІРѕР№СЃС‚РІРѕ РґР»СЏ РїСЂРѕРІРµСЂРєРё РѕС‚РєСЂС‹С‚РѕРіРѕ РёРЅРІРµРЅС‚Р°СЂСЏ
     public static bool IsAnyInventoryOpen { get; private set; } = false;
 
-    // Префабы для создания UI элементов
+    // РџСЂРµС„Р°Р±С‹ РґР»СЏ СЃРѕР·РґР°РЅРёСЏ UI СЌР»РµРјРµРЅС‚РѕРІ
     private GameObject slotPrefab;
 
     void Awake()
@@ -54,7 +54,7 @@ public class InventoryUI : MonoBehaviour
         CreateSlotPrefab();
         InitializeUI();
 
-        // Скрываем инвентарь сразу после создания
+        // РЎРєСЂС‹РІР°РµРј РёРЅРІРµРЅС‚Р°СЂСЊ СЃСЂР°Р·Сѓ РїРѕСЃР»Рµ СЃРѕР·РґР°РЅРёСЏ
         if (!showInventoryOnStart && inventoryPanel != null)
         {
             inventoryPanel.gameObject.SetActive(false);
@@ -85,7 +85,7 @@ public class InventoryUI : MonoBehaviour
 
     void Update()
     {
-        // Обработка клика мыши для снятия выделения слота
+        // РћР±СЂР°Р±РѕС‚РєР° РєР»РёРєР° РјС‹С€Рё РґР»СЏ СЃРЅСЏС‚РёСЏ РІС‹РґРµР»РµРЅРёСЏ СЃР»РѕС‚Р°
         if (Input.GetMouseButtonDown(0))
         {
             HandleMouseClick();
@@ -93,7 +93,7 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Поиск SelectionManager в сцене
+    /// РџРѕРёСЃРє SelectionManager РІ СЃС†РµРЅРµ
     /// </summary>
     void FindSelectionManager()
     {
@@ -101,13 +101,13 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Создание префаба для слота инвентаря
+    /// РЎРѕР·РґР°РЅРёРµ РїСЂРµС„Р°Р±Р° РґР»СЏ СЃР»РѕС‚Р° РёРЅРІРµРЅС‚Р°СЂСЏ
     /// </summary>
     void CreateSlotPrefab()
     {
         GameObject prefab = new GameObject("InventorySlot");
 
-        // Компоненты слота
+        // РљРѕРјРїРѕРЅРµРЅС‚С‹ СЃР»РѕС‚Р°
         RectTransform rectTransform = prefab.AddComponent<RectTransform>();
         rectTransform.sizeDelta = slotSize;
 
@@ -116,7 +116,7 @@ public class InventoryUI : MonoBehaviour
 
         Button button = prefab.AddComponent<Button>();
 
-        // Иконка предмета
+        // РРєРѕРЅРєР° РїСЂРµРґРјРµС‚Р°
         GameObject iconGO = new GameObject("ItemIcon");
         iconGO.transform.SetParent(prefab.transform, false);
 
@@ -130,7 +130,7 @@ public class InventoryUI : MonoBehaviour
         iconImage.preserveAspect = true;
         iconImage.color = Color.white;
 
-        // Текст количества
+        // РўРµРєСЃС‚ РєРѕР»РёС‡РµСЃС‚РІР°
         GameObject quantityGO = new GameObject("QuantityText");
         quantityGO.transform.SetParent(prefab.transform, false);
 
@@ -147,27 +147,27 @@ public class InventoryUI : MonoBehaviour
         quantityText.alignment = TextAnchor.LowerRight;
         quantityText.text = "";
 
-        // Добавляем компонент InventorySlotUI
+        // Р”РѕР±Р°РІР»СЏРµРј РєРѕРјРїРѕРЅРµРЅС‚ InventorySlotUI
         InventorySlotUI slotUI = prefab.AddComponent<InventorySlotUI>();
         slotUI.Initialize(background, iconImage, quantityText, button);
 
-        // Отключаем по умолчанию
+        // РћС‚РєР»СЋС‡Р°РµРј РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
         prefab.SetActive(false);
         slotPrefab = prefab;
     }
 
     /// <summary>
-    /// Инициализация UI
+    /// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ UI
     /// </summary>
     void InitializeUI()
     {
-        // Ищем существующий Canvas_MainUI и Inventory внутри него
+        // РС‰РµРј СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ Canvas_MainUI Рё Inventory РІРЅСѓС‚СЂРё РЅРµРіРѕ
         GameObject mainUICanvas = GameObject.Find("Canvas_MainUI");
         if (mainUICanvas != null)
         {
             mainCanvas = mainUICanvas.GetComponent<Canvas>();
 
-            // Ищем существующий Inventory объект по полному пути
+            // РС‰РµРј СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ Inventory РѕР±СЉРµРєС‚ РїРѕ РїРѕР»РЅРѕРјСѓ РїСѓС‚Рё
             Transform windowsTransform = mainUICanvas.transform.Find("Windows");
             if (windowsTransform != null)
             {
@@ -176,7 +176,7 @@ public class InventoryUI : MonoBehaviour
                 {
                     inventoryPanel = inventoryTransform.GetComponent<RectTransform>();
 
-                    // Ищем Content панель для спавна ItemSlot
+                    // РС‰РµРј Content РїР°РЅРµР»СЊ РґР»СЏ СЃРїР°РІРЅР° ItemSlot
                     Transform itemsAreaTransform = inventoryTransform.Find("ItemsArea");
                     if (itemsAreaTransform != null)
                     {
@@ -191,41 +191,41 @@ public class InventoryUI : MonoBehaviour
                         }
                     }
 
-                    // Ищем Character name Text и CloseButton внутри Inventory
+                    // РС‰РµРј Character name Text Рё CloseButton РІРЅСѓС‚СЂРё Inventory
                     Transform headerTransform = inventoryTransform.Find("Header ");
                     if (headerTransform != null)
                     {
-                        // Находим Character name
+                        // РќР°С…РѕРґРёРј Character name
                         Transform characterNameTransform = headerTransform.Find("Character name");
                         if (characterNameTransform != null)
                         {
-                            // Пробуем найти TextMeshPro компонент (приоритет)
+                            // РџСЂРѕР±СѓРµРј РЅР°Р№С‚Рё TextMeshPro РєРѕРјРїРѕРЅРµРЅС‚ (РїСЂРёРѕСЂРёС‚РµС‚)
                             characterNameTextTMP = characterNameTransform.GetComponent<TMP_Text>();
                             if (characterNameTextTMP == null)
                             {
-                                // Если нет TMP, пробуем обычный Text
+                                // Р•СЃР»Рё РЅРµС‚ TMP, РїСЂРѕР±СѓРµРј РѕР±С‹С‡РЅС‹Р№ Text
                                 characterNameText = characterNameTransform.GetComponent<Text>();
                             }
                         }
 
-                        // Находим и привязываем CloseButton
+                        // РќР°С…РѕРґРёРј Рё РїСЂРёРІСЏР·С‹РІР°РµРј CloseButton
                         Transform closeButtonTransform = headerTransform.Find("CloseButton");
                         if (closeButtonTransform != null)
                         {
                             Button closeButton = closeButtonTransform.GetComponent<Button>();
                             if (closeButton != null)
                             {
-                                // Очищаем существующие обработчики (если есть) и добавляем наш
+                                // РћС‡РёС‰Р°РµРј СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ РѕР±СЂР°Р±РѕС‚С‡РёРєРё (РµСЃР»Рё РµСЃС‚СЊ) Рё РґРѕР±Р°РІР»СЏРµРј РЅР°С€
                                 closeButton.onClick.RemoveAllListeners();
                                 closeButton.onClick.AddListener(HideInventory);
                             }
                         }
                     }
 
-                    // Ищем и инициализируем EquipmentPanel
+                    // РС‰РµРј Рё РёРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј EquipmentPanel
                     InitializeEquipmentPanel(inventoryTransform);
 
-                    // Скрываем панель по умолчанию
+                    // РЎРєСЂС‹РІР°РµРј РїР°РЅРµР»СЊ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
                     if (!showInventoryOnStart)
                     {
                         inventoryPanel.gameObject.SetActive(false);
@@ -233,37 +233,33 @@ public class InventoryUI : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogError("InventoryUI: Inventory object not found in Canvas_MainUI/Windows!");
                 }
             }
             else
             {
-                Debug.LogError("InventoryUI: Windows object not found in Canvas_MainUI!");
             }
         }
         else
         {
-            Debug.LogError("InventoryUI: Canvas_MainUI not found in scene!");
         }
 
-        // Инициализируем систему tooltips
+        // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј СЃРёСЃС‚РµРјСѓ tooltips
         TooltipSystem.Instance.gameObject.transform.SetParent(transform, false);
     }
 
     /// <summary>
-    /// Инициализация EquipmentPanel и привязка к существующим слотам
+    /// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ EquipmentPanel Рё РїСЂРёРІСЏР·РєР° Рє СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРј СЃР»РѕС‚Р°Рј
     /// </summary>
     void InitializeEquipmentPanel(Transform inventoryTransform)
     {
-        // Ищем слоты экипировки в Canvas_MainUI (с родителями)
+        // РС‰РµРј СЃР»РѕС‚С‹ СЌРєРёРїРёСЂРѕРІРєРё РІ Canvas_MainUI (СЃ СЂРѕРґРёС‚РµР»СЏРјРё)
         GameObject canvasMainUI = GameObject.Find("Canvas_MainUI");
         if (canvasMainUI == null)
         {
-            Debug.LogWarning("InventoryUI: Canvas_MainUI not found for equipment slots");
             return;
         }
 
-        // Ищем слоты по их реальным именам и привязываем к соответствующему EquipmentSlot
+        // РС‰РµРј СЃР»РѕС‚С‹ РїРѕ РёС… СЂРµР°Р»СЊРЅС‹Рј РёРјРµРЅР°Рј Рё РїСЂРёРІСЏР·С‹РІР°РµРј Рє СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РµРјСѓ EquipmentSlot
         BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Helmet", EquipmentSlot.Head);
         BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Armor", EquipmentSlot.Chest);
         BindEquipmentSlotInHierarchy(canvasMainUI.transform, "EquipmentSlot_Weapon", EquipmentSlot.RightHand);
@@ -272,46 +268,43 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Привязать существующий слот экипировки к системе (рекурсивный поиск)
+    /// РџСЂРёРІСЏР·Р°С‚СЊ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ СЃР»РѕС‚ СЌРєРёРїРёСЂРѕРІРєРё Рє СЃРёСЃС‚РµРјРµ (СЂРµРєСѓСЂСЃРёРІРЅС‹Р№ РїРѕРёСЃРє)
     /// </summary>
     void BindEquipmentSlotInHierarchy(Transform parent, string slotName, EquipmentSlot equipmentSlot)
     {
-        // Рекурсивный поиск слота в иерархии
+        // Р РµРєСѓСЂСЃРёРІРЅС‹Р№ РїРѕРёСЃРє СЃР»РѕС‚Р° РІ РёРµСЂР°СЂС…РёРё
         Transform slotTransform = FindTransformRecursive(parent, slotName);
 
         if (slotTransform == null)
         {
-            Debug.LogWarning($"InventoryUI: Equipment slot '{slotName}' not found in Canvas_MainUI hierarchy");
             return;
         }
 
         GameObject slotGO = slotTransform.gameObject;
 
-        // Получаем или добавляем InventorySlotUI компонент
+        // РџРѕР»СѓС‡Р°РµРј РёР»Рё РґРѕР±Р°РІР»СЏРµРј InventorySlotUI РєРѕРјРїРѕРЅРµРЅС‚
         InventorySlotUI slotUI = slotGO.GetComponent<InventorySlotUI>();
         if (slotUI == null)
         {
-            // Находим компоненты для инициализации InventorySlotUI
+            // РќР°С…РѕРґРёРј РєРѕРјРїРѕРЅРµРЅС‚С‹ РґР»СЏ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё InventorySlotUI
             Image background = slotGO.GetComponent<Image>();
 
-            // Ищем Icon внутри слота
+            // РС‰РµРј Icon РІРЅСѓС‚СЂРё СЃР»РѕС‚Р°
             Transform iconTransform = slotTransform.Find("Icon");
             Image iconImage = iconTransform != null ? iconTransform.GetComponent<Image>() : null;
 
-            // Если Icon не найден, логируем все дочерние объекты
+            // Р•СЃР»Рё Icon РЅРµ РЅР°Р№РґРµРЅ, Р»РѕРіРёСЂСѓРµРј РІСЃРµ РґРѕС‡РµСЂРЅРёРµ РѕР±СЉРµРєС‚С‹
             if (iconTransform == null)
             {
-                Debug.LogWarning($"InventoryUI: Icon not found in '{slotName}', listing children:");
                 foreach (Transform child in slotTransform)
                 {
-                    Debug.LogWarning($"  - Child: {child.name}");
                 }
             }
 
-            // Для Text используем пустую ссылку (можно добавить QuantityText если нужно)
+            // Р”Р»СЏ Text РёСЃРїРѕР»СЊР·СѓРµРј РїСѓСЃС‚СѓСЋ СЃСЃС‹Р»РєСѓ (РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ QuantityText РµСЃР»Рё РЅСѓР¶РЅРѕ)
             Text quantityText = null;
 
-            // Получаем или добавляем Button компонент
+            // РџРѕР»СѓС‡Р°РµРј РёР»Рё РґРѕР±Р°РІР»СЏРµРј Button РєРѕРјРїРѕРЅРµРЅС‚
             Button button = slotGO.GetComponent<Button>();
             if (button == null)
             {
@@ -319,35 +312,35 @@ public class InventoryUI : MonoBehaviour
                 button.transition = Selectable.Transition.None;
             }
 
-            // Добавляем и инициализируем InventorySlotUI
+            // Р”РѕР±Р°РІР»СЏРµРј Рё РёРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј InventorySlotUI
             slotUI = slotGO.AddComponent<InventorySlotUI>();
             slotUI.Initialize(background, iconImage, quantityText, button);
         }
 
-        // Настраиваем слот для экипировки
+        // РќР°СЃС‚СЂР°РёРІР°РµРј СЃР»РѕС‚ РґР»СЏ СЌРєРёРїРёСЂРѕРІРєРё
         slotUI.SetEquipmentSlot(equipmentSlot);
         slotUI.SetSlotIndex((int)equipmentSlot);
 
-        // Подписываемся на события
+        // РџРѕРґРїРёСЃС‹РІР°РµРјСЃСЏ РЅР° СЃРѕР±С‹С‚РёСЏ
         slotUI.OnSlotClicked += OnEquipmentSlotClicked;
         slotUI.OnSlotRightClicked += OnEquipmentSlotRightClicked;
         slotUI.OnSlotDoubleClicked += OnEquipmentSlotDoubleClicked;
         slotUI.OnSlotDragAndDrop += OnSlotDragAndDrop;
 
-        // Сохраняем в словарь
+        // РЎРѕС…СЂР°РЅСЏРµРј РІ СЃР»РѕРІР°СЂСЊ
         equipmentSlotUIs[equipmentSlot] = slotUI;
     }
 
     /// <summary>
-    /// Рекурсивный поиск Transform по имени
+    /// Р РµРєСѓСЂСЃРёРІРЅС‹Р№ РїРѕРёСЃРє Transform РїРѕ РёРјРµРЅРё
     /// </summary>
     Transform FindTransformRecursive(Transform parent, string name)
     {
-        // Проверяем текущий объект
+        // РџСЂРѕРІРµСЂСЏРµРј С‚РµРєСѓС‰РёР№ РѕР±СЉРµРєС‚
         if (parent.name == name)
             return parent;
 
-        // Проверяем всех детей
+        // РџСЂРѕРІРµСЂСЏРµРј РІСЃРµС… РґРµС‚РµР№
         foreach (Transform child in parent)
         {
             Transform result = FindTransformRecursive(child, name);
@@ -359,7 +352,7 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить полный путь GameObject в иерархии
+    /// РџРѕР»СѓС‡РёС‚СЊ РїРѕР»РЅС‹Р№ РїСѓС‚СЊ GameObject РІ РёРµСЂР°СЂС…РёРё
     /// </summary>
     string GetGameObjectPath(GameObject obj)
     {
@@ -376,7 +369,7 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработчик изменения выделения
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє РёР·РјРµРЅРµРЅРёСЏ РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     void OnSelectionChanged(List<GameObject> selectedObjects)
     {
@@ -390,16 +383,16 @@ public class InventoryUI : MonoBehaviour
             }
         }
 
-        // Если не выделен союзный персонаж, скрываем инвентарь
+        // Р•СЃР»Рё РЅРµ РІС‹РґРµР»РµРЅ СЃРѕСЋР·РЅС‹Р№ РїРµСЂСЃРѕРЅР°Р¶, СЃРєСЂС‹РІР°РµРј РёРЅРІРµРЅС‚Р°СЂСЊ
         SetCurrentInventory(null, null);
     }
 
     /// <summary>
-    /// Установить текущий инвентарь для отображения
+    /// РЈСЃС‚Р°РЅРѕРІРёС‚СЊ С‚РµРєСѓС‰РёР№ РёРЅРІРµРЅС‚Р°СЂСЊ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ
     /// </summary>
     public void SetCurrentInventory(Inventory inventory, Character character = null)
     {
-        // Отписываемся от событий предыдущего инвентаря
+        // РћС‚РїРёСЃС‹РІР°РµРјСЃСЏ РѕС‚ СЃРѕР±С‹С‚РёР№ РїСЂРµРґС‹РґСѓС‰РµРіРѕ РёРЅРІРµРЅС‚Р°СЂСЏ
         if (currentInventory != null)
         {
             currentInventory.OnInventoryChanged -= UpdateInventoryDisplay;
@@ -408,17 +401,17 @@ public class InventoryUI : MonoBehaviour
 
         currentInventory = inventory;
 
-        // Обновляем имя персонажа (используем TMP_Text если доступен, иначе обычный Text)
+        // РћР±РЅРѕРІР»СЏРµРј РёРјСЏ РїРµСЂСЃРѕРЅР°Р¶Р° (РёСЃРїРѕР»СЊР·СѓРµРј TMP_Text РµСЃР»Рё РґРѕСЃС‚СѓРїРµРЅ, РёРЅР°С‡Рµ РѕР±С‹С‡РЅС‹Р№ Text)
         if (characterNameTextTMP != null)
         {
-            characterNameTextTMP.text = character != null ? character.GetFullName() : "Персонаж";
+            characterNameTextTMP.text = character != null ? character.GetFullName() : "РџРµСЂСЃРѕРЅР°Р¶";
         }
         else if (characterNameText != null)
         {
-            characterNameText.text = character != null ? character.GetFullName() : "Персонаж";
+            characterNameText.text = character != null ? character.GetFullName() : "РџРµСЂСЃРѕРЅР°Р¶";
         }
 
-        // Подписываемся на события нового инвентаря
+        // РџРѕРґРїРёСЃС‹РІР°РµРјСЃСЏ РЅР° СЃРѕР±С‹С‚РёСЏ РЅРѕРІРѕРіРѕ РёРЅРІРµРЅС‚Р°СЂСЏ
         if (currentInventory != null)
         {
             currentInventory.OnInventoryChanged += UpdateInventoryDisplay;
@@ -433,44 +426,42 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Создать слоты для инвентаря
+    /// РЎРѕР·РґР°С‚СЊ СЃР»РѕС‚С‹ РґР»СЏ РёРЅРІРµРЅС‚Р°СЂСЏ
     /// </summary>
     void CreateInventorySlots()
     {
-        // Используем Content панель если она найдена, иначе fallback на slotsContainer
+        // РСЃРїРѕР»СЊР·СѓРµРј Content РїР°РЅРµР»СЊ РµСЃР»Рё РѕРЅР° РЅР°Р№РґРµРЅР°, РёРЅР°С‡Рµ fallback РЅР° slotsContainer
         RectTransform targetContainer = contentPanel != null ? contentPanel : slotsContainer;
 
         if (targetContainer == null)
         {
-            Debug.LogWarning("InventoryUI: No container found for inventory slots!");
             return;
         }
 
-        // Удаляем существующие слоты
+        // РЈРґР°Р»СЏРµРј СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ СЃР»РѕС‚С‹
         ClearSlotUIElements();
 
-        // Всегда создаем 24 слота в Content (независимо от maxSlots в Inventory)
+        // Р’СЃРµРіРґР° СЃРѕР·РґР°РµРј 24 СЃР»РѕС‚Р° РІ Content (РЅРµР·Р°РІРёСЃРёРјРѕ РѕС‚ maxSlots РІ Inventory)
         int slotCount = defaultInventorySlots;
 
-        // Загружаем префаб ItemSlot если не назначен
+        // Р—Р°РіСЂСѓР¶Р°РµРј РїСЂРµС„Р°Р± ItemSlot РµСЃР»Рё РЅРµ РЅР°Р·РЅР°С‡РµРЅ
         GameObject prefabToUse = itemSlotPrefab;
         if (prefabToUse == null)
         {
             prefabToUse = Resources.Load<GameObject>("Prefabs/UI/ItemSlot");
             if (prefabToUse == null)
             {
-                // Fallback на программно созданный префаб
+                // Fallback РЅР° РїСЂРѕРіСЂР°РјРјРЅРѕ СЃРѕР·РґР°РЅРЅС‹Р№ РїСЂРµС„Р°Р±
                 prefabToUse = slotPrefab;
             }
         }
 
         if (prefabToUse == null)
         {
-            Debug.LogError("InventoryUI: No slot prefab available!");
             return;
         }
 
-        // Создаем новые слоты
+        // РЎРѕР·РґР°РµРј РЅРѕРІС‹Рµ СЃР»РѕС‚С‹
         for (int i = 0; i < slotCount; i++)
         {
             GameObject slotGO = Instantiate(prefabToUse, targetContainer);
@@ -480,10 +471,10 @@ public class InventoryUI : MonoBehaviour
             InventorySlotUI slotUI = slotGO.GetComponent<InventorySlotUI>();
             if (slotUI != null)
             {
-                // Проверяем, нужна ли инициализация (если префаб не был инициализирован)
+                // РџСЂРѕРІРµСЂСЏРµРј, РЅСѓР¶РЅР° Р»Рё РёРЅРёС†РёР°Р»РёР·Р°С†РёСЏ (РµСЃР»Рё РїСЂРµС„Р°Р± РЅРµ Р±С‹Р» РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ)
                 if (slotUI.backgroundImage == null || slotUI.itemIcon == null)
                 {
-                    // Ищем компоненты для инициализации
+                    // РС‰РµРј РєРѕРјРїРѕРЅРµРЅС‚С‹ РґР»СЏ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
                     Image background = slotGO.GetComponent<Image>();
                     Transform iconTransform = slotGO.transform.Find("Icon");
                     if (iconTransform == null)
@@ -496,11 +487,11 @@ public class InventoryUI : MonoBehaviour
 
                     Button button = slotGO.GetComponent<Button>();
 
-                    // Инициализируем слот
+                    // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј СЃР»РѕС‚
                     slotUI.Initialize(background, iconImage, quantityText, button);
                 }
 
-                // Устанавливаем Canvas для drag & drop операций
+                // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј Canvas РґР»СЏ drag & drop РѕРїРµСЂР°С†РёР№
                 slotUI.SetDragCanvas(mainCanvas);
 
                 slotUI.SetSlotIndex(i);
@@ -514,7 +505,7 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Очистить UI элементы слотов
+    /// РћС‡РёСЃС‚РёС‚СЊ UI СЌР»РµРјРµРЅС‚С‹ СЃР»РѕС‚РѕРІ
     /// </summary>
     void ClearSlotUIElements()
     {
@@ -531,25 +522,25 @@ public class InventoryUI : MonoBehaviour
         }
         slotUIElements.Clear();
 
-        // НЕ очищаем слоты экипировки здесь, так как они создаются только при инициализации
-        // и должны сохраняться между обновлениями инвентаря
+        // РќР• РѕС‡РёС‰Р°РµРј СЃР»РѕС‚С‹ СЌРєРёРїРёСЂРѕРІРєРё Р·РґРµСЃСЊ, С‚Р°Рє РєР°Рє РѕРЅРё СЃРѕР·РґР°СЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РїСЂРё РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
+        // Рё РґРѕР»Р¶РЅС‹ СЃРѕС…СЂР°РЅСЏС‚СЊСЃСЏ РјРµР¶РґСѓ РѕР±РЅРѕРІР»РµРЅРёСЏРјРё РёРЅРІРµРЅС‚Р°СЂСЏ
 
     }
 
     /// <summary>
-    /// Обновить отображение инвентаря
+    /// РћР±РЅРѕРІРёС‚СЊ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ РёРЅРІРµРЅС‚Р°СЂСЏ
     /// </summary>
     void UpdateInventoryDisplay()
     {
         if (currentInventory == null) return;
 
-        // Создаем слоты если их еще нет
+        // РЎРѕР·РґР°РµРј СЃР»РѕС‚С‹ РµСЃР»Рё РёС… РµС‰Рµ РЅРµС‚
         if (slotUIElements.Count == 0)
         {
             CreateInventorySlots();
         }
 
-        // Обновляем каждый слот
+        // РћР±РЅРѕРІР»СЏРµРј РєР°Р¶РґС‹Р№ СЃР»РѕС‚
         var allSlots = currentInventory.GetAllSlots();
         for (int i = 0; i < slotUIElements.Count && i < allSlots.Count; i++)
         {
@@ -562,10 +553,10 @@ public class InventoryUI : MonoBehaviour
             }
         }
 
-        // Обновляем статистику
+        // РћР±РЅРѕРІР»СЏРµРј СЃС‚Р°С‚РёСЃС‚РёРєСѓ
         UpdateInventoryStats();
 
-        // Обновляем визуальное состояние слотов экипировки
+        // РћР±РЅРѕРІР»СЏРµРј РІРёР·СѓР°Р»СЊРЅРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ СЃР»РѕС‚РѕРІ СЌРєРёРїРёСЂРѕРІРєРё
 
         foreach (var kvp in equipmentSlotUIs)
         {
@@ -596,7 +587,7 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновить отображение экипировки
+    /// РћР±РЅРѕРІРёС‚СЊ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ СЌРєРёРїРёСЂРѕРІРєРё
     /// </summary>
     void UpdateEquipmentDisplay()
     {
@@ -615,14 +606,14 @@ public class InventoryUI : MonoBehaviour
 
                 slotUI.UpdateSlot(slot);
 
-                // Принудительно делаем слот видимым после обновления
+                // РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РґРµР»Р°РµРј СЃР»РѕС‚ РІРёРґРёРјС‹Рј РїРѕСЃР»Рµ РѕР±РЅРѕРІР»РµРЅРёСЏ
                 if (slotUI.backgroundImage != null)
                 {
                     slotUI.backgroundImage.enabled = true;
                     slotUI.backgroundImage.color = new Color(0.8f, 0.8f, 0.9f, 1.0f);
                 }
 
-                // Также обеспечиваем видимость GameObject
+                // РўР°РєР¶Рµ РѕР±РµСЃРїРµС‡РёРІР°РµРј РІРёРґРёРјРѕСЃС‚СЊ GameObject
                 slotUI.gameObject.SetActive(true);
 
             }
@@ -630,26 +621,26 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновить статистику инвентаря
+    /// РћР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РёРЅРІРµРЅС‚Р°СЂСЏ
     /// </summary>
     void UpdateInventoryStats()
     {
         if (currentInventory == null || inventoryStatsText == null) return;
 
-        string stats = $"Слоты: {currentInventory.GetUsedSlots()}/{currentInventory.maxSlots}\n";
-        stats += $"Вес: {currentInventory.GetCurrentWeight():F1}/{currentInventory.maxWeight:F1}\n";
-        stats += $"Заполненность: {(currentInventory.GetWeightPercent() * 100):F0}%";
+        string stats = $"РЎР»РѕС‚С‹: {currentInventory.GetUsedSlots()}/{currentInventory.maxSlots}\n";
+        stats += $"Р’РµСЃ: {currentInventory.GetCurrentWeight():F1}/{currentInventory.maxWeight:F1}\n";
+        stats += $"Р—Р°РїРѕР»РЅРµРЅРЅРѕСЃС‚СЊ: {(currentInventory.GetWeightPercent() * 100):F0}%";
 
         if (currentInventory.autoPickupEnabled)
         {
-            stats += "\n\nАвтоподбор: Включен";
+            stats += "\n\nРђРІС‚РѕРїРѕРґР±РѕСЂ: Р’РєР»СЋС‡РµРЅ";
         }
 
         inventoryStatsText.text = stats;
     }
 
     /// <summary>
-    /// Очистить отображение инвентаря
+    /// РћС‡РёСЃС‚РёС‚СЊ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ РёРЅРІРµРЅС‚Р°СЂСЏ
     /// </summary>
     void ClearInventoryDisplay()
     {
@@ -657,13 +648,13 @@ public class InventoryUI : MonoBehaviour
 
         if (inventoryStatsText != null)
         {
-            inventoryStatsText.text = "Нет доступного инвентаря";
+            inventoryStatsText.text = "РќРµС‚ РґРѕСЃС‚СѓРїРЅРѕРіРѕ РёРЅРІРµРЅС‚Р°СЂСЏ";
         }
 
     }
 
     /// <summary>
-    /// Обработчик клика по слоту
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє РєР»РёРєР° РїРѕ СЃР»РѕС‚Сѓ
     /// </summary>
     void OnSlotClicked(int slotIndex)
     {
@@ -672,18 +663,18 @@ public class InventoryUI : MonoBehaviour
         InventorySlot slot = currentInventory.GetSlot(slotIndex);
         if (slot != null && !slot.IsEmpty())
         {
-            // Выделяем слот
+            // Р’С‹РґРµР»СЏРµРј СЃР»РѕС‚
             SelectSlot(slotIndex);
         }
         else
         {
-            // Снимаем выделение
+            // РЎРЅРёРјР°РµРј РІС‹РґРµР»РµРЅРёРµ
             ClearSlotSelection();
         }
     }
 
     /// <summary>
-    /// Обработчик правого клика по слоту (выброс предмета)
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє РїСЂР°РІРѕРіРѕ РєР»РёРєР° РїРѕ СЃР»РѕС‚Сѓ (РІС‹Р±СЂРѕСЃ РїСЂРµРґРјРµС‚Р°)
     /// </summary>
     void OnSlotRightClicked(int slotIndex)
     {
@@ -692,26 +683,26 @@ public class InventoryUI : MonoBehaviour
         InventorySlot slot = currentInventory.GetSlot(slotIndex);
         if (slot != null && !slot.IsEmpty())
         {
-            // Выбрасываем один предмет
+            // Р’С‹Р±СЂР°СЃС‹РІР°РµРј РѕРґРёРЅ РїСЂРµРґРјРµС‚
             currentInventory.DropItem(slotIndex, 1);
         }
     }
 
     /// <summary>
-    /// Обработчик клика по слоту экипировки
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє РєР»РёРєР° РїРѕ СЃР»РѕС‚Сѓ СЌРєРёРїРёСЂРѕРІРєРё
     /// </summary>
     void OnEquipmentSlotClicked(int slotIndex)
     {
-        // Для слотов экипировки используем slotIndex как тип EquipmentSlot
+        // Р”Р»СЏ СЃР»РѕС‚РѕРІ СЌРєРёРїРёСЂРѕРІРєРё РёСЃРїРѕР»СЊР·СѓРµРј slotIndex РєР°Рє С‚РёРї EquipmentSlot
         EquipmentSlot equipSlot = (EquipmentSlot)slotIndex;
 
         if (currentInventory == null) return;
 
-        // Информация о предмете отображается в tooltip при наведении курсора
+        // РРЅС„РѕСЂРјР°С†РёСЏ Рѕ РїСЂРµРґРјРµС‚Рµ РѕС‚РѕР±СЂР°Р¶Р°РµС‚СЃСЏ РІ tooltip РїСЂРё РЅР°РІРµРґРµРЅРёРё РєСѓСЂСЃРѕСЂР°
     }
 
     /// <summary>
-    /// Обработчик правого клика по слоту экипировки (снятие экипировки)
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє РїСЂР°РІРѕРіРѕ РєР»РёРєР° РїРѕ СЃР»РѕС‚Сѓ СЌРєРёРїРёСЂРѕРІРєРё (СЃРЅСЏС‚РёРµ СЌРєРёРїРёСЂРѕРІРєРё)
     /// </summary>
     void OnEquipmentSlotRightClicked(int slotIndex)
     {
@@ -719,12 +710,12 @@ public class InventoryUI : MonoBehaviour
 
         if (currentInventory == null) return;
 
-        // Снимаем экипировку
+        // РЎРЅРёРјР°РµРј СЌРєРёРїРёСЂРѕРІРєСѓ
         currentInventory.UnequipItem(equipSlot);
     }
 
     /// <summary>
-    /// Обработчик двойного клика по слоту (экипировка предмета)
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє РґРІРѕР№РЅРѕРіРѕ РєР»РёРєР° РїРѕ СЃР»РѕС‚Сѓ (СЌРєРёРїРёСЂРѕРІРєР° РїСЂРµРґРјРµС‚Р°)
     /// </summary>
     void OnSlotDoubleClicked(int slotIndex)
     {
@@ -737,13 +728,13 @@ public class InventoryUI : MonoBehaviour
 
 
 
-            // Проверяем, можно ли экипировать предмет
+            // РџСЂРѕРІРµСЂСЏРµРј, РјРѕР¶РЅРѕ Р»Рё СЌРєРёРїРёСЂРѕРІР°С‚СЊ РїСЂРµРґРјРµС‚
             if (item.CanBeEquipped() && item.equipmentSlot != EquipmentSlot.None)
             {
-                // Для оружия проверяем доступные слоты рук
+                // Р”Р»СЏ РѕСЂСѓР¶РёСЏ РїСЂРѕРІРµСЂСЏРµРј РґРѕСЃС‚СѓРїРЅС‹Рµ СЃР»РѕС‚С‹ СЂСѓРє
                 if (item.itemType == ItemType.Weapon)
                 {
-                    // ПРОВЕРКА: сначала проверяем ВСЕ слоты рук на наличие такого же предмета
+                    // РџР РћР’Р•Р РљРђ: СЃРЅР°С‡Р°Р»Р° РїСЂРѕРІРµСЂСЏРµРј Р’РЎР• СЃР»РѕС‚С‹ СЂСѓРє РЅР° РЅР°Р»РёС‡РёРµ С‚Р°РєРѕРіРѕ Р¶Рµ РїСЂРµРґРјРµС‚Р°
                     ItemData rightHandItem = currentInventory.GetEquippedItem(EquipmentSlot.RightHand);
                     ItemData leftHandItem = currentInventory.GetEquippedItem(EquipmentSlot.LeftHand);
 
@@ -756,42 +747,42 @@ public class InventoryUI : MonoBehaviour
                     EquipmentSlot targetSlot = FindAvailableWeaponSlot();
                     if (targetSlot != EquipmentSlot.None)
                     {
-                        // Временно меняем слот предмета для экипировки
+                        // Р’СЂРµРјРµРЅРЅРѕ РјРµРЅСЏРµРј СЃР»РѕС‚ РїСЂРµРґРјРµС‚Р° РґР»СЏ СЌРєРёРїРёСЂРѕРІРєРё
                         EquipmentSlot originalSlot = item.equipmentSlot;
                         item.equipmentSlot = targetSlot;
 
                         if (currentInventory.EquipItem(item))
                         {
-                            // ВАЖНО: удаляем предмет из конкретного слота, а не первый найденный!
+                            // Р’РђР–РќРћ: СѓРґР°Р»СЏРµРј РїСЂРµРґРјРµС‚ РёР· РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ СЃР»РѕС‚Р°, Р° РЅРµ РїРµСЂРІС‹Р№ РЅР°Р№РґРµРЅРЅС‹Р№!
                             currentInventory.RemoveItemFromSlot(slotIndex, 1);
 
-                            // Обновляем визуалы заблокированных слотов
+                            // РћР±РЅРѕРІР»СЏРµРј РІРёР·СѓР°Р»С‹ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅРЅС‹С… СЃР»РѕС‚РѕРІ
                             UpdateEquipmentSlotVisuals();
-                            // Снимаем выделение с пустого слота
+                            // РЎРЅРёРјР°РµРј РІС‹РґРµР»РµРЅРёРµ СЃ РїСѓСЃС‚РѕРіРѕ СЃР»РѕС‚Р°
                             ClearSlotSelection();
                         }
                         else
                         {
-                            // Восстанавливаем оригинальный слот при неудаче
+                            // Р’РѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РѕСЂРёРіРёРЅР°Р»СЊРЅС‹Р№ СЃР»РѕС‚ РїСЂРё РЅРµСѓРґР°С‡Рµ
                             item.equipmentSlot = originalSlot;
 
                         }
                     }
                     else
                     {
-                        // Оба слота рук заняты
+                        // РћР±Р° СЃР»РѕС‚Р° СЂСѓРє Р·Р°РЅСЏС‚С‹
                     }
                 }
                 else
                 {
-                    // Для брони проверяем соответствующий слот
+                    // Р”Р»СЏ Р±СЂРѕРЅРё РїСЂРѕРІРµСЂСЏРµРј СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РёР№ СЃР»РѕС‚
                     if (currentInventory.IsEquipmentSlotBlocked(item.equipmentSlot))
                     {
 
                         return;
                     }
 
-                    // ПРОВЕРКА: не экипирован ли уже такой же предмет (по имени) в целевом слоте
+                    // РџР РћР’Р•Р РљРђ: РЅРµ СЌРєРёРїРёСЂРѕРІР°РЅ Р»Рё СѓР¶Рµ С‚Р°РєРѕР№ Р¶Рµ РїСЂРµРґРјРµС‚ (РїРѕ РёРјРµРЅРё) РІ С†РµР»РµРІРѕРј СЃР»РѕС‚Рµ
                     ItemData equippedItem = currentInventory.GetEquippedItem(item.equipmentSlot);
                     if (equippedItem != null && equippedItem.itemName == item.itemName)
                     {
@@ -800,10 +791,10 @@ public class InventoryUI : MonoBehaviour
 
                     if (currentInventory.EquipItem(item))
                     {
-                        // ВАЖНО: удаляем предмет из конкретного слота, а не первый найденный!
+                        // Р’РђР–РќРћ: СѓРґР°Р»СЏРµРј РїСЂРµРґРјРµС‚ РёР· РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ СЃР»РѕС‚Р°, Р° РЅРµ РїРµСЂРІС‹Р№ РЅР°Р№РґРµРЅРЅС‹Р№!
                         currentInventory.RemoveItemFromSlot(slotIndex, 1);
 
-                        // Снимаем выделение с пустого слота
+                        // РЎРЅРёРјР°РµРј РІС‹РґРµР»РµРЅРёРµ СЃ РїСѓСЃС‚РѕРіРѕ СЃР»РѕС‚Р°
                         ClearSlotSelection();
                     }
                     else
@@ -820,55 +811,55 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Найти доступный слот для оружия
+    /// РќР°Р№С‚Рё РґРѕСЃС‚СѓРїРЅС‹Р№ СЃР»РѕС‚ РґР»СЏ РѕСЂСѓР¶РёСЏ
     /// </summary>
     EquipmentSlot FindAvailableWeaponSlot()
     {
-        // Проверяем правую руку сначала (приоритет)
+        // РџСЂРѕРІРµСЂСЏРµРј РїСЂР°РІСѓСЋ СЂСѓРєСѓ СЃРЅР°С‡Р°Р»Р° (РїСЂРёРѕСЂРёС‚РµС‚)
         if (!currentInventory.IsEquipped(EquipmentSlot.RightHand))
         {
             return EquipmentSlot.RightHand;
         }
 
-        // Потом левую руку
+        // РџРѕС‚РѕРј Р»РµРІСѓСЋ СЂСѓРєСѓ
         if (!currentInventory.IsEquipped(EquipmentSlot.LeftHand))
         {
             return EquipmentSlot.LeftHand;
         }
 
-        return EquipmentSlot.None; // Нет доступных слотов
+        return EquipmentSlot.None; // РќРµС‚ РґРѕСЃС‚СѓРїРЅС‹С… СЃР»РѕС‚РѕРІ
     }
 
     /// <summary>
-    /// Обработчик двойного клика по слоту экипировки (снятие предмета)
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє РґРІРѕР№РЅРѕРіРѕ РєР»РёРєР° РїРѕ СЃР»РѕС‚Сѓ СЌРєРёРїРёСЂРѕРІРєРё (СЃРЅСЏС‚РёРµ РїСЂРµРґРјРµС‚Р°)
     /// </summary>
     void OnEquipmentSlotDoubleClicked(int slotIndex)
     {
         if (currentInventory == null) return;
 
-        // Определяем слот экипировки по индексу
+        // РћРїСЂРµРґРµР»СЏРµРј СЃР»РѕС‚ СЌРєРёРїРёСЂРѕРІРєРё РїРѕ РёРЅРґРµРєСЃСѓ
         EquipmentSlot equipmentSlot = (EquipmentSlot)slotIndex;
 
 
 
-        // Проверяем, есть ли предмет в этом слоте
+        // РџСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё РїСЂРµРґРјРµС‚ РІ СЌС‚РѕРј СЃР»РѕС‚Рµ
         if (currentInventory.IsEquipped(equipmentSlot))
         {
-            // Получаем экипированный предмет для логирования
+            // РџРѕР»СѓС‡Р°РµРј СЌРєРёРїРёСЂРѕРІР°РЅРЅС‹Р№ РїСЂРµРґРјРµС‚ РґР»СЏ Р»РѕРіРёСЂРѕРІР°РЅРёСЏ
             ItemData equippedItem = currentInventory.GetEquippedItem(equipmentSlot);
             if (equippedItem != null)
             {
-                // Проверяем, есть ли место в инвентаре
+                // РџСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё РјРµСЃС‚Рѕ РІ РёРЅРІРµРЅС‚Р°СЂРµ
                 int freeSlotIndex = FindNearestFreeInventorySlot();
                 if (freeSlotIndex != -1)
                 {
-                    // Снимаем предмет с экипировки (UnequipItem уже добавляет предмет в инвентарь)
+                    // РЎРЅРёРјР°РµРј РїСЂРµРґРјРµС‚ СЃ СЌРєРёРїРёСЂРѕРІРєРё (UnequipItem СѓР¶Рµ РґРѕР±Р°РІР»СЏРµС‚ РїСЂРµРґРјРµС‚ РІ РёРЅРІРµРЅС‚Р°СЂСЊ)
                     if (currentInventory.UnequipItem(equipmentSlot))
                     {
 
-                        // Обновляем визуалы заблокированных слотов
+                        // РћР±РЅРѕРІР»СЏРµРј РІРёР·СѓР°Р»С‹ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅРЅС‹С… СЃР»РѕС‚РѕРІ
                         UpdateEquipmentSlotVisuals();
-                        // Снимаем выделение
+                        // РЎРЅРёРјР°РµРј РІС‹РґРµР»РµРЅРёРµ
                         ClearSlotSelection();
                     }
                     else
@@ -893,7 +884,7 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Найти ближайший свободный слот в основном инвентаре
+    /// РќР°Р№С‚Рё Р±Р»РёР¶Р°Р№С€РёР№ СЃРІРѕР±РѕРґРЅС‹Р№ СЃР»РѕС‚ РІ РѕСЃРЅРѕРІРЅРѕРј РёРЅРІРµРЅС‚Р°СЂРµ
     /// </summary>
     int FindNearestFreeInventorySlot()
     {
@@ -908,11 +899,11 @@ public class InventoryUI : MonoBehaviour
             }
         }
 
-        return -1; // Нет свободных слотов
+        return -1; // РќРµС‚ СЃРІРѕР±РѕРґРЅС‹С… СЃР»РѕС‚РѕРІ
     }
 
     /// <summary>
-    /// Обработчик drag and drop между слотами
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє drag and drop РјРµР¶РґСѓ СЃР»РѕС‚Р°РјРё
     /// </summary>
     void OnSlotDragAndDrop(int fromDragDropId, int toDragDropId)
     {
@@ -920,34 +911,34 @@ public class InventoryUI : MonoBehaviour
 
 
 
-        // Определяем типы слотов по ID
+        // РћРїСЂРµРґРµР»СЏРµРј С‚РёРїС‹ СЃР»РѕС‚РѕРІ РїРѕ ID
         bool isFromEquipment = fromDragDropId >= 1000;
         bool isToEquipment = toDragDropId >= 1000;
 
         if (isFromEquipment && isToEquipment)
         {
-            // Перемещение между слотами экипировки
+            // РџРµСЂРµРјРµС‰РµРЅРёРµ РјРµР¶РґСѓ СЃР»РѕС‚Р°РјРё СЌРєРёРїРёСЂРѕРІРєРё
             HandleEquipmentToEquipmentDrag(fromDragDropId - 1000, toDragDropId - 1000);
         }
         else if (isFromEquipment && !isToEquipment)
         {
-            // Из слота экипировки в обычный инвентарь
+            // РР· СЃР»РѕС‚Р° СЌРєРёРїРёСЂРѕРІРєРё РІ РѕР±С‹С‡РЅС‹Р№ РёРЅРІРµРЅС‚Р°СЂСЊ
             HandleEquipmentToInventoryDrag(fromDragDropId - 1000, toDragDropId);
         }
         else if (!isFromEquipment && isToEquipment)
         {
-            // Из обычного инвентаря в слот экипировки
+            // РР· РѕР±С‹С‡РЅРѕРіРѕ РёРЅРІРµРЅС‚Р°СЂСЏ РІ СЃР»РѕС‚ СЌРєРёРїРёСЂРѕРІРєРё
             HandleInventoryToEquipmentDrag(fromDragDropId, toDragDropId - 1000);
         }
         else
         {
-            // Обычное перемещение между слотами инвентаря
+            // РћР±С‹С‡РЅРѕРµ РїРµСЂРµРјРµС‰РµРЅРёРµ РјРµР¶РґСѓ СЃР»РѕС‚Р°РјРё РёРЅРІРµРЅС‚Р°СЂСЏ
             HandleInventoryToInventoryDrag(fromDragDropId, toDragDropId);
         }
     }
 
     /// <summary>
-    /// Обработка перетаскивания между слотами инвентаря
+    /// РћР±СЂР°Р±РѕС‚РєР° РїРµСЂРµС‚Р°СЃРєРёРІР°РЅРёСЏ РјРµР¶РґСѓ СЃР»РѕС‚Р°РјРё РёРЅРІРµРЅС‚Р°СЂСЏ
     /// </summary>
     void HandleInventoryToInventoryDrag(int fromSlot, int toSlot)
     {
@@ -965,7 +956,7 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработка перетаскивания из инвентаря в экипировку
+    /// РћР±СЂР°Р±РѕС‚РєР° РїРµСЂРµС‚Р°СЃРєРёРІР°РЅРёСЏ РёР· РёРЅРІРµРЅС‚Р°СЂСЏ РІ СЌРєРёРїРёСЂРѕРІРєСѓ
     /// </summary>
     void HandleInventoryToEquipmentDrag(int fromSlot, int equipSlotId)
     {
@@ -976,7 +967,7 @@ public class InventoryUI : MonoBehaviour
         {
             ItemData item = fromInventorySlot.itemData;
 
-            // Проверяем совместимость
+            // РџСЂРѕРІРµСЂСЏРµРј СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚СЊ
             bool canEquipToSlot = false;
 
             if (item.CanBeEquipped() && item.equipmentSlot != EquipmentSlot.None)
@@ -1001,7 +992,7 @@ public class InventoryUI : MonoBehaviour
                     return;
                 }
 
-                // ПРОВЕРКА: для оружия проверяем ВСЕ слоты рук, для остальных - целевой слот
+                // РџР РћР’Р•Р РљРђ: РґР»СЏ РѕСЂСѓР¶РёСЏ РїСЂРѕРІРµСЂСЏРµРј Р’РЎР• СЃР»РѕС‚С‹ СЂСѓРє, РґР»СЏ РѕСЃС‚Р°Р»СЊРЅС‹С… - С†РµР»РµРІРѕР№ СЃР»РѕС‚
                 if (item.itemType == ItemType.Weapon)
                 {
                     ItemData rightHandItem = currentInventory.GetEquippedItem(EquipmentSlot.RightHand);
@@ -1015,7 +1006,7 @@ public class InventoryUI : MonoBehaviour
                 }
                 else
                 {
-                    // Для не-оружия проверяем только целевой слот
+                    // Р”Р»СЏ РЅРµ-РѕСЂСѓР¶РёСЏ РїСЂРѕРІРµСЂСЏРµРј С‚РѕР»СЊРєРѕ С†РµР»РµРІРѕР№ СЃР»РѕС‚
                     ItemData equippedItem = currentInventory.GetEquippedItem(equipSlot);
                     if (equippedItem != null && equippedItem.itemName == item.itemName)
                     {
@@ -1030,10 +1021,10 @@ public class InventoryUI : MonoBehaviour
                     item.equipmentSlot = equipSlot; // Set to the slot we're equipping to
                 }
 
-                // Экипируем предмет
+                // Р­РєРёРїРёСЂСѓРµРј РїСЂРµРґРјРµС‚
                 if (currentInventory.EquipItem(item))
                 {
-                    // ВАЖНО: удаляем предмет из конкретного слота, а не первый найденный!
+                    // Р’РђР–РќРћ: СѓРґР°Р»СЏРµРј РїСЂРµРґРјРµС‚ РёР· РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ СЃР»РѕС‚Р°, Р° РЅРµ РїРµСЂРІС‹Р№ РЅР°Р№РґРµРЅРЅС‹Р№!
                     currentInventory.RemoveItemFromSlot(fromSlot, 1);
 
                     // Update UI to show blocked slots
@@ -1052,13 +1043,13 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработка перетаскивания из экипировки в инвентарь
+    /// РћР±СЂР°Р±РѕС‚РєР° РїРµСЂРµС‚Р°СЃРєРёРІР°РЅРёСЏ РёР· СЌРєРёРїРёСЂРѕРІРєРё РІ РёРЅРІРµРЅС‚Р°СЂСЊ
     /// </summary>
     void HandleEquipmentToInventoryDrag(int equipSlotId, int toSlot)
     {
         EquipmentSlot equipSlot = (EquipmentSlot)equipSlotId;
 
-        // UnequipItem автоматически добавляет предмет в инвентарь, поэтому дополнительно добавлять не нужно
+        // UnequipItem Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РґРѕР±Р°РІР»СЏРµС‚ РїСЂРµРґРјРµС‚ РІ РёРЅРІРµРЅС‚Р°СЂСЊ, РїРѕСЌС‚РѕРјСѓ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕ РґРѕР±Р°РІР»СЏС‚СЊ РЅРµ РЅСѓР¶РЅРѕ
         if (currentInventory.UnequipItem(equipSlot))
         {
             // Update UI to show unblocked slots
@@ -1067,7 +1058,7 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обработка перетаскивания между слотами экипировки
+    /// РћР±СЂР°Р±РѕС‚РєР° РїРµСЂРµС‚Р°СЃРєРёРІР°РЅРёСЏ РјРµР¶РґСѓ СЃР»РѕС‚Р°РјРё СЌРєРёРїРёСЂРѕРІРєРё
     /// </summary>
     void HandleEquipmentToEquipmentDrag(int fromEquipSlotId, int toEquipSlotId)
     {
@@ -1082,32 +1073,32 @@ public class InventoryUI : MonoBehaviour
             return;
         }
 
-        // ВАЖНО: UnequipItem автоматически добавляет предметы в инвентарь!
-        // Поэтому нам НЕ нужно вызывать AddItem если экипировка не удалась
+        // Р’РђР–РќРћ: UnequipItem Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РґРѕР±Р°РІР»СЏРµС‚ РїСЂРµРґРјРµС‚С‹ РІ РёРЅРІРµРЅС‚Р°СЂСЊ!
+        // РџРѕСЌС‚РѕРјСѓ РЅР°Рј РќР• РЅСѓР¶РЅРѕ РІС‹Р·С‹РІР°С‚СЊ AddItem РµСЃР»Рё СЌРєРёРїРёСЂРѕРІРєР° РЅРµ СѓРґР°Р»Р°СЃСЊ
 
-        // Проверяем, можно ли выполнить обмен ПЕРЕД снятием предметов
+        // РџСЂРѕРІРµСЂСЏРµРј, РјРѕР¶РЅРѕ Р»Рё РІС‹РїРѕР»РЅРёС‚СЊ РѕР±РјРµРЅ РџР•Р Р•Р” СЃРЅСЏС‚РёРµРј РїСЂРµРґРјРµС‚РѕРІ
         bool canEquipFromToTarget = (fromItem.equipmentSlot == toEquipSlot);
         bool canEquipToToSource = (toItem != null && toItem.equipmentSlot == fromEquipSlot);
 
-        // Если ни один предмет не может быть экипирован в целевой слот, отменяем операцию
+        // Р•СЃР»Рё РЅРё РѕРґРёРЅ РїСЂРµРґРјРµС‚ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ СЌРєРёРїРёСЂРѕРІР°РЅ РІ С†РµР»РµРІРѕР№ СЃР»РѕС‚, РѕС‚РјРµРЅСЏРµРј РѕРїРµСЂР°С†РёСЋ
         if (!canEquipFromToTarget && !canEquipToToSource)
         {
-            return; // Не снимаем предметы, если обмен невозможен
+            return; // РќРµ СЃРЅРёРјР°РµРј РїСЂРµРґРјРµС‚С‹, РµСЃР»Рё РѕР±РјРµРЅ РЅРµРІРѕР·РјРѕР¶РµРЅ
         }
 
-        // Снимаем предметы (они автоматически попадут в инвентарь)
+        // РЎРЅРёРјР°РµРј РїСЂРµРґРјРµС‚С‹ (РѕРЅРё Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РїРѕРїР°РґСѓС‚ РІ РёРЅРІРµРЅС‚Р°СЂСЊ)
         currentInventory.UnequipItem(fromEquipSlot);
         if (toItem != null)
         {
             currentInventory.UnequipItem(toEquipSlot);
         }
 
-        // Пытаемся экипировать в новые слоты
+        // РџС‹С‚Р°РµРјСЃСЏ СЌРєРёРїРёСЂРѕРІР°С‚СЊ РІ РЅРѕРІС‹Рµ СЃР»РѕС‚С‹
         if (canEquipFromToTarget)
         {
             if (currentInventory.EquipItem(fromItem))
             {
-                // Удаляем из инвентаря, так как экипировка удалась
+                // РЈРґР°Р»СЏРµРј РёР· РёРЅРІРµРЅС‚Р°СЂСЏ, С‚Р°Рє РєР°Рє СЌРєРёРїРёСЂРѕРІРєР° СѓРґР°Р»Р°СЃСЊ
                 currentInventory.RemoveItem(fromItem, 1);
             }
         }
@@ -1116,7 +1107,7 @@ public class InventoryUI : MonoBehaviour
         {
             if (currentInventory.EquipItem(toItem))
             {
-                // Удаляем из инвентаря, так как экипировка удалась
+                // РЈРґР°Р»СЏРµРј РёР· РёРЅРІРµРЅС‚Р°СЂСЏ, С‚Р°Рє РєР°Рє СЌРєРёРїРёСЂРѕРІРєР° СѓРґР°Р»Р°СЃСЊ
                 currentInventory.RemoveItem(toItem, 1);
             }
         }
@@ -1124,17 +1115,17 @@ public class InventoryUI : MonoBehaviour
 
 
     /// <summary>
-    /// Выделить слот
+    /// Р’С‹РґРµР»РёС‚СЊ СЃР»РѕС‚
     /// </summary>
     void SelectSlot(int slotIndex)
     {
-        // Снимаем выделение с предыдущего слота
+        // РЎРЅРёРјР°РµРј РІС‹РґРµР»РµРЅРёРµ СЃ РїСЂРµРґС‹РґСѓС‰РµРіРѕ СЃР»РѕС‚Р°
         if (selectedSlotUI != null)
         {
             selectedSlotUI.SetSelected(false);
         }
 
-        // Выделяем новый слот
+        // Р’С‹РґРµР»СЏРµРј РЅРѕРІС‹Р№ СЃР»РѕС‚
         if (slotIndex >= 0 && slotIndex < slotUIElements.Count)
         {
             selectedSlotUI = slotUIElements[slotIndex];
@@ -1143,7 +1134,7 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Снять выделение слота
+    /// РЎРЅСЏС‚СЊ РІС‹РґРµР»РµРЅРёРµ СЃР»РѕС‚Р°
     /// </summary>
     void ClearSlotSelection()
     {
@@ -1157,31 +1148,31 @@ public class InventoryUI : MonoBehaviour
 
 
     /// <summary>
-    /// Обработка клика мыши
+    /// РћР±СЂР°Р±РѕС‚РєР° РєР»РёРєР° РјС‹С€Рё
     /// </summary>
     void HandleMouseClick()
     {
-        // Проверяем, кликнули ли вне UI инвентаря
+        // РџСЂРѕРІРµСЂСЏРµРј, РєР»РёРєРЅСѓР»Рё Р»Рё РІРЅРµ UI РёРЅРІРµРЅС‚Р°СЂСЏ
         if (isInventoryVisible && !RectTransformUtility.RectangleContainsScreenPoint(inventoryPanel, Input.mousePosition, mainCanvas.worldCamera))
         {
-            // Если кликнули вне панели, снимаем выделение слота
+            // Р•СЃР»Рё РєР»РёРєРЅСѓР»Рё РІРЅРµ РїР°РЅРµР»Рё, СЃРЅРёРјР°РµРј РІС‹РґРµР»РµРЅРёРµ СЃР»РѕС‚Р°
             ClearSlotSelection();
         }
     }
 
     /// <summary>
-    /// Переключить видимость инвентаря
+    /// РџРµСЂРµРєР»СЋС‡РёС‚СЊ РІРёРґРёРјРѕСЃС‚СЊ РёРЅРІРµРЅС‚Р°СЂСЏ
     /// </summary>
     public void ToggleInventory()
     {
-        // Если инвентарь открыт, всегда позволяем его закрыть
+        // Р•СЃР»Рё РёРЅРІРµРЅС‚Р°СЂСЊ РѕС‚РєСЂС‹С‚, РІСЃРµРіРґР° РїРѕР·РІРѕР»СЏРµРј РµРіРѕ Р·Р°РєСЂС‹С‚СЊ
         if (isInventoryVisible)
         {
             HideInventory();
             return;
         }
 
-        // Для открытия инвентаря нужен выделенный персонаж
+        // Р”Р»СЏ РѕС‚РєСЂС‹С‚РёСЏ РёРЅРІРµРЅС‚Р°СЂСЏ РЅСѓР¶РµРЅ РІС‹РґРµР»РµРЅРЅС‹Р№ РїРµСЂСЃРѕРЅР°Р¶
         if (selectionManager == null)
         {
             selectionManager = FindObjectOfType<SelectionManager>();
@@ -1191,7 +1182,7 @@ public class InventoryUI : MonoBehaviour
         {
             List<GameObject> selectedObjects = selectionManager.GetSelectedObjects();
 
-            // Проверяем, есть ли выделенный персонаж игрока
+            // РџСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё РІС‹РґРµР»РµРЅРЅС‹Р№ РїРµСЂСЃРѕРЅР°Р¶ РёРіСЂРѕРєР°
             Character selectedCharacter = null;
             foreach (GameObject obj in selectedObjects)
             {
@@ -1203,7 +1194,7 @@ public class InventoryUI : MonoBehaviour
                 }
             }
 
-            // Если есть выделенный персонаж игрока, открываем его инвентарь
+            // Р•СЃР»Рё РµСЃС‚СЊ РІС‹РґРµР»РµРЅРЅС‹Р№ РїРµСЂСЃРѕРЅР°Р¶ РёРіСЂРѕРєР°, РѕС‚РєСЂС‹РІР°РµРј РµРіРѕ РёРЅРІРµРЅС‚Р°СЂСЊ
             if (selectedCharacter != null)
             {
                 SetCurrentInventory(selectedCharacter.GetInventory(), selectedCharacter);
@@ -1211,18 +1202,17 @@ public class InventoryUI : MonoBehaviour
             }
             else
             {
-                // Нет выделенного персонажа - не открываем инвентарь
-                Debug.LogWarning("Невозможно открыть инвентарь: не выделен ни один персонаж");
+                // РќРµС‚ РІС‹РґРµР»РµРЅРЅРѕРіРѕ РїРµСЂСЃРѕРЅР°Р¶Р° - РЅРµ РѕС‚РєСЂС‹РІР°РµРј РёРЅРІРµРЅС‚Р°СЂСЊ
             }
         }
     }
 
     /// <summary>
-    /// Показать инвентарь
+    /// РџРѕРєР°Р·Р°С‚СЊ РёРЅРІРµРЅС‚Р°СЂСЊ
     /// </summary>
     public void ShowInventory()
     {
-        // Активируем только панель Inventory, не весь Canvas
+        // РђРєС‚РёРІРёСЂСѓРµРј С‚РѕР»СЊРєРѕ РїР°РЅРµР»СЊ Inventory, РЅРµ РІРµСЃСЊ Canvas
         if (inventoryPanel != null)
         {
             inventoryPanel.gameObject.SetActive(true);
@@ -1235,11 +1225,11 @@ public class InventoryUI : MonoBehaviour
                 InventorySlotUI slotUI = kvp.Value;
                 if (slotUI != null)
                 {
-                    // Слот существует - обновляем состояние
+                    // РЎР»РѕС‚ СЃСѓС‰РµСЃС‚РІСѓРµС‚ - РѕР±РЅРѕРІР»СЏРµРј СЃРѕСЃС‚РѕСЏРЅРёРµ
                 }
             }
 
-            // Обновляем отображение
+            // РћР±РЅРѕРІР»СЏРµРј РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ
             UpdateInventoryDisplay();
         }
         else
@@ -1249,7 +1239,7 @@ public class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Скрыть инвентарь
+    /// РЎРєСЂС‹С‚СЊ РёРЅРІРµРЅС‚Р°СЂСЊ
     /// </summary>
     public void HideInventory()
     {
@@ -1259,10 +1249,10 @@ public class InventoryUI : MonoBehaviour
             isInventoryVisible = false;
             IsAnyInventoryOpen = false;
 
-            // Снимаем выделение
+            // РЎРЅРёРјР°РµРј РІС‹РґРµР»РµРЅРёРµ
             ClearSlotSelection();
 
-            // Скрываем tooltip при закрытии инвентаря
+            // РЎРєСЂС‹РІР°РµРј tooltip РїСЂРё Р·Р°РєСЂС‹С‚РёРё РёРЅРІРµРЅС‚Р°СЂСЏ
             if (TooltipSystem.Instance != null)
             {
                 TooltipSystem.Instance.HideTooltip();
@@ -1288,8 +1278,8 @@ public class InventoryUI : MonoBehaviour
 
         ClearSlotUIElements();
 
-        // Очищаем слоты экипировки только при уничтожении
-        // ВАЖНО: Проверяем что словарь не null (может быть уничтожен при выходе из Play Mode)
+        // РћС‡РёС‰Р°РµРј СЃР»РѕС‚С‹ СЌРєРёРїРёСЂРѕРІРєРё С‚РѕР»СЊРєРѕ РїСЂРё СѓРЅРёС‡С‚РѕР¶РµРЅРёРё
+        // Р’РђР–РќРћ: РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ СЃР»РѕРІР°СЂСЊ РЅРµ null (РјРѕР¶РµС‚ Р±С‹С‚СЊ СѓРЅРёС‡С‚РѕР¶РµРЅ РїСЂРё РІС‹С…РѕРґРµ РёР· Play Mode)
         if (equipmentSlotUIs != null)
         {
             try
@@ -1310,14 +1300,14 @@ public class InventoryUI : MonoBehaviour
             }
             catch (System.Exception)
             {
-                // Игнорируем ошибки при уничтожении объектов
-                // Словарь может быть частично уничтожен
+                // РРіРЅРѕСЂРёСЂСѓРµРј РѕС€РёР±РєРё РїСЂРё СѓРЅРёС‡С‚РѕР¶РµРЅРёРё РѕР±СЉРµРєС‚РѕРІ
+                // РЎР»РѕРІР°СЂСЊ РјРѕР¶РµС‚ Р±С‹С‚СЊ С‡Р°СЃС‚РёС‡РЅРѕ СѓРЅРёС‡С‚РѕР¶РµРЅ
             }
         }
     }
 
     /// <summary>
-    /// Обновить визуальное отображение слотов экипировки (показать заблокированные)
+    /// РћР±РЅРѕРІРёС‚СЊ РІРёР·СѓР°Р»СЊРЅРѕРµ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ СЃР»РѕС‚РѕРІ СЌРєРёРїРёСЂРѕРІРєРё (РїРѕРєР°Р·Р°С‚СЊ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅРЅС‹Рµ)
     /// </summary>
     void UpdateEquipmentSlotVisuals()
     {
@@ -1350,7 +1340,7 @@ public class InventoryUI : MonoBehaviour
                     slotUI.backgroundImage.color = new Color(0.8f, 0.8f, 0.9f, 1.0f); // Bright empty state
                 }
 
-                // Принудительно включаем видимость
+                // РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РІРєР»СЋС‡Р°РµРј РІРёРґРёРјРѕСЃС‚СЊ
                 slotUI.backgroundImage.enabled = true;
 
             }

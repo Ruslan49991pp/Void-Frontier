@@ -1,33 +1,39 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Система ИИ для персонажей с различными состояниями
+/// РЎРёСЃС‚РµРјР° РР РґР»СЏ РїРµСЂСЃРѕРЅР°Р¶РµР№ СЃ СЂР°Р·Р»РёС‡РЅС‹РјРё СЃРѕСЃС‚РѕСЏРЅРёСЏРјРё
 /// </summary>
 public class CharacterAI : MonoBehaviour
 {
     [Header("AI Settings")]
-    public float idleTimeout = 3f; // Время до перехода в Idle состояние
-    public float wanderRadius = 2.5f; // Радиус блуждания (5x5 клеток = 2.5 радиуса)
-    public float wanderInterval = 2f; // Интервал между точками блуждания
-    public float pauseDuration = 2f; // Время остановки в точке
+    public float idleTimeout = 3f; // Р’СЂРµРјСЏ РґРѕ РїРµСЂРµС…РѕРґР° РІ Idle СЃРѕСЃС‚РѕСЏРЅРёРµ
+    public float wanderRadius = 2.5f; // Р Р°РґРёСѓСЃ Р±Р»СѓР¶РґР°РЅРёСЏ (5x5 РєР»РµС‚РѕРє = 2.5 СЂР°РґРёСѓСЃР°)
+    public float wanderInterval = 2f; // РРЅС‚РµСЂРІР°Р» РјРµР¶РґСѓ С‚РѕС‡РєР°РјРё Р±Р»СѓР¶РґР°РЅРёСЏ
+    public float pauseDuration = 2f; // Р’СЂРµРјСЏ РѕСЃС‚Р°РЅРѕРІРєРё РІ С‚РѕС‡РєРµ
+
+    [Header("Enemy AI")]
+    public float enemyDetectionRange = 10f; // Р Р°РґРёСѓСЃ РѕР±РЅР°СЂСѓР¶РµРЅРёСЏ РІСЂР°РіРѕРІ (10 РєР»РµС‚РѕРє)
+    public float enemyDetectionInterval = 1f; // РРЅС‚РµСЂРІР°Р» СЃРєР°РЅРёСЂРѕРІР°РЅРёСЏ (1 СЃРµРєСѓРЅРґР°)
 
     [Header("Debug")]
-    public bool debugMode = false; // Отключаем debug логи
+    public bool debugMode = false; // РћС‚РєР»СЋС‡Р°РµРј debug Р»РѕРіРё
+    public bool debugCombat = false; // РћС‚РєР»СЋС‡Р°РµРј РґРµР±Р°Рі Р±РѕРµРІРѕР№ СЃРёСЃС‚РµРјС‹
+    public bool debugStateTransitions = true; // РћС‚СЃР»РµР¶РёРІР°РЅРёРµ РїРµСЂРµС…РѕРґРѕРІ СЃРѕСЃС‚РѕСЏРЅРёР№
 
-    // Состояния ИИ
+    // РЎРѕСЃС‚РѕСЏРЅРёСЏ РР
     public enum AIState
     {
-        PlayerControlled,  // Под управлением игрока
-        Move,             // Движение к цели
-        Idle,             // Свободное блуждание
-        Working,          // Работа (строительство и т.д.)
-        Mining,           // Добыча ресурсов из астероидов
-        Chasing,          // Преследование врага (движение к цели для атаки)
-        Attacking         // Атака врага (в радиусе атаки)
+        PlayerControlled,  // РџРѕРґ СѓРїСЂР°РІР»РµРЅРёРµРј РёРіСЂРѕРєР°
+        Move,             // Р”РІРёР¶РµРЅРёРµ Рє С†РµР»Рё
+        Idle,             // РЎРІРѕР±РѕРґРЅРѕРµ Р±Р»СѓР¶РґР°РЅРёРµ
+        Working,          // Р Р°Р±РѕС‚Р° (СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ Рё С‚.Рґ.)
+        Mining,           // Р”РѕР±С‹С‡Р° СЂРµСЃСѓСЂСЃРѕРІ РёР· Р°СЃС‚РµСЂРѕРёРґРѕРІ
+        Chasing,          // РџСЂРµСЃР»РµРґРѕРІР°РЅРёРµ РІСЂР°РіР° (РґРІРёР¶РµРЅРёРµ Рє С†РµР»Рё РґР»СЏ Р°С‚Р°РєРё)
+        Attacking         // РђС‚Р°РєР° РІСЂР°РіР° (РІ СЂР°РґРёСѓСЃРµ Р°С‚Р°РєРё)
     }
 
-    // Компоненты
+    // РљРѕРјРїРѕРЅРµРЅС‚С‹
     private Character character;
     private CharacterMovement movement;
     private SelectionManager selectionManager;
@@ -36,28 +42,36 @@ public class CharacterAI : MonoBehaviour
     private ConstructionManager constructionManager;
     private MiningManager miningManager;
 
-    // Переменные состояния
-    private AIState currentState = AIState.PlayerControlled;
-    private float lastSelectionTime;
-    private Vector3 idleBasePosition; // Базовая позиция для блуждания
+    // РџРµСЂРµРјРµРЅРЅС‹Рµ СЃРѕСЃС‚РѕСЏРЅРёСЏ
+    private AIState currentState = AIState.Idle; // ARCHITECTURE: Р'СЃРµ РїРµСЂСЃРѕРЅР°Р¶Рё РЅР°С‡РёРЅР°СЋС‚ РІ Idle
+    private float lastActionTime; // ARCHITECTURE: Р'СЂРµРјСЏ РїРѕСЃР»РµРґРЅРµРіРѕ Р"Р•Р™РЎРўР'РРЇ (РЅРµ РІС‹РґРµР»РµРЅРёСЏ!)
+    private Vector3 idleBasePosition; // Р‘Р°Р·РѕРІР°СЏ РїРѕР·РёС†РёСЏ РґР»СЏ Р±Р»СѓР¶РґР°РЅРёСЏ
     private Coroutine idleCoroutine;
     private bool isWandering = false;
-    private bool playerInitiatedMovement = false; // Флаг движения, инициированного игроком
-    private float lastConstructionCheckTime = 0f; // Время последней проверки строительства
-    private const float constructionCheckInterval = 2f; // Интервал проверки строительства (секунды)
+    private bool playerInitiatedMovement = false; // Р¤Р»Р°Рі РґРІРёР¶РµРЅРёСЏ, РёРЅРёС†РёРёСЂРѕРІР°РЅРЅРѕРіРѕ РёРіСЂРѕРєРѕРј
+    private bool movingToJob = false; // FIX: Р¤Р»Р°Рі РґРІРёР¶РµРЅРёСЏ Рє СЂР°Р±РѕС‚Рµ/РґРѕР±С‹С‡Рµ (Р±Р»РѕРєРёСЂСѓРµС‚ РєРѕРЅС‚СЂР°С‚Р°РєСѓ)
+    private bool isPlayerControlled = false; // ARCHITECTURE: Р'С‚РѕСЂРёС‡РЅРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ - РІС‹РґРµР»РµРЅРёРµ РїРµСЂСЃРѕРЅР°Р¶Р° (РЅРµ РїСЂРµСЂС‹РІР°РµС‚ РґСЂСѓРіРёРµ СЃРѕСЃС‚РѕСЏРЅРёСЏ)
+    private float lastConstructionCheckTime = 0f; // Р'СЂРµРјСЏ РїРѕСЃР»РµРґРЅРµР№ РїСЂРѕРІРµСЂРєРё СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
+    private const float constructionCheckInterval = 2f; // РРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° (СЃРµРєСѓРЅРґС‹)
+    private float lastEnemyDetectionTime = 0f; // Р’СЂРµРјСЏ РїРѕСЃР»РµРґРЅРµРіРѕ СЃРєР°РЅРёСЂРѕРІР°РЅРёСЏ РІСЂР°РіРѕРІ
+    private float combatStartTime = 0f; // Р’СЂРµРјСЏ РЅР°С‡Р°Р»Р° Р±РѕСЏ РґР»СЏ Р·Р°РґРµСЂР¶РєРё РїСЂРѕРІРµСЂРєРё
+    private const float combatCheckDelay = 0.5f; // Р—Р°РґРµСЂР¶РєР° РїРµСЂРµРґ РїСЂРѕРІРµСЂРєРѕР№ РѕРєРѕРЅС‡Р°РЅРёСЏ Р±РѕСЏ (СЃРµРєСѓРЅРґС‹)
+
+    // Р’СЂРµРјСЏ РїРѕСЃР»РµРґРЅРµР№ РєРѕРјР°РЅРґС‹ РґРІРёР¶РµРЅРёСЏ РѕС‚ РёРіСЂРѕРєР° (РґР»СЏ РѕС‚Р»Р°РґРєРё Рё Р»РѕРіРёСЂРѕРІР°РЅРёСЏ)
+    private float playerMoveCommandTime = 0f;
 
     void Awake()
     {
         character = GetComponent<Character>();
         movement = GetComponent<CharacterMovement>();
 
-        // Добавляем CharacterMovement если его нет
+        // Р”РѕР±Р°РІР»СЏРµРј CharacterMovement РµСЃР»Рё РµРіРѕ РЅРµС‚
         if (movement == null)
         {
             movement = gameObject.AddComponent<CharacterMovement>();
         }
 
-        // PERFORMANCE: Используем ServiceLocator вместо FindObjectOfType (O(1) вместо O(n))
+        // PERFORMANCE: РСЃРїРѕР»СЊР·СѓРµРј ServiceLocator РІРјРµСЃС‚Рѕ FindObjectOfType (O(1) РІРјРµСЃС‚Рѕ O(n))
         selectionManager = ServiceLocator.Get<SelectionManager>();
         gridManager = ServiceLocator.Get<GridManager>();
         combatSystem = ServiceLocator.Get<CombatSystem>();
@@ -66,37 +80,39 @@ public class CharacterAI : MonoBehaviour
 
     void Start()
     {
-        lastSelectionTime = Time.time;
+        lastActionTime = Time.time; // ARCHITECTURE: РќР°С‡РёРЅР°РµРј РѕС‚СЃС‡РµС‚ РґР»СЏ Idle СЃСЂР°Р·Сѓ
         idleBasePosition = transform.position;
 
-        // Ищем MiningManager в Start() чтобы гарантировать что он успел инициализироваться
-        // PERFORMANCE: Используем ServiceLocator вместо FindObjectOfType (O(1) вместо O(n))
+        // РС‰РµРј MiningManager РІ Start() С‡С‚РѕР±С‹ РіР°СЂР°РЅС‚РёСЂРѕРІР°С‚СЊ С‡С‚Рѕ РѕРЅ СѓСЃРїРµР» РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°С‚СЊСЃСЏ
+        // PERFORMANCE: РСЃРїРѕР»СЊР·СѓРµРј ServiceLocator РІРјРµСЃС‚Рѕ FindObjectOfType (O(1) РІРјРµСЃС‚Рѕ O(n))
         miningManager = ServiceLocator.Get<MiningManager>();
-        if (miningManager == null)
-        {
-            Debug.LogWarning($"[CharacterAI] MiningManager not found for {character?.GetFullName() ?? gameObject.name}");
-        }
 
-        // Подписываемся на события выделения
+        // РџРѕРґРїРёСЃС‹РІР°РµРјСЃСЏ РЅР° СЃРѕР±С‹С‚РёСЏ РІС‹РґРµР»РµРЅРёСЏ
         if (selectionManager != null)
         {
             selectionManager.OnSelectionChanged += OnSelectionChanged;
         }
 
-        // ВАЖНО: При старте игры проверяем наличие строительства
-        // Это нужно для случая когда персонажи начинают в состоянии Idle
+        // Р’Р РђР“Р РЅР°С‡РёРЅР°СЋС‚ РІ СЃРѕСЃС‚РѕСЏРЅРёРё Idle (Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёР№ РїРѕРёСЃРє С†РµР»РµР№)
+        if (character != null && character.IsEnemyCharacter())
+        {
+            SwitchToState(AIState.Idle);
+        }
+
+        // Р’РђР–РќРћ: РџСЂРё СЃС‚Р°СЂС‚Рµ РёРіСЂС‹ РїСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
+        // Р­С‚Рѕ РЅСѓР¶РЅРѕ РґР»СЏ СЃР»СѓС‡Р°СЏ РєРѕРіРґР° РїРµСЂСЃРѕРЅР°Р¶Рё РЅР°С‡РёРЅР°СЋС‚ РІ СЃРѕСЃС‚РѕСЏРЅРёРё Idle
         StartCoroutine(CheckConstructionOnStartup());
     }
 
     /// <summary>
-    /// Проверка строительства при запуске (через небольшую задержку)
+    /// РџСЂРѕРІРµСЂРєР° СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° РїСЂРё Р·Р°РїСѓСЃРєРµ (С‡РµСЂРµР· РЅРµР±РѕР»СЊС€СѓСЋ Р·Р°РґРµСЂР¶РєСѓ)
     /// </summary>
     System.Collections.IEnumerator CheckConstructionOnStartup()
     {
-        // Ждем 0.5 секунды чтобы все компоненты инициализировались
+        // Р–РґРµРј 0.5 СЃРµРєСѓРЅРґС‹ С‡С‚РѕР±С‹ РІСЃРµ РєРѕРјРїРѕРЅРµРЅС‚С‹ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°Р»РёСЃСЊ
         yield return new WaitForSeconds(0.5f);
 
-        // Если персонаж игрока и не занят - пытаемся назначить строительство
+        // Р•СЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ РёРіСЂРѕРєР° Рё РЅРµ Р·Р°РЅСЏС‚ - РїС‹С‚Р°РµРјСЃСЏ РЅР°Р·РЅР°С‡РёС‚СЊ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ
         if (character != null && character.IsPlayerCharacter() && constructionManager != null)
         {
             constructionManager.TryAssignConstructionToIdleCharacter(character);
@@ -105,7 +121,7 @@ public class CharacterAI : MonoBehaviour
 
     void Update()
     {
-        // Не выполняем ИИ для мертвых персонажей
+        // РќРµ РІС‹РїРѕР»РЅСЏРµРј РР РґР»СЏ РјРµСЂС‚РІС‹С… РїРµСЂСЃРѕРЅР°Р¶РµР№
         if (character != null && character.IsDead())
         {
             return;
@@ -116,25 +132,67 @@ public class CharacterAI : MonoBehaviour
     }
 
     /// <summary>
-    /// Обновление состояния ИИ в зависимости от выделения
+    /// РћР±РЅРѕРІР»РµРЅРёРµ СЃРѕСЃС‚РѕСЏРЅРёСЏ РР РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     void UpdateAIState()
     {
-        // Если персонаж работает, добывает ресурсы или в бою - не переключаем состояние автоматически
-        if (currentState == AIState.Working ||
-            currentState == AIState.Mining ||
-            currentState == AIState.Chasing ||
-            currentState == AIState.Attacking)
+        // Р’Р РђР“Р: Р•СЃР»Рё РІ Р±РѕСЋ, РЅРѕ С†РµР»СЊ РјРµСЂС‚РІР° РёР»Рё РІРЅРµ СЂР°РґРёСѓСЃР° - РІРѕР·РІСЂР°С‰Р°РµРјСЃСЏ РІ Idle
+        if (character != null && character.IsEnemyCharacter())
+        {
+            if (currentState == AIState.Chasing || currentState == AIState.Attacking)
+            {
+                // Р’РђР–РќРћ: Р”Р°РµРј РІСЂРµРјСЏ CombatSystem РѕР±СЂР°Р±РѕС‚Р°С‚СЊ РЅР°Р·РЅР°С‡РµРЅРёРµ С†РµР»Рё РїРµСЂРµРґ РїСЂРѕРІРµСЂРєРѕР№
+                float timeSinceCombatStart = Time.time - combatStartTime;
+
+                if (timeSinceCombatStart >= combatCheckDelay)
+                {
+                    // РџСЂРѕРІРµСЂСЏРµРј, СѓС‡Р°СЃС‚РІСѓРµС‚ Р»Рё РїРµСЂСЃРѕРЅР°Р¶ РІ Р±РѕСЋ
+                    if (combatSystem == null || !combatSystem.IsInCombat(character))
+                    {
+                        SwitchToState(AIState.Idle);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // FIX: Р'Р»РѕРєРёСЂРѕРІРєР° РїРµСЂРµРјРµС‰РµРЅР° РЅРёР¶Рµ, РїРѕСЃР»Рµ РѕР±СЂР°Р±РѕС‚РєРё РєРѕРЅС‚СЂР°С‚Р°РєРё
+        // Р"РґРµСЃСЊ РѕСЃС‚Р°РІР»РµРЅРѕ РїСѓСЃС‚РѕРµ РјРµСЃС‚Рѕ СЃРїРµС†РёР°Р»СЊРЅРѕ
+
+        // Р’Р РђР“Р РІ Р±РѕСЋ РќР• РјРѕРіСѓС‚ Р±С‹С‚СЊ РїСЂРµСЂРІР°РЅС‹ (Сѓ РЅРёС… РЅРµС‚ PlayerControlled СЃРѕСЃС‚РѕСЏРЅРёСЏ)
+        if (character != null && character.IsEnemyCharacter() &&
+            (currentState == AIState.Chasing || currentState == AIState.Attacking))
         {
             return;
         }
 
         bool isSelected = character.IsSelected();
-        bool isMoving = movement != null && movement.IsMoving();
-        float timeSinceSelection = Time.time - lastSelectionTime;
 
-        // Дебаг логи отключены
-        // if (debugMode && Time.frameCount % 120 == 0) // Лог каждые 2 секунды (при 60 FPS)
+        // РЎРћР®Р—РќРРљР: Р•СЃР»Рё РІ Р±РѕСЋ, РЅРѕ С†РµР»СЊ РјРµСЂС‚РІР° РёР»Рё РІРЅРµ СЂР°РґРёСѓСЃР° - РІРѕР·РІСЂР°С‰Р°РµРјСЃСЏ РІ РїСЂР°РІРёР»СЊРЅРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ
+        if (character != null && character.IsPlayerCharacter())
+        {
+            if (currentState == AIState.Chasing || currentState == AIState.Attacking)
+            {
+                // Р’РђР–РќРћ: Р”Р°РµРј РІСЂРµРјСЏ CombatSystem РѕР±СЂР°Р±РѕС‚Р°С‚СЊ РЅР°Р·РЅР°С‡РµРЅРёРµ С†РµР»Рё РїРµСЂРµРґ РїСЂРѕРІРµСЂРєРѕР№
+                float timeSinceCombatStart = Time.time - combatStartTime;
+
+                if (timeSinceCombatStart >= combatCheckDelay)
+                {
+                    // РџСЂРѕРІРµСЂСЏРµРј, СѓС‡Р°СЃС‚РІСѓРµС‚ Р»Рё РїРµСЂСЃРѕРЅР°Р¶ РІ Р±РѕСЋ
+                    if (combatSystem == null || !combatSystem.IsInCombat(character))
+                    {
+                        // ARCHITECTURE: Р'РѕР·РІСЂР°С‰Р°РµРјСЃСЏ РІ Idle (РІС‹РґРµР»РµРЅРёРµ - РІС‚РѕСЂРёС‡РЅРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ, РѕРЅРѕ СѓР¶Рµ СѓСЃС‚Р°РЅРѕРІР»РµРЅРѕ)
+                        SwitchToState(AIState.Idle);
+                        return;
+                    }
+                }
+            }
+        }
+        bool isMoving = movement != null && movement.IsMoving();
+        float timeSinceLastAction = Time.time - lastActionTime; // ARCHITECTURE: Время с последнего ДЕЙСТВИЯ
+
+        // Р”РµР±Р°Рі Р»РѕРіРё РѕС‚РєР»СЋС‡РµРЅС‹
+        // if (debugMode && Time.frameCount % 120 == 0) // Р›РѕРі РєР°Р¶РґС‹Рµ 2 СЃРµРєСѓРЅРґС‹ (РїСЂРё 60 FPS)
         // {
         //              $"Selected={isSelected}, Moving={isMoving}, " +
         //              $"TimeSinceSelection={timeSinceSelection:F1}s, " +
@@ -142,131 +200,346 @@ public class CharacterAI : MonoBehaviour
         //              $"IsWandering={isWandering}");
         // }
 
+        // ARCHITECTURE: Обновляем флаг выделения (независимо от остальной логики)
+        // ВАЖНО: НЕ обновляем lastActionTime! Выделение - не действие!
         if (isSelected)
         {
-            // Персонаж выделен - обновляем время последнего выделения
-            lastSelectionTime = Time.time;
-
-            if (currentState != AIState.PlayerControlled)
-            {
-                // Debug logging disabled
-                SwitchToState(AIState.PlayerControlled);
-            }
+            isPlayerControlled = true;
         }
         else
         {
-            // Персонаж не выделен
+            isPlayerControlled = false;
+        }
 
-            if (isMoving)
+        // ARCHITECTURE: Обрабатываем команды и состояния НЕЗАВИСИМО от выделения
+        // PlayerControlled - это флаг, а не действие, поэтому не блокирует логику ниже
+
+        // FIX: Process player commands ALWAYS, regardless of isMoving or selection!
+        if (playerInitiatedMovement)
+        {
+            if (currentState != AIState.Move)
             {
-                // Если движение инициировано игроком, переключаемся в Move независимо от текущего состояния
-                if (playerInitiatedMovement)
-                {
-                    if (currentState != AIState.Move)
-                    {
-                        // Debug logging disabled
-                        SwitchToState(AIState.Move);
-                    }
-                    playerInitiatedMovement = false; // Сбрасываем флаг
-                }
-                // Если персонаж движется НЕ в состоянии Idle (автоматическое движение)
-                else if (currentState != AIState.Idle && currentState != AIState.Move)
-                {
-                    // Debug logging disabled
-                    SwitchToState(AIState.Move);
-                }
-                // В состоянии Idle движение является частью блуждания - не переключаемся
+                // Player command interrupts Working/Mining/any state
+                SwitchToState(AIState.Move);
             }
-            else if (timeSinceSelection >= idleTimeout && currentState != AIState.Idle)
+            playerInitiatedMovement = false;
+            lastActionTime = Time.time; // ARCHITECTURE: Команда движения - это действие!
+        }
+        else if (isMoving)
+        {
+            // Auto movement: switch to Move only if not in special states
+            if (currentState != AIState.Idle &&
+                currentState != AIState.Move &&
+                currentState != AIState.Working &&
+                currentState != AIState.Mining &&
+                currentState != AIState.Chasing &&
+                currentState != AIState.Attacking)
             {
-                // Персонаж не движется и прошло время - состояние Idle
-                // Debug logging disabled
-                SwitchToState(AIState.Idle);
+                SwitchToState(AIState.Move);
             }
+        }
+        // ARCHITECTURE: Idle появляется при бездействии НЕЗАВИСИМО от выделения
+        // PlayerControlled (выделение) не является действием и не сбрасывает таймер!
+        else if (timeSinceLastAction >= idleTimeout &&
+                 currentState != AIState.Idle &&
+                 currentState != AIState.Working &&
+                 currentState != AIState.Mining &&
+                 currentState != AIState.Chasing &&
+                 currentState != AIState.Attacking)
+        {
+            // Персонаж не выполняет действий 3 секунды - переходим в Idle
+            // Выделение (isPlayerControlled) не мешает переходу в Idle
+            SwitchToState(AIState.Idle);
         }
     }
 
     /// <summary>
-    /// Обработка текущего состояния
+    /// РћР±СЂР°Р±РѕС‚РєР° С‚РµРєСѓС‰РµРіРѕ СЃРѕСЃС‚РѕСЏРЅРёСЏ
     /// </summary>
     void HandleCurrentState()
     {
+        // ============================================================================
+        // COUNTER-ATTACK SYSTEM: РџСЂРѕРІРµСЂСЏРµРј РЅР°Р»РёС‡РёРµ Р°С‚Р°РєСѓСЋС‰РµРіРѕ РґР»СЏ РєРѕРЅС‚СЂР°С‚Р°РєРё
+        // ============================================================================
+        // Р’РђР–РќРћ: РљРѕРЅС‚СЂР°С‚Р°РєР° СЂР°Р±РѕС‚Р°РµС‚ РќР•РњР•Р”Р›Р•РќРќРћ РµСЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ РќР• РІС‹РїРѕР»РЅСЏРµС‚ Р°РєС‚РёРІРЅСѓСЋ РєРѕРјР°РЅРґСѓ РёРіСЂРѕРєР°
+
+        bool hasAttacker = character != null && character.HasActiveAttacker();
+
+        // РЈРџР РћР©Р•РќРќРђРЇ Р›РћР“РРљРђ: РљРѕРЅС‚СЂР°С‚Р°РєР° РґРѕСЃС‚СѓРїРЅР° С‚РѕР»СЊРєРѕ РµСЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ РќР• Р·Р°РЅСЏС‚
+        // РџСЂРѕРІРµСЂСЏРµРј СЃРѕСЃС‚РѕСЏРЅРёРµ AI - СЌС‚Рѕ РЅР°РґРµР¶РЅРµРµ С‡РµРј РїСЂРѕРІРµСЂРєР° РІСЂРµРјРµРЅРё РєРѕРјР°РЅРґС‹
+        // Р•СЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ РІ Move/Working/Mining - РѕРЅ РІС‹РїРѕР»РЅСЏРµС‚ РїСЂРёРєР°Р· Рё РќР• РєРѕРЅС‚СЂР°С‚Р°РєСѓРµС‚
+        // ARCHITECTURE: РљРћРќРўР -РђРўРђРљРђ РґРѕСЃС‚СѓРїРЅР° РІ: Idle (РїРµСЂСЃРѕРЅР°Р¶ СЃРІРѕР±РѕРґРµРЅ)
+        // РљРћРќРўР -РђРўРђРљРђ Р'Р›РћРљРР РЈР•РўРЎРЇ РІ: Move (РІС‹РїРѕР»РЅРµРЅРёРµ РїСЂРёРєР°Р·Р°!), Working, Mining, Chasing, Attacking
+        // FIX: Р'Р›РћРљРРўРЖ РєРѕРЅС‚СЂР°С‚Р°РєСѓ РµСЃР»Рё РёРґРµС‚ Рє СЂР°Р±РѕС‚Рµ/РґРѕР±С‹С‡Рµ
+        if (movingToJob)
+        {
+            // РРґРµС‚ Рє Р·Р°РґР°РЅРёСЋ - РЅРµ РїСЂРµСЂС‹РІР°РµРј РїСѓС‚СЊ!
+            hasAttacker = false; // Р'Р»РѕРєРёСЂСѓРµРј РєРѕРЅС‚СЂР°С‚Р°РєСѓ
+        }
+
+        bool canCounterAttack = currentState != AIState.Chasing &&
+                                currentState != AIState.Attacking &&
+                                currentState != AIState.Move; // FIX: Working/Mining РјРѕРіСѓС‚ РєРѕРЅС‚СЂР°С‚Р°РєРѕРІР°С‚СЊ!
+
+        if (hasAttacker && canCounterAttack)
+        {
+            Character attacker = character.GetLastAttacker();
+
+            if (attacker != null && !attacker.IsDead())
+            {
+                // РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ РїРµСЂСЃРѕРЅР°Р¶ РµС‰Рµ РЅРµ РІ Р±РѕСЋ
+                if (combatSystem != null && !combatSystem.IsInCombat(character))
+                {
+                    // DEBUG: Р›РѕРіРёСЂСѓРµРј РєРѕРЅС‚СЂР°С‚Р°РєСѓ
+                    if (debugStateTransitions && character != null)
+                    {
+                        bool isSelected = character.IsSelected();
+                        string selectionStatus = isSelected ? "[SELECTED]" : "[NOT SELECTED]";
+                        bool isRecentPlayerCommand = (Time.time - playerMoveCommandTime) < 1f;
+                        string warning = isRecentPlayerCommand ? " *** INTERRUPTING PLAYER COMMAND! ***" : "";
+
+                        Debug.Log($"[COUNTER-ATTACK] {selectionStatus} {character.GetFullName()} counter-attacking {attacker.GetFullName()} | State: {currentState}{warning}");
+                    }
+
+                    combatSystem.AssignCombatTarget(character, attacker);
+                    SwitchToState(AIState.Chasing);
+
+                    // РћС‡РёС‰Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± Р°С‚Р°РєСѓСЋС‰РµРј - РєРѕРЅС‚СЂР°С‚Р°РєР° РЅР°С‡Р°Р»Р°СЃСЊ
+                    character.ClearLastAttacker();
+                }
+                else
+                {
+                    // РЈР¶Рµ РІ Р±РѕСЋ - РѕС‡РёС‰Р°РµРј Р°С‚Р°РєСѓСЋС‰РµРіРѕ
+                    character.ClearLastAttacker();
+                }
+            }
+            else
+            {
+                // РђС‚Р°РєСѓСЋС‰РёР№ РјРµСЂС‚РІ РёР»Рё null - РѕС‡РёС‰Р°РµРј
+                character.ClearLastAttacker();
+            }
+        }
+
+        // FIX: Р'Р›РћРљРР РЈР•Рњ РѕСЃС‚Р°Р»СЊРЅСѓСЋ Р»РѕРіРёРєСѓ РґР»СЏ Working/Mining РџРћРЎР›Р• РєРѕРЅС‚СЂР°С‚Р°РєРё
+        // Р­С‚Рѕ РїРѕР·РІРѕР»СЏРµС‚ Working/Mining РѕС‚РІРµС‡Р°С‚СЊ РЅР° СѓРіСЂРѕР·С‹, РЅРѕ РЅРµ РїРµСЂРµРєР»СЋС‡Р°С‚СЊСЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё
+        if (currentState == AIState.Working || currentState == AIState.Mining)
+        {
+            return; // РљРѕРЅС‚СЂР°С‚Р°РєР° СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅР°, Р±Р»РѕРєРёСЂСѓРµРј С‚РѕР»СЊРєРѕ РѕСЃС‚Р°Р»СЊРЅСѓСЋ Р»РѕРіРёРєСѓ
+        }
+
+        // ============================================================================
+        // REGULAR STATE HANDLING
+        // ============================================================================
         switch (currentState)
         {
             case AIState.PlayerControlled:
-                // Ничего не делаем - персонаж под управлением игрока
+                // ARCHITECTURE: DEPRECATED - PlayerControlled is now a secondary state (flag)
+                // This case should never be reached, but kept for backward compatibility
+                // Characters that are selected now use Idle state with isPlayerControlled=true flag
                 break;
 
             case AIState.Move:
-                // Ничего не делаем - движение обрабатывается CharacterMovement
+                // РќРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј - РґРІРёР¶РµРЅРёРµ РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚СЃСЏ CharacterMovement
                 break;
 
             case AIState.Idle:
-                // Состояние обрабатывается корутиной
-                // ПЕРИОДИЧЕСКИ ПРОВЕРЯЕМ НАЛИЧИЕ СТРОИТЕЛЬСТВА
-                if (Time.time - lastConstructionCheckTime >= constructionCheckInterval)
-                {
-                    lastConstructionCheckTime = Time.time;
+                // РЎРѕСЃС‚РѕСЏРЅРёРµ РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚СЃСЏ РєРѕСЂСѓС‚РёРЅРѕР№
 
-                    if (character != null && character.IsPlayerCharacter() && constructionManager != null)
+                // Р”Р›РЇ РЎРћР®Р—РќРРљРћР’: РџР•Р РРћР”РР§Р•РЎРљР РџР РћР’Р•Р РЇР•Рњ РќРђР›РР§РР• РЎРўР РћРРўР•Р›Р¬РЎРўР’Рђ Р Р’Р РђР“РћР’
+                if (character != null && character.IsPlayerCharacter())
+                {
+                    if (Time.time - lastConstructionCheckTime >= constructionCheckInterval)
                     {
-                        constructionManager.TryAssignConstructionToIdleCharacter(character);
+                        lastConstructionCheckTime = Time.time;
+
+                        if (constructionManager != null)
+                        {
+                            constructionManager.TryAssignConstructionToIdleCharacter(character);
+                        }
+                    }
+
+                    // РЎРљРђРќРР РЈР•Рњ РћР‘Р›РђРЎРўР¬ РќРђ РќРђР›РР§РР• Р’Р РђР“РћР’ (РїРѕСЃР»Рµ РїСЂРѕРІРµСЂРєРё СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°)
+                    // FIX: РќР• СЃРєР°РЅРёСЂСѓРµРј РІСЂР°РіРѕРІ, РµСЃР»Рё РёРґРµРј Рє СЂР°Р±РѕС‚Рµ/РґРѕР±С‹С‡Рµ
+                    if (!movingToJob && Time.time - lastEnemyDetectionTime >= enemyDetectionInterval)
+                    {
+                        lastEnemyDetectionTime = Time.time;
+                        ScanForEnemies();
+                    }
+                }
+                // Р”Р›РЇ Р’Р РђР“РћР’: РџР•Р РРћР”РР§Р•РЎРљР РЎРљРђРќРР РЈР•Рњ РћР‘Р›РђРЎРўР¬ РќРђ РќРђР›РР§РР• Р¦Р•Р›Р•Р™
+                else if (character != null && character.IsEnemyCharacter())
+                {
+                    if (Time.time - lastEnemyDetectionTime >= enemyDetectionInterval)
+                    {
+                        lastEnemyDetectionTime = Time.time;
+                        ScanForTargets();
                     }
                 }
                 break;
 
             case AIState.Working:
-                // Ничего не делаем - персонаж работает (строит и т.д.)
-                // Блуждание и автоматическое движение отключены
+                // FIX: Р Р°Р±РѕС‡РёРµ РґРѕР»Р¶РЅС‹ СЃРєР°РЅРёСЂРѕРІР°С‚СЊ РѕРєСЂСѓР¶РµРЅРёРµ РЅР° РІСЂР°РіРѕРІ!
+                if (character != null && character.IsPlayerCharacter())
+                {
+                    // FIX: РќР• СЃРєР°РЅРёСЂСѓРµРј РІСЂР°РіРѕРІ, РµСЃР»Рё РёРґРµРј Рє СЂР°Р±РѕС‚Рµ/РґРѕР±С‹С‡Рµ
+                    if (!movingToJob && Time.time - lastEnemyDetectionTime >= enemyDetectionInterval)
+                    {
+                        lastEnemyDetectionTime = Time.time;
+                        ScanForEnemies();
+                    }
+                }
                 break;
 
             case AIState.Mining:
-                // Ничего не делаем - добыча ресурсов обрабатывается MiningManager
-                // Блуждание и автоматическое движение отключены
+                // FIX: Р"РѕР±С‹С‚С‡РёРєРё РґРѕР»Р¶РЅС‹ СЃРєР°РЅРёСЂРѕРІР°С‚СЊ РѕРєСЂСѓР¶РµРЅРёРµ РЅР° РІСЂР°РіРѕРІ!
+                if (character != null && character.IsPlayerCharacter())
+                {
+                    // FIX: РќР• СЃРєР°РЅРёСЂСѓРµРј РІСЂР°РіРѕРІ, РµСЃР»Рё РёРґРµРј Рє СЂР°Р±РѕС‚Рµ/РґРѕР±С‹С‡Рµ
+                    if (!movingToJob && Time.time - lastEnemyDetectionTime >= enemyDetectionInterval)
+                    {
+                        lastEnemyDetectionTime = Time.time;
+                        ScanForEnemies();
+                    }
+                }
                 break;
 
             case AIState.Chasing:
-                // Ничего не делаем - преследование обрабатывается CombatSystem
+                // РќРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј - РїСЂРµСЃР»РµРґРѕРІР°РЅРёРµ РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚СЃСЏ CombatSystem
                 break;
 
             case AIState.Attacking:
-                // Ничего не делаем - атака обрабатывается CombatSystem
+                // РќРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј - Р°С‚Р°РєР° РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚СЃСЏ CombatSystem
                 break;
         }
     }
 
     /// <summary>
-    /// Переключение состояния ИИ
+    /// РџРµСЂРµРєР»СЋС‡РµРЅРёРµ СЃРѕСЃС‚РѕСЏРЅРёСЏ РР
     /// </summary>
     void SwitchToState(AIState newState)
     {
         if (currentState == newState) return;
 
-        // Debug logging disabled
+        AIState oldState = currentState;
 
-        // Выход из предыдущего состояния
+        // DEBUG: Р›РѕРіРёСЂСѓРµРј РїРµСЂРµС…РѕРґ СЃРѕСЃС‚РѕСЏРЅРёСЏ
+        if (debugStateTransitions)
+        {
+            LogStateTransition(oldState, newState);
+        }
+
+        // Р'С‹С…РѕРґ РёР· РїСЂРµРґС‹РґСѓС‰РµРіРѕ СЃРѕСЃС‚РѕСЏРЅРёСЏ
         ExitState(currentState);
 
-        // Смена состояния
+        // РЎРјРµРЅР° СЃРѕСЃС‚РѕСЏРЅРёСЏ
         currentState = newState;
 
-        // Вход в новое состояние
+        // Р'С…РѕРґ РІ РЅРѕРІРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ
         EnterState(newState);
     }
 
     /// <summary>
-    /// Выход из состояния
+    /// Р›РѕРіРёСЂРѕРІР°РЅРёРµ РїРµСЂРµС…РѕРґР° СЃРѕСЃС‚РѕСЏРЅРёСЏ СЃ РёРЅС„РѕСЂРјР°С†РёРµР№ Рѕ РІС‹РґРµР»РµРЅРёРё
+    /// </summary>
+    void LogStateTransition(AIState oldState, AIState newState)
+    {
+        if (character == null) return;
+
+        // ARCHITECTURE: РџСЂРѕРІРµСЂСЏРµРј СЃС‚Р°С‚СѓСЃ РІС‹РґРµР»РµРЅРёСЏ (С‚РµРїРµСЂСЊ СЌС‚Рѕ С„Р»Р°Рі, Р° РЅРµ СЃРѕСЃС‚РѕСЏРЅРёРµ)
+        bool isSelected = character.IsSelected();
+        string selectionStatus = isPlayerControlled ? "[SELECTED]" : "[NOT SELECTED]";
+
+        // РћРїСЂРµРґРµР»СЏРµРј С‚РёРї РїРµСЂСЃРѕРЅР°Р¶Р°
+        string characterType = character.IsPlayerCharacter() ? "ALLY" : "ENEMY";
+
+        // Р¤РѕСЂРјРёСЂСѓРµРј СЃРѕРѕР±С‰РµРЅРёРµ
+        string message = $"[STATE TRANSITION] {selectionStatus} {characterType} '{character.GetFullName()}': {oldState} -> {newState}";
+
+        // Р"РѕР±Р°РІР»СЏРµРј РєРѕРЅС‚РµРєСЃС‚ РїРµСЂРµС…РѕРґР°
+        string context = GetTransitionContext(oldState, newState);
+        if (!string.IsNullOrEmpty(context))
+        {
+            message += $" | Context: {context}";
+        }
+
+        Debug.Log(message);
+    }
+
+    /// <summary>
+    /// РџРѕР»СѓС‡РёС‚СЊ РєРѕРЅС‚РµРєСЃС‚ РїРµСЂРµС…РѕРґР° РґР»СЏ Р»СѓС‡С€РµРіРѕ РїРѕРЅРёРјР°РЅРёСЏ РїСЂРёС‡РёРЅС‹
+    /// </summary>
+    string GetTransitionContext(AIState oldState, AIState newState)
+    {
+        // РџРµСЂРµС…РѕРґ РІ Chasing/Attacking - С€РёСЂРѕРєРѕ Р»РѕРіРёСЂСѓРµРј
+        if (newState == AIState.Chasing)
+        {
+            if (combatSystem != null && character != null && combatSystem.IsInCombat(character))
+            {
+                Character target = combatSystem.GetCombatTarget(character);
+                if (target != null)
+                {
+                    bool hasAttacker = character.HasActiveAttacker();
+                    bool isPlayerCommand = (Time.time - playerMoveCommandTime) < 0.5f;
+
+                    string reason = hasAttacker ? "Counter-attack triggered" : "Enemy detected in range";
+                    if (isPlayerCommand)
+                    {
+                        reason += " [WARNING: OVERRIDING PLAYER COMMAND!]";
+                    }
+
+                    return $"Target: {target.GetFullName()} | Reason: {reason}";
+                }
+            }
+        }
+
+        // РџРµСЂРµС…РѕРґ РІ Move
+        if (newState == AIState.Move)
+        {
+            bool isPlayerInitiated = playerInitiatedMovement || (Time.time - playerMoveCommandTime) < 0.5f;
+            return isPlayerInitiated ? "Player command" : "AI-initiated movement";
+        }
+
+        // ARCHITECTURE: PlayerControlled is deprecated as a state
+        // Selection is now tracked via isPlayerControlled flag
+        if (newState == AIState.PlayerControlled)
+        {
+            return $"[DEPRECATED STATE] Character selected | Previous: {oldState}";
+        }
+
+        // РџРµСЂРµС…РѕРґ РІ Working/Mining
+        if (newState == AIState.Working)
+        {
+            return "Construction task assigned";
+        }
+
+        if (newState == AIState.Mining)
+        {
+            return "Mining task assigned";
+        }
+
+        // РџРµСЂРµС…РѕРґ РІ Idle
+        if (newState == AIState.Idle)
+        {
+            float timeSinceLastAction = Time.time - lastActionTime;
+            return $"Idle timeout reached ({timeSinceLastAction:F1}s since last action)";
+        }
+
+        return "";
+    }
+
+    /// <summary>
+    /// Р’С‹С…РѕРґ РёР· СЃРѕСЃС‚РѕСЏРЅРёСЏ
     /// </summary>
     void ExitState(AIState state)
     {
         switch (state)
         {
             case AIState.Move:
-                // При выходе из состояния Move ничего особенного не делаем
+                // РџСЂРё РІС‹С…РѕРґРµ РёР· СЃРѕСЃС‚РѕСЏРЅРёСЏ Move РЅРёС‡РµРіРѕ РѕСЃРѕР±РµРЅРЅРѕРіРѕ РЅРµ РґРµР»Р°РµРј
                 break;
 
             case AIState.Idle:
-                // Останавливаем блуждание
+                // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р±Р»СѓР¶РґР°РЅРёРµ
                 if (idleCoroutine != null)
                 {
                     StopCoroutine(idleCoroutine);
@@ -274,7 +547,7 @@ public class CharacterAI : MonoBehaviour
                 }
                 isWandering = false;
 
-                // Останавливаем движение
+                // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј РґРІРёР¶РµРЅРёРµ
                 if (movement != null)
                 {
                     movement.StopMovement();
@@ -282,12 +555,12 @@ public class CharacterAI : MonoBehaviour
                 break;
 
             case AIState.Working:
-                // При выходе из состояния Working ничего особенного не делаем
-                // Персонаж завершил работу
+                // РџСЂРё РІС‹С…РѕРґРµ РёР· СЃРѕСЃС‚РѕСЏРЅРёСЏ Working РЅРёС‡РµРіРѕ РѕСЃРѕР±РµРЅРЅРѕРіРѕ РЅРµ РґРµР»Р°РµРј
+                // РџРµСЂСЃРѕРЅР°Р¶ Р·Р°РІРµСЂС€РёР» СЂР°Р±РѕС‚Сѓ
                 break;
 
             case AIState.Mining:
-                // При выходе из состояния Mining останавливаем движение
+                // РџСЂРё РІС‹С…РѕРґРµ РёР· СЃРѕСЃС‚РѕСЏРЅРёСЏ Mining РѕСЃС‚Р°РЅР°РІР»РёРІР°РµРј РґРІРёР¶РµРЅРёРµ
                 if (movement != null && movement.IsMoving())
                 {
                     movement.StopMovement();
@@ -295,7 +568,7 @@ public class CharacterAI : MonoBehaviour
                 break;
 
             case AIState.Chasing:
-                // При выходе из состояния Chasing останавливаем движение
+                // РџСЂРё РІС‹С…РѕРґРµ РёР· СЃРѕСЃС‚РѕСЏРЅРёСЏ Chasing РѕСЃС‚Р°РЅР°РІР»РёРІР°РµРј РґРІРёР¶РµРЅРёРµ
                 if (movement != null && movement.IsMoving())
                 {
                     movement.StopMovement();
@@ -303,40 +576,57 @@ public class CharacterAI : MonoBehaviour
                 break;
 
             case AIState.Attacking:
-                // При выходе из состояния Attacking ничего особенного не делаем
-                // Атака завершена или прервана
+                // РџСЂРё РІС‹С…РѕРґРµ РёР· СЃРѕСЃС‚РѕСЏРЅРёСЏ Attacking РЅРёС‡РµРіРѕ РѕСЃРѕР±РµРЅРЅРѕРіРѕ РЅРµ РґРµР»Р°РµРј
+                // РђС‚Р°РєР° Р·Р°РІРµСЂС€РµРЅР° РёР»Рё РїСЂРµСЂРІР°РЅР°
                 break;
         }
     }
 
     /// <summary>
-    /// Вход в состояние
+    /// Р’С…РѕРґ РІ СЃРѕСЃС‚РѕСЏРЅРёРµ
     /// </summary>
     void EnterState(AIState state)
     {
         switch (state)
         {
             case AIState.PlayerControlled:
-                // Запоминаем текущую позицию как базу для будущего блуждания
-                idleBasePosition = transform.position;
+                // ARCHITECTURE: DEPRECATED - This state is no longer used
+                // Selection is now handled via isPlayerControlled flag
                 break;
 
             case AIState.Move:
-                // При входе в состояние Move просто позволяем персонажу двигаться
-                // Движение уже обрабатывается CharacterMovement
+                lastActionTime = Time.time; // ARCHITECTURE: Move - действие!
+
+                // РљР РРўРР§Р•РЎРљР Р’РђР–РќРћ: РћС‡РёС‰Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± Р°С‚Р°РєСѓСЋС‰РµРј С‡С‚РѕР±С‹ РєРѕРЅС‚СЂР°С‚Р°РєР° РЅРµ РїРµСЂРµРѕРїСЂРµРґРµР»РёР»Р° РґРІРёР¶РµРЅРёРµ
+                if (character != null)
+                {
+                    character.ClearLastAttacker();
+                }
+
+                // Р’РђР–РќРћ: РџСЂРё РїРѕР»СѓС‡РµРЅРёРё РєРѕРјР°РЅРґС‹ РґРІРёР¶РµРЅРёСЏ - РџР Р•Р Р«Р’РђР•Рњ Р‘РћР™
+                if (combatSystem != null && character != null && character.IsPlayerCharacter())
+                {
+                    if (combatSystem.IsInCombat(character))
+                    {
+                        combatSystem.StopCombatForCharacter(character);
+                    }
+                }
+
+                // РџСЂРё РІС…РѕРґРµ РІ СЃРѕСЃС‚РѕСЏРЅРёРµ Move РїСЂРѕСЃС‚Рѕ РїРѕР·РІРѕР»СЏРµРј РїРµСЂСЃРѕРЅР°Р¶Сѓ РґРІРёРіР°С‚СЊСЃСЏ
+                // Р”РІРёР¶РµРЅРёРµ СѓР¶Рµ РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚СЃСЏ CharacterMovement
                 break;
 
             case AIState.Idle:
-                // Устанавливаем базовую позицию для блуждания
+                // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р±Р°Р·РѕРІСѓСЋ РїРѕР·РёС†РёСЋ РґР»СЏ Р±Р»СѓР¶РґР°РЅРёСЏ
                 idleBasePosition = transform.position;
 
-                // АВТОМАТИЧЕСКИ ЗАПРАШИВАЕМ СТРОИТЕЛЬСТВО ЕСЛИ ПЕРСОНАЖ ИГРОКА
+                // РђР’РўРћРњРђРўРР§Р•РЎРљР Р—РђРџР РђРЁРР’РђР•Рњ РЎРўР РћРРўР•Р›Р¬РЎРўР’Рћ Р•РЎР›Р РџР•Р РЎРћРќРђР– РР“Р РћРљРђ
                 if (character != null && character.IsPlayerCharacter() && constructionManager != null)
                 {
                     constructionManager.TryAssignConstructionToIdleCharacter(character);
                 }
 
-                // Запускаем корутину блуждания (только если НЕ перешли в строительство)
+                // Р—Р°РїСѓСЃРєР°РµРј РєРѕСЂСѓС‚РёРЅСѓ Р±Р»СѓР¶РґР°РЅРёСЏ (С‚РѕР»СЊРєРѕ РµСЃР»Рё РќР• РїРµСЂРµС€Р»Рё РІ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ)
                 if (currentState == AIState.Idle)
                 {
                     idleCoroutine = StartCoroutine(IdleWanderBehavior());
@@ -344,11 +634,22 @@ public class CharacterAI : MonoBehaviour
                 break;
 
             case AIState.Working:
-                // При входе в состояние Working останавливаем все автоматическое движение
-                // Запоминаем текущую позицию
+                lastActionTime = Time.time; // ARCHITECTURE: Working - действие!
+
+                // Р’РђР–РќРћ: РџСЂРё РЅР°Р·РЅР°С‡РµРЅРёРё СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° - РџР Р•Р Р«Р’РђР•Рњ Р‘РћР™
+                if (combatSystem != null && character != null && character.IsPlayerCharacter())
+                {
+                    if (combatSystem.IsInCombat(character))
+                    {
+                        combatSystem.StopCombatForCharacter(character);
+                    }
+                }
+
+                // РџСЂРё РІС…РѕРґРµ РІ СЃРѕСЃС‚РѕСЏРЅРёРµ Working РѕСЃС‚Р°РЅР°РІР»РёРІР°РµРј РІСЃРµ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРµ РґРІРёР¶РµРЅРёРµ
+                // Р—Р°РїРѕРјРёРЅР°РµРј С‚РµРєСѓС‰СѓСЋ РїРѕР·РёС†РёСЋ
                 idleBasePosition = transform.position;
 
-                // Останавливаем любое текущее движение
+                // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р»СЋР±РѕРµ С‚РµРєСѓС‰РµРµ РґРІРёР¶РµРЅРёРµ
                 if (movement != null && movement.IsMoving())
                 {
                     movement.StopMovement();
@@ -356,11 +657,22 @@ public class CharacterAI : MonoBehaviour
                 break;
 
             case AIState.Mining:
-                // При входе в состояние Mining останавливаем все автоматическое движение
-                // Запоминаем текущую позицию
+                lastActionTime = Time.time; // ARCHITECTURE: Mining - действие!
+
+                // Р’РђР–РќРћ: РџСЂРё РЅР°Р·РЅР°С‡РµРЅРёРё РґРѕР±С‹С‡Рё - РџР Р•Р Р«Р’РђР•Рњ Р‘РћР™
+                if (combatSystem != null && character != null && character.IsPlayerCharacter())
+                {
+                    if (combatSystem.IsInCombat(character))
+                    {
+                        combatSystem.StopCombatForCharacter(character);
+                    }
+                }
+
+                // РџСЂРё РІС…РѕРґРµ РІ СЃРѕСЃС‚РѕСЏРЅРёРµ Mining РѕСЃС‚Р°РЅР°РІР»РёРІР°РµРј РІСЃРµ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРµ РґРІРёР¶РµРЅРёРµ
+                // Р—Р°РїРѕРјРёРЅР°РµРј С‚РµРєСѓС‰СѓСЋ РїРѕР·РёС†РёСЋ
                 idleBasePosition = transform.position;
 
-                // Останавливаем любое текущее движение
+                // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р»СЋР±РѕРµ С‚РµРєСѓС‰РµРµ РґРІРёР¶РµРЅРёРµ
                 if (movement != null && movement.IsMoving())
                 {
                     movement.StopMovement();
@@ -368,26 +680,36 @@ public class CharacterAI : MonoBehaviour
                 break;
 
             case AIState.Chasing:
-                // При входе в состояние Chasing персонаж начинает преследовать цель
-                // Преследование управляется CombatSystem
-                // Запоминаем текущую позицию
+                lastActionTime = Time.time; // ARCHITECTURE: Chasing - действие!
+
+                // РџСЂРё РІС…РѕРґРµ РІ СЃРѕСЃС‚РѕСЏРЅРёРµ Chasing РїРµСЂСЃРѕРЅР°Р¶ РЅР°С‡РёРЅР°РµС‚ РїСЂРµСЃР»РµРґРѕРІР°С‚СЊ С†РµР»СЊ
+                // РџСЂРµСЃР»РµРґРѕРІР°РЅРёРµ СѓРїСЂР°РІР»СЏРµС‚СЃСЏ CombatSystem
+                // Р—Р°РїРѕРјРёРЅР°РµРј С‚РµРєСѓС‰СѓСЋ РїРѕР·РёС†РёСЋ
                 idleBasePosition = transform.position;
+
+                // Р’РђР–РќРћ: Р—Р°РїРѕРјРёРЅР°РµРј РІСЂРµРјСЏ РЅР°С‡Р°Р»Р° Р±РѕСЏ РґР»СЏ Р·Р°РґРµСЂР¶РєРё РїСЂРѕРІРµСЂРєРё
+                combatStartTime = Time.time;
                 break;
 
             case AIState.Attacking:
-                // При входе в состояние Attacking персонаж начинает атаковать
-                // Атака управляется CombatSystem
-                // Останавливаем движение, если оно было
+                lastActionTime = Time.time; // ARCHITECTURE: Attacking - действие!
+
+                // РџСЂРё РІС…РѕРґРµ РІ СЃРѕСЃС‚РѕСЏРЅРёРµ Attacking РїРµСЂСЃРѕРЅР°Р¶ РЅР°С‡РёРЅР°РµС‚ Р°С‚Р°РєРѕРІР°С‚СЊ
+                // РђС‚Р°РєР° СѓРїСЂР°РІР»СЏРµС‚СЃСЏ CombatSystem
+                // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј РґРІРёР¶РµРЅРёРµ, РµСЃР»Рё РѕРЅРѕ Р±С‹Р»Рѕ
                 if (movement != null && movement.IsMoving())
                 {
                     movement.StopMovement();
                 }
+
+                // Р’РђР–РќРћ: Р—Р°РїРѕРјРёРЅР°РµРј РІСЂРµРјСЏ РЅР°С‡Р°Р»Р° Р±РѕСЏ РґР»СЏ Р·Р°РґРµСЂР¶РєРё РїСЂРѕРІРµСЂРєРё
+                combatStartTime = Time.time;
                 break;
         }
     }
 
     /// <summary>
-    /// Корутина поведения в состоянии Idle
+    /// РљРѕСЂСѓС‚РёРЅР° РїРѕРІРµРґРµРЅРёСЏ РІ СЃРѕСЃС‚РѕСЏРЅРёРё Idle
     /// </summary>
     IEnumerator IdleWanderBehavior()
     {
@@ -397,12 +719,12 @@ public class CharacterAI : MonoBehaviour
 
         while (currentState == AIState.Idle && isWandering)
         {
-            // Выбираем случайную точку в области 5x5 клеток
+            // Р’С‹Р±РёСЂР°РµРј СЃР»СѓС‡Р°Р№РЅСѓСЋ С‚РѕС‡РєСѓ РІ РѕР±Р»Р°СЃС‚Рё 5x5 РєР»РµС‚РѕРє
             Vector3 wanderTarget = GetRandomWanderPoint();
 
             // Debug logging disabled
 
-            // Двигаемся к цели
+            // Р”РІРёРіР°РµРјСЃСЏ Рє С†РµР»Рё
             if (movement != null)
             {
                 bool moveStarted = false;
@@ -420,12 +742,12 @@ public class CharacterAI : MonoBehaviour
 
                 if (moveStarted)
                 {
-                    // Ждем завершения движения
+                    // Р–РґРµРј Р·Р°РІРµСЂС€РµРЅРёСЏ РґРІРёР¶РµРЅРёСЏ
                     float waitTime = 0f;
                     while (movement.IsMoving() && currentState == AIState.Idle)
                     {
                         waitTime += 0.1f;
-                        if (debugMode && waitTime % 2f < 0.1f) // Лог каждые 2 секунды
+                        if (debugMode && waitTime % 2f < 0.1f) // Р›РѕРі РєР°Р¶РґС‹Рµ 2 СЃРµРєСѓРЅРґС‹
                         {
 
                         }
@@ -440,7 +762,7 @@ public class CharacterAI : MonoBehaviour
                 // Debug logging disabled
             }
 
-            // Проверяем, что мы все еще в состоянии Idle
+            // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РјС‹ РІСЃРµ РµС‰Рµ РІ СЃРѕСЃС‚РѕСЏРЅРёРё Idle
             if (currentState != AIState.Idle)
             {
                 // Debug logging disabled
@@ -450,10 +772,10 @@ public class CharacterAI : MonoBehaviour
 
             // Debug logging disabled
 
-            // Пауза в достигнутой точке
+            // РџР°СѓР·Р° РІ РґРѕСЃС‚РёРіРЅСѓС‚РѕР№ С‚РѕС‡РєРµ
             yield return new WaitForSeconds(pauseDuration);
 
-            // Проверяем, что мы все еще в состоянии Idle
+            // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РјС‹ РІСЃРµ РµС‰Рµ РІ СЃРѕСЃС‚РѕСЏРЅРёРё Idle
             if (currentState != AIState.Idle)
             {
                 // Debug logging disabled
@@ -463,7 +785,7 @@ public class CharacterAI : MonoBehaviour
 
             // Debug logging disabled
 
-            // Ждем до следующего перемещения
+            // Р–РґРµРј РґРѕ СЃР»РµРґСѓСЋС‰РµРіРѕ РїРµСЂРµРјРµС‰РµРЅРёСЏ
             yield return new WaitForSeconds(wanderInterval);
         }
 
@@ -473,7 +795,7 @@ public class CharacterAI : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить случайную точку для блуждания в области 5x5 клеток
+    /// РџРѕР»СѓС‡РёС‚СЊ СЃР»СѓС‡Р°Р№РЅСѓСЋ С‚РѕС‡РєСѓ РґР»СЏ Р±Р»СѓР¶РґР°РЅРёСЏ РІ РѕР±Р»Р°СЃС‚Рё 5x5 РєР»РµС‚РѕРє
     /// </summary>
     Vector3 GetRandomWanderPoint()
     {
@@ -484,21 +806,21 @@ public class CharacterAI : MonoBehaviour
             return idleBasePosition;
         }
 
-        // Конвертируем базовую позицию в координаты сетки
+        // РљРѕРЅРІРµСЂС‚РёСЂСѓРµРј Р±Р°Р·РѕРІСѓСЋ РїРѕР·РёС†РёСЋ РІ РєРѕРѕСЂРґРёРЅР°С‚С‹ СЃРµС‚РєРё
         Vector2Int baseGridPos = gridManager.WorldToGrid(idleBasePosition);
 
         // Debug logging disabled
 
-        // Случайная позиция в области 5x5 (от -2 до +2 клеток)
+        // РЎР»СѓС‡Р°Р№РЅР°СЏ РїРѕР·РёС†РёСЏ РІ РѕР±Р»Р°СЃС‚Рё 5x5 (РѕС‚ -2 РґРѕ +2 РєР»РµС‚РѕРє)
         int offsetX = Random.Range(-2, 3);
         int offsetY = Random.Range(-2, 3);
 
         Vector2Int targetGridPos = baseGridPos + new Vector2Int(offsetX, offsetY);
 
-        // Проверяем валидность позиции
+        // РџСЂРѕРІРµСЂСЏРµРј РІР°Р»РёРґРЅРѕСЃС‚СЊ РїРѕР·РёС†РёРё
         if (gridManager.IsValidGridPosition(targetGridPos))
         {
-            // Проверяем, что клетка не занята
+            // РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ РєР»РµС‚РєР° РЅРµ Р·Р°РЅСЏС‚Р°
             var cell = gridManager.GetCell(targetGridPos);
             if (cell == null || !cell.isOccupied)
             {
@@ -510,7 +832,7 @@ public class CharacterAI : MonoBehaviour
         }
         // Debug logging disabled
 
-        // Если не удалось найти свободную клетку, пробуем несколько раз
+        // Р•СЃР»Рё РЅРµ СѓРґР°Р»РѕСЃСЊ РЅР°Р№С‚Рё СЃРІРѕР±РѕРґРЅСѓСЋ РєР»РµС‚РєСѓ, РїСЂРѕР±СѓРµРј РЅРµСЃРєРѕР»СЊРєРѕ СЂР°Р·
         for (int attempts = 0; attempts < 10; attempts++)
         {
             offsetX = Random.Range(-2, 3);
@@ -529,27 +851,42 @@ public class CharacterAI : MonoBehaviour
             }
         }
 
-        // Если не нашли свободную клетку, возвращаем базовую позицию
+        // Р•СЃР»Рё РЅРµ РЅР°С€Р»Рё СЃРІРѕР±РѕРґРЅСѓСЋ РєР»РµС‚РєСѓ, РІРѕР·РІСЂР°С‰Р°РµРј Р±Р°Р·РѕРІСѓСЋ РїРѕР·РёС†РёСЋ
         // Debug logging disabled
         return idleBasePosition;
     }
 
     /// <summary>
-    /// Обработчик изменения выделения
+    /// РћР±СЂР°Р±РѕС‚С‡РёРє РёР·РјРµРЅРµРЅРёСЏ РІС‹РґРµР»РµРЅРёСЏ
     /// </summary>
     void OnSelectionChanged(System.Collections.Generic.List<GameObject> selectedObjects)
     {
-        // Проверяем, выделен ли этот персонаж
+        // РџСЂРѕРІРµСЂСЏРµРј, РІС‹РґРµР»РµРЅ Р»Рё СЌС‚РѕС‚ РїРµСЂСЃРѕРЅР°Р¶
         bool isSelected = selectedObjects.Contains(gameObject);
-
+    
         if (isSelected)
         {
-            lastSelectionTime = Time.time;
+            isPlayerControlled = true;
+            // ARCHITECTURE: Выделение НЕ сбрасывает таймер для Idle!
+
+            // ARCHITECTURE: Если игрок кликает на персонажа в бою - ПРЕРЫВАЕМ БОЙ
+            // Прерывание боя - это ДЕЙСТВИЕ, сбрасывает таймер Idle
+            if ((currentState == AIState.Chasing || currentState == AIState.Attacking) &&
+                character != null && character.IsPlayerCharacter() && combatSystem != null)
+            {
+                // Прерываем бой - персонаж перейдет в Idle
+                combatSystem.StopCombatForCharacter(character);
+                lastActionTime = Time.time; // Прерывание боя - это действие!
+            }
+        }
+        else
+        {
+            isPlayerControlled = false;
         }
     }
 
     /// <summary>
-    /// Принудительно установить состояние ИИ
+    /// РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ СѓСЃС‚Р°РЅРѕРІРёС‚СЊ СЃРѕСЃС‚РѕСЏРЅРёРµ РР
     /// </summary>
     public void SetAIState(AIState state)
     {
@@ -557,7 +894,7 @@ public class CharacterAI : MonoBehaviour
     }
 
     /// <summary>
-    /// Получить текущее состояние ИИ
+    /// РџРѕР»СѓС‡РёС‚СЊ С‚РµРєСѓС‰РµРµ СЃРѕСЃС‚РѕСЏРЅРёРµ РР
     /// </summary>
     public AIState GetCurrentState()
     {
@@ -565,7 +902,23 @@ public class CharacterAI : MonoBehaviour
     }
 
     /// <summary>
-    /// Проверить, блуждает ли персонаж
+    /// FIX: РЈСЃС‚Р°РЅРѕРІРёС‚СЊ С„Р»Р°Рі РґРІРёР¶РµРЅРёСЏ Рє СЂР°Р±РѕС‚Рµ
+    /// </summary>
+    public void SetMovingToJob(bool value)
+    {
+        movingToJob = value;
+    }
+
+    /// <summary>
+    /// FIX: РџСЂРѕРІРµСЂРёС‚СЊ, РёРґРµС‚ Р»Рё РїРµСЂСЃРѕРЅР°Р¶ Рє СЂР°Р±РѕС‚Рµ
+    /// </summary>
+    public bool IsMovingToJob()
+    {
+        return movingToJob;
+    }
+
+    /// <summary>
+    /// РџСЂРѕРІРµСЂРёС‚СЊ, Р±Р»СѓР¶РґР°РµС‚ Р»Рё РїРµСЂСЃРѕРЅР°Р¶
     /// </summary>
     public bool IsWandering()
     {
@@ -573,62 +926,179 @@ public class CharacterAI : MonoBehaviour
     }
 
     /// <summary>
-    /// Уведомить о том, что движение инициировано игроком
+    /// РЎРєР°РЅРёСЂРѕРІР°С‚СЊ РѕР±Р»Р°СЃС‚СЊ РЅР° РЅР°Р»РёС‡РёРµ С†РµР»РµР№ РґР»СЏ Р°С‚Р°РєРё (С‚РѕР»СЊРєРѕ РґР»СЏ РІСЂР°РіРѕРІ)
+    /// </summary>
+    void ScanForTargets()
+    {
+        if (character == null || !character.IsEnemyCharacter() || combatSystem == null)
+            return;
+
+        // РЈР¶Рµ РІ Р±РѕСЋ - РЅРµ РёС‰РµРј РЅРѕРІСѓСЋ С†РµР»СЊ
+        if (combatSystem.IsInCombat(character))
+            return;
+
+        // РќР°С…РѕРґРёРј РІСЃРµС… РїРµСЂСЃРѕРЅР°Р¶РµР№ РІ СЂР°РґРёСѓСЃРµ
+        Character[] allCharacters = FindObjectsOfType<Character>();
+        Character closestTarget = null;
+        float closestDistance = float.MaxValue;
+
+        foreach (Character potentialTarget in allCharacters)
+        {
+            // РџСЂРѕРїСѓСЃРєР°РµРј СЃРµР±СЏ, РјРµСЂС‚РІС‹С…, Рё СЃРѕСЋР·РЅРёРєРѕРІ
+            if (potentialTarget == character ||
+                potentialTarget.IsDead() ||
+                !potentialTarget.IsPlayerCharacter())
+                continue;
+
+            // РџСЂРѕРІРµСЂСЏРµРј СЂР°СЃСЃС‚РѕСЏРЅРёРµ
+            float distance = Vector3.Distance(transform.position, potentialTarget.transform.position);
+            if (distance <= enemyDetectionRange && distance < closestDistance)
+            {
+                closestTarget = potentialTarget;
+                closestDistance = distance;
+            }
+        }
+
+        // Р•СЃР»Рё РЅР°С€Р»Рё С†РµР»СЊ - Р°С‚Р°РєСѓРµРј
+        if (closestTarget != null)
+        {
+            combatSystem.AssignCombatTarget(character, closestTarget);
+            SwitchToState(AIState.Chasing);
+        }
+    }
+
+    /// <summary>
+    /// РЎРєР°РЅРёСЂРѕРІР°С‚СЊ РѕР±Р»Р°СЃС‚СЊ РЅР° РЅР°Р»РёС‡РёРµ РІСЂР°РіРѕРІ РґР»СЏ Р°С‚Р°РєРё (С‚РѕР»СЊРєРѕ РґР»СЏ СЃРѕСЋР·РЅРёРєРѕРІ)
+    /// </summary>
+    void ScanForEnemies()
+    {
+        if (character == null || !character.IsPlayerCharacter() || combatSystem == null)
+        {
+            return;
+        }
+
+        // РЈР¶Рµ РІ Р±РѕСЋ - РЅРµ РёС‰РµРј РЅРѕРІСѓСЋ С†РµР»СЊ
+        if (combatSystem.IsInCombat(character))
+        {
+            return;
+        }
+
+        // РќР°С…РѕРґРёРј РІСЃРµС… РїРµСЂСЃРѕРЅР°Р¶РµР№ РІ СЂР°РґРёСѓСЃРµ
+        Character[] allCharacters = FindObjectsOfType<Character>();
+        Character closestEnemy = null;
+        float closestDistance = float.MaxValue;
+        int enemiesFound = 0;
+
+        foreach (Character potentialEnemy in allCharacters)
+        {
+            // РџСЂРѕРїСѓСЃРєР°РµРј СЃРµР±СЏ, РјРµСЂС‚РІС‹С…, Рё СЃРѕСЋР·РЅРёРєРѕРІ
+            if (potentialEnemy == character ||
+                potentialEnemy.IsDead() ||
+                !potentialEnemy.IsEnemyCharacter())
+                continue;
+
+            // РџСЂРѕРІРµСЂСЏРµРј СЂР°СЃСЃС‚РѕСЏРЅРёРµ
+            float distance = Vector3.Distance(transform.position, potentialEnemy.transform.position);
+            enemiesFound++;
+
+            if (distance <= enemyDetectionRange && distance < closestDistance)
+            {
+                closestEnemy = potentialEnemy;
+                closestDistance = distance;
+            }
+        }
+
+        // Р•СЃР»Рё РЅР°С€Р»Рё РІСЂР°РіР° - Р°С‚Р°РєСѓРµРј
+        if (closestEnemy != null)
+        {
+            // DEBUG: Р›РѕРіРёСЂСѓРµРј Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРµ РѕР±РЅР°СЂСѓР¶РµРЅРёРµ РІСЂР°РіР°
+            if (debugStateTransitions && character != null)
+            {
+                bool isSelected = character.IsSelected();
+                string selectionStatus = isSelected ? "[SELECTED]" : "[NOT SELECTED]";
+                bool isRecentPlayerCommand = (Time.time - playerMoveCommandTime) < 1f;
+                string warning = isRecentPlayerCommand ? " *** INTERRUPTING PLAYER COMMAND! ***" : "";
+
+                Debug.Log($"[AUTO-DETECT] {selectionStatus} {character.GetFullName()} detected enemy {closestEnemy.GetFullName()} at {closestDistance:F1}m | State: {currentState}{warning}");
+            }
+
+            combatSystem.AssignCombatTarget(character, closestEnemy);
+            SwitchToState(AIState.Chasing);
+        }
+    }
+
+    /// <summary>
+    /// РЈРІРµРґРѕРјРёС‚СЊ Рѕ С‚РѕРј, С‡С‚Рѕ РґРІРёР¶РµРЅРёРµ РёРЅРёС†РёРёСЂРѕРІР°РЅРѕ РёРіСЂРѕРєРѕРј
     /// </summary>
     public void OnPlayerInitiatedMovement()
     {
         playerInitiatedMovement = true;
 
-        // Останавливаем бой при получении команды движения от игрока
+        // Р—Р°РїРѕРјРёРЅР°РµРј РІСЂРµРјСЏ РєРѕРјР°РЅРґС‹ РґР»СЏ РѕС‚Р»Р°РґРєРё
+        playerMoveCommandTime = Time.time;
+
+        // РљР РРўРР§Р•РЎРљР Р’РђР–РќРћ: РћС‡РёС‰Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± Р°С‚Р°РєСѓСЋС‰РµРј С‡С‚РѕР±С‹ РєРѕРЅС‚СЂР°С‚Р°РєР° РЅРµ РїРµСЂРµРѕРїСЂРµРґРµР»РёР»Р° РєРѕРјР°РЅРґСѓ РёРіСЂРѕРєР°
+        if (character != null)
+        {
+            character.ClearLastAttacker();
+        }
+
+        // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р±РѕР№ РїСЂРё РїРѕР»СѓС‡РµРЅРёРё РєРѕРјР°РЅРґС‹ РґРІРёР¶РµРЅРёСЏ РѕС‚ РёРіСЂРѕРєР°
         if (combatSystem != null && character != null)
         {
             combatSystem.StopCombatForCharacter(character);
         }
 
-        // ПРЕРЫВАЕМ СТРОИТЕЛЬСТВО если персонаж был в состоянии Working
+        // РџР Р•Р Р«Р’РђР•Рњ Р‘РћР™ РµСЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ Р±С‹Р» РІ СЃРѕСЃС‚РѕСЏРЅРёРё Chasing/Attacking
+        if (currentState == AIState.Chasing || currentState == AIState.Attacking)
+        {
+            SwitchToState(AIState.Move);
+        }
+
+        // РџР Р•Р Р«Р’РђР•Рњ РЎРўР РћРРўР•Р›Р¬РЎРўР’Рћ РµСЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ Р±С‹Р» РІ СЃРѕСЃС‚РѕСЏРЅРёРё Working
         if (currentState == AIState.Working)
         {
-            // ВАЖНО: Останавливаем строительство в ConstructionManager
+            // Р’РђР–РќРћ: РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РІ ConstructionManager
             if (constructionManager != null)
             {
                 constructionManager.StopConstructionForCharacter(character);
             }
-            else
-            {
-                Debug.LogError($"[CharacterAI] ConstructionManager is NULL!");
-            }
 
-            // Переключаем состояние - это вызовет ExitState(Working) и остановит корутину строительства
+            // РџРµСЂРµРєР»СЋС‡Р°РµРј СЃРѕСЃС‚РѕСЏРЅРёРµ - СЌС‚Рѕ РІС‹Р·РѕРІРµС‚ ExitState(Working) Рё РѕСЃС‚Р°РЅРѕРІРёС‚ РєРѕСЂСѓС‚РёРЅСѓ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°
             SwitchToState(AIState.Move);
         }
 
-        // ПРЕРЫВАЕМ ДОБЫЧУ если персонаж был в состоянии Mining
+        // РџР Р•Р Р«Р’РђР•Рњ Р”РћР‘Р«Р§РЈ РµСЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ Р±С‹Р» РІ СЃРѕСЃС‚РѕСЏРЅРёРё Mining
         if (currentState == AIState.Mining)
         {
-            // ВАЖНО: Останавливаем добычу в MiningManager
+            // Р’РђР–РќРћ: РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј РґРѕР±С‹С‡Сѓ РІ MiningManager
             if (miningManager != null)
             {
                 miningManager.StopMiningForCharacter(character);
             }
-            else
-            {
-                Debug.LogError($"[CharacterAI] MiningManager is NULL!");
-            }
 
-            // Переключаем состояние - это вызовет ExitState(Mining) и остановит движение
+            // РџРµСЂРµРєР»СЋС‡Р°РµРј СЃРѕСЃС‚РѕСЏРЅРёРµ - СЌС‚Рѕ РІС‹Р·РѕРІРµС‚ ExitState(Mining) Рё РѕСЃС‚Р°РЅРѕРІРёС‚ РґРІРёР¶РµРЅРёРµ
+            SwitchToState(AIState.Move);
+        }
+
+        // РљР РРўРР§Р•РЎРљР Р’РђР–РќРћ: РџРµСЂРµРєР»СЋС‡Р°РµРј РІ СЃРѕСЃС‚РѕСЏРЅРёРµ Move РќР•РњР•Р”Р›Р•РќРќРћ РїСЂРё РїРѕР»СѓС‡РµРЅРёРё РєРѕРјР°РЅРґС‹ РёРіСЂРѕРєР°
+        // Р­С‚Рѕ РїСЂРµРґРѕС‚РІСЂР°С‰Р°РµС‚ РєРѕРЅС‚СЂР°С‚Р°РєСѓ РґРѕ СЃРјРµРЅС‹ СЃРѕСЃС‚РѕСЏРЅРёСЏ
+        // ARCHITECTURE: PlayerControlled is no longer a primary state
+        if (currentState == AIState.Idle)
+        {
             SwitchToState(AIState.Move);
         }
     }
 
     void OnDestroy()
     {
-        // Отписываемся от событий
+        // РћС‚РїРёСЃС‹РІР°РµРјСЃСЏ РѕС‚ СЃРѕР±С‹С‚РёР№
         if (selectionManager != null)
         {
             selectionManager.OnSelectionChanged -= OnSelectionChanged;
         }
 
-        // Останавливаем корутины
+        // РћСЃС‚Р°РЅР°РІР»РёРІР°РµРј РєРѕСЂСѓС‚РёРЅС‹
         if (idleCoroutine != null)
         {
             StopCoroutine(idleCoroutine);
@@ -639,7 +1109,7 @@ public class CharacterAI : MonoBehaviour
     {
         if (gridManager == null) return;
 
-        // Показываем состояние персонажа цветом
+        // РџРѕРєР°Р·С‹РІР°РµРј СЃРѕСЃС‚РѕСЏРЅРёРµ РїРµСЂСЃРѕРЅР°Р¶Р° С†РІРµС‚РѕРј
         switch (currentState)
         {
             case AIState.PlayerControlled:
@@ -650,24 +1120,24 @@ public class CharacterAI : MonoBehaviour
                 break;
             case AIState.Idle:
                 Gizmos.color = Color.yellow;
-                // Показываем область блуждания
+                // РџРѕРєР°Р·С‹РІР°РµРј РѕР±Р»Р°СЃС‚СЊ Р±Р»СѓР¶РґР°РЅРёСЏ
                 Gizmos.DrawWireCube(idleBasePosition, new Vector3(wanderRadius * 2, 0.1f, wanderRadius * 2));
                 break;
             case AIState.Working:
                 Gizmos.color = Color.green;
                 break;
             case AIState.Mining:
-                Gizmos.color = new Color(0.5f, 0.3f, 0.1f); // Коричневый (цвет руды)
+                Gizmos.color = new Color(0.5f, 0.3f, 0.1f); // РљРѕСЂРёС‡РЅРµРІС‹Р№ (С†РІРµС‚ СЂСѓРґС‹)
                 break;
             case AIState.Chasing:
-                Gizmos.color = new Color(1f, 0.5f, 0f); // Оранжевый
+                Gizmos.color = new Color(1f, 0.5f, 0f); // РћСЂР°РЅР¶РµРІС‹Р№
                 break;
             case AIState.Attacking:
                 Gizmos.color = Color.red;
                 break;
         }
 
-        // Показываем индикатор состояния над персонажем
+        // РџРѕРєР°Р·С‹РІР°РµРј РёРЅРґРёРєР°С‚РѕСЂ СЃРѕСЃС‚РѕСЏРЅРёСЏ РЅР°Рґ РїРµСЂСЃРѕРЅР°Р¶РµРј
         Gizmos.DrawWireSphere(transform.position + Vector3.up * 2f, 0.3f);
     }
 }
